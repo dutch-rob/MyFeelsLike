@@ -1,0 +1,205 @@
+Regression simulation report
+File    : FebrB100.csv
+Rows    : 100
+Created : 2026-05-13 23:54:51 +0000
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Notes:
+  • Coefficients are for z-scored (standardised) features.
+  • apparentTempC is always the anchor feature when a model is fit.
+  • AICc = small-sample corrected Akaike criterion (lower = better fit).
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+n      status       R²        AICc      features & standardised coefficients
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+n=  5  FIT          0.0723      28.75   [apparentTempC]  β₀=+1.3530  apparentTempC=-2.0350
+         raw:         b₀=+2.9677  apparentTempC=-0.1471
+n=  6  FIT          0.0547      31.66   [apparentTempC]  β₀=+3.1614  apparentTempC=-1.8922
+         raw:         b₀=+4.8273  apparentTempC=-0.1529
+n=  7  FIT          0.0600      33.60   [apparentTempC]  β₀=+3.5265  apparentTempC=-1.8246
+         raw:         b₀=+5.1979  apparentTempC=-0.1605
+n=  8  FIT          0.0399      35.99   [apparentTempC]  β₀=+3.2634  apparentTempC=-1.3854
+         raw:         b₀=+4.4220  apparentTempC=-0.1255
+n=  9  FIT          0.0456      38.34   [apparentTempC]  β₀=+3.5549  apparentTempC=-1.3983
+         raw:         b₀=+4.7340  apparentTempC=-0.1343
+n= 10  FIT          0.6359      35.78   [apparentTempC, precipitationMM]  β₀=+3.0992  apparentTempC=+7.9808  precipitationMM=-10.1352
+         raw:         b₀=+0.9146  apparentTempC=+0.7781  precipitationMM=-14.0202
+n= 11  FIT          0.5821      38.45   [apparentTempC, precipitationMM]  β₀=+3.3490  apparentTempC=+6.9206  precipitationMM=-9.1058
+         raw:         b₀=+1.8036  apparentTempC=+0.6893  precipitationMM=-13.1785
+n= 12  FIT          0.5235      41.44   [apparentTempC, precipitationMM]  β₀=+3.5877  apparentTempC=+5.1765  precipitationMM=-6.9710
+         raw:         b₀=+2.4206  apparentTempC=+0.4640  precipitationMM=-10.5165
+n= 13  FIT          0.5067      49.20   [apparentTempC, apparentMinusTemp]  β₀=+2.4015  apparentTempC=+19.0397  apparentMinusTemp=-18.6798
+         raw:         b₀=-2.2573  apparentTempC=+1.6900  apparentMinusTemp=-1.5755
+n= 14  FIT          0.5471      52.05   [apparentTempC, apparentMinusTemp]  β₀=+1.6486  apparentTempC=+19.9801  apparentMinusTemp=-19.3086
+         raw:         b₀=-3.0214  apparentTempC=+1.8242  apparentMinusTemp=-1.6899
+n= 15  FIT          0.8927      37.87   [apparentTempC, apparentMinusTemp, windSpeedKPH]  β₀=+1.0097  apparentTempC=+21.4297  apparentMinusTemp=-19.7644  windSpeedKPH=-4.5448
+         raw:         b₀=+1.0736  apparentTempC=+1.9455  apparentMinusTemp=-1.7253  windSpeedKPH=-0.6816
+n= 16  FIT          0.8039      48.07   [apparentTempC, cloudCover, precipitationMM]  β₀=+1.2256  apparentTempC=+10.2637  cloudCover=-5.2868  precipitationMM=-6.6111
+         raw:         b₀=+1.4786  apparentTempC=+0.9592  cloudCover=-15.4783  precipitationMM=-11.3821
+n= 17  FIT          0.9992      57.27   [apparentTempC, cloudCover, precipitationMM]  β₀=+36.3244  apparentTempC=+9.3384  cloudCover=-142.4542  precipitationMM=-7.1910
+         raw:         b₀=+0.1929  apparentTempC=+0.8155  cloudCover=-5.9174  precipitationMM=-12.4346
+n= 18  FIT          0.9992      58.83   [apparentTempC, cloudCover, precipitationMM]  β₀=+34.2114  apparentTempC=+9.2735  cloudCover=-138.4107  precipitationMM=-7.0434
+         raw:         b₀=+0.0686  apparentTempC=+0.8234  cloudCover=-5.9169  precipitationMM=-12.4913
+n= 19  FIT          0.9992      60.26   [apparentTempC, cloudCover, precipitationMM]  β₀=+32.8719  apparentTempC=+9.0848  cloudCover=-134.6835  precipitationMM=-6.9272
+         raw:         b₀=+0.0864  apparentTempC=+0.8285  cloudCover=-5.9161  precipitationMM=-12.5854
+n= 20  FIT          0.9995      58.44   [apparentTempC, cloudCover, precipitationMM, apparentMinusTemp]  β₀=+30.9182  apparentTempC=+16.1814  cloudCover=-131.8758  precipitationMM=-5.5557  apparentMinusTemp=-8.4525
+         raw:         b₀=-1.7226  apparentTempC=+1.4725  cloudCover=-5.9440  precipitationMM=-10.3292  apparentMinusTemp=-0.7317
+n= 21  FIT          0.9994      63.02   [apparentTempC, cloudCover, precipitationMM, apparentMinusTemp]  β₀=+29.5892  apparentTempC=+17.0575  cloudCover=-129.2548  precipitationMM=-4.2941  apparentMinusTemp=-10.5863
+         raw:         b₀=-1.8817  apparentTempC=+1.4659  cloudCover=-5.9672  precipitationMM=-8.1890  apparentMinusTemp=-0.8649
+n= 22  FIT          0.9994      64.10   [apparentTempC, cloudCover, precipitationMM, apparentMinusTemp]  β₀=+27.9693  apparentTempC=+16.9151  cloudCover=-126.2656  precipitationMM=-4.2032  apparentMinusTemp=-10.2910
+         raw:         b₀=-1.8181  apparentTempC=+1.4522  cloudCover=-5.9670  precipitationMM=-8.1838  apparentMinusTemp=-0.8534
+n= 23  FIT          0.9994      65.60   [apparentTempC, cloudCover, precipitationMM, apparentMinusTemp]  β₀=+27.0771  apparentTempC=+16.8311  cloudCover=-123.4598  precipitationMM=-4.3022  apparentMinusTemp=-10.0371
+         raw:         b₀=-1.7617  apparentTempC=+1.4623  cloudCover=-5.9641  precipitationMM=-8.5453  apparentMinusTemp=-0.8445
+n= 24  FIT          0.9997      49.15   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH]  β₀=+26.5483  apparentTempC=+16.4532  cloudCover=-121.1561  apparentMinusTemp=-13.1662  windSpeedKPH=-3.6460
+         raw:         b₀=+2.7777  apparentTempC=+1.4497  cloudCover=-5.9773  apparentMinusTemp=-1.1268  windSpeedKPH=-0.5595
+n= 25  FIT          0.9998      40.72   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+25.6093  apparentTempC=+16.2891  cloudCover=-118.6572  apparentMinusTemp=-11.5206  windSpeedKPH=-2.9262  precipitationMM=-2.0757
+         raw:         b₀=+2.0070  apparentTempC=+1.4396  cloudCover=-5.9735  apparentMinusTemp=-0.9831  windSpeedKPH=-0.4559  precipitationMM=-4.2814
+n= 26  FIT          0.9997      51.76   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+25.0428  apparentTempC=+16.7743  cloudCover=-116.2565  apparentMinusTemp=-11.5088  windSpeedKPH=-2.6633  precipitationMM=-2.2971
+         raw:         b₀=+1.7282  apparentTempC=+1.4894  cloudCover=-5.9674  apparentMinusTemp=-0.9939  windSpeedKPH=-0.4216  precipitationMM=-4.8329
+n= 27  FIT          0.9997      52.00   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+24.2565  apparentTempC=+17.2571  cloudCover=-114.0801  apparentMinusTemp=-11.8083  windSpeedKPH=-2.6175  precipitationMM=-2.3213
+         raw:         b₀=+1.6768  apparentTempC=+1.4887  cloudCover=-5.9662  apparentMinusTemp=-0.9859  windSpeedKPH=-0.4149  precipitationMM=-4.9344
+n= 28  FIT          0.9997      52.19   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+23.4266  apparentTempC=+17.0762  cloudCover=-112.0096  apparentMinusTemp=-11.6798  windSpeedKPH=-2.5729  precipitationMM=-2.2871
+         raw:         b₀=+1.6528  apparentTempC=+1.4885  cloudCover=-5.9662  apparentMinusTemp=-0.9843  windSpeedKPH=-0.4154  precipitationMM=-4.9398
+n= 29  FIT          0.9997      53.19   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+22.2222  apparentTempC=+17.5692  cloudCover=-110.0499  apparentMinusTemp=-11.8653  windSpeedKPH=-2.6308  precipitationMM=-2.2353
+         raw:         b₀=+1.5719  apparentTempC=+1.5153  cloudCover=-5.9662  apparentMinusTemp=-1.0057  windSpeedKPH=-0.4256  precipitationMM=-4.9031
+n= 30  FIT          0.9997      53.46   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+21.1424  apparentTempC=+17.7627  cloudCover=-108.1899  apparentMinusTemp=-11.8612  windSpeedKPH=-2.6469  precipitationMM=-2.1926
+         raw:         b₀=+1.5453  apparentTempC=+1.5249  cloudCover=-5.9662  apparentMinusTemp=-1.0138  windSpeedKPH=-0.4295  precipitationMM=-4.8821
+n= 31  FIT          0.9997      53.87   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+20.4474  apparentTempC=+17.6396  cloudCover=-106.4153  apparentMinusTemp=-11.7521  windSpeedKPH=-2.5893  precipitationMM=-2.1862
+         raw:         b₀=+1.4796  apparentTempC=+1.5237  cloudCover=-5.9660  apparentMinusTemp=-1.0081  windSpeedKPH=-0.4272  precipitationMM=-4.9392
+n= 32  FIT          0.9997      54.06   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+19.7224  apparentTempC=+17.6016  cloudCover=-104.7336  apparentMinusTemp=-11.8115  windSpeedKPH=-2.5739  precipitationMM=-2.2416
+         raw:         b₀=+1.4803  apparentTempC=+1.5212  cloudCover=-5.9652  apparentMinusTemp=-1.0055  windSpeedKPH=-0.4260  precipitationMM=-4.8651
+n= 33  FIT          0.9997      55.18   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+19.0164  apparentTempC=+17.9817  cloudCover=-103.2021  apparentMinusTemp=-12.1850  windSpeedKPH=-2.6417  precipitationMM=-2.3493
+         raw:         b₀=+1.5627  apparentTempC=+1.5194  cloudCover=-5.9677  apparentMinusTemp=-1.0108  windSpeedKPH=-0.4352  precipitationMM=-4.9386
+n= 34  FIT          0.9997      56.81   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+18.3238  apparentTempC=+17.6000  cloudCover=-101.6818  apparentMinusTemp=-11.8302  windSpeedKPH=-2.5848  precipitationMM=-2.3789
+         raw:         b₀=+1.6513  apparentTempC=+1.5060  cloudCover=-5.9668  apparentMinusTemp=-0.9957  windSpeedKPH=-0.4324  precipitationMM=-5.0626
+n= 35  FIT          0.9997      56.95   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+17.7160  apparentTempC=+17.3576  cloudCover=-100.2160  apparentMinusTemp=-11.6823  windSpeedKPH=-2.6115  precipitationMM=-2.3293
+         raw:         b₀=+1.6642  apparentTempC=+1.5071  cloudCover=-5.9669  apparentMinusTemp=-0.9981  windSpeedKPH=-0.4353  precipitationMM=-5.0169
+n= 36  FIT          0.9996      61.16   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+17.9640  apparentTempC=+18.1698  cloudCover=-98.8158  apparentMinusTemp=-12.4682  windSpeedKPH=-2.8010  precipitationMM=-2.2506
+         raw:         b₀=+1.7748  apparentTempC=+1.5889  cloudCover=-5.9672  apparentMinusTemp=-1.0798  windSpeedKPH=-0.4575  precipitationMM=-4.9048
+n= 37  FIT          0.9996      61.43   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+17.4900  apparentTempC=+17.9322  cloudCover=-97.4707  apparentMinusTemp=-12.2870  windSpeedKPH=-2.7568  precipitationMM=-2.2637
+         raw:         b₀=+1.7625  apparentTempC=+1.5878  cloudCover=-5.9669  apparentMinusTemp=-1.0755  windSpeedKPH=-0.4545  precipitationMM=-4.9904
+n= 38  FIT          0.9998      68.33   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM, tempMinusWetBulb]  β₀=+32.7905  apparentTempC=+20.6562  cloudCover=-134.8780  apparentMinusTemp=-17.8132  windSpeedKPH=-2.9120  precipitationMM=-1.3898  tempMinusWetBulb=-2.1987
+         raw:         b₀=+6.4622  apparentTempC=+1.7557  cloudCover=-5.9992  apparentMinusTemp=-1.4867  windSpeedKPH=-0.4860  precipitationMM=-1.9695  tempMinusWetBulb=-1.5730
+n= 39  FIT          0.9997      74.87   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+31.4547  apparentTempC=+21.3025  cloudCover=-132.6394  apparentMinusTemp=-19.5779  windSpeedKPH=-3.8681  tempMinusWetBulb=-2.9532
+         raw:         b₀=+8.6376  apparentTempC=+1.7894  cloudCover=-5.9751  apparentMinusTemp=-1.6191  windSpeedKPH=-0.5781  tempMinusWetBulb=-2.0832
+n= 40  FIT          0.9997      75.45   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+30.3567  apparentTempC=+21.5098  cloudCover=-131.0083  apparentMinusTemp=-19.5841  windSpeedKPH=-3.8731  tempMinusWetBulb=-2.9261
+         raw:         b₀=+8.6087  apparentTempC=+1.7939  cloudCover=-5.9750  apparentMinusTemp=-1.6214  windSpeedKPH=-0.5801  tempMinusWetBulb=-2.0807
+n= 41  FIT          0.9998      74.87   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM, tempMinusWetBulb]  β₀=+29.8826  apparentTempC=+21.2578  cloudCover=-129.8739  apparentMinusTemp=-17.9906  windSpeedKPH=-3.6548  precipitationMM=-1.3490  tempMinusWetBulb=-2.2743
+         raw:         b₀=+6.9598  apparentTempC=+1.7496  cloudCover=-5.9950  apparentMinusTemp=-1.4609  windSpeedKPH=-0.5502  precipitationMM=-1.9786  tempMinusWetBulb=-1.6010
+n= 42  FIT          0.9997      79.43   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+29.5292  apparentTempC=+18.9198  cloudCover=-128.2373  apparentMinusTemp=-13.4798  windSpeedKPH=-3.7298  precipitationMM=-1.5453
+         raw:         b₀=+2.5427  apparentTempC=+1.5600  cloudCover=-5.9898  apparentMinusTemp=-1.1053  windSpeedKPH=-0.5644  precipitationMM=-2.2906
+n= 43  FIT          0.9997      80.24   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+29.0174  apparentTempC=+19.3543  cloudCover=-126.8515  apparentMinusTemp=-13.8761  windSpeedKPH=-3.7292  precipitationMM=-1.6027
+         raw:         b₀=+2.4582  apparentTempC=+1.5634  cloudCover=-5.9924  apparentMinusTemp=-1.1110  windSpeedKPH=-0.5567  precipitationMM=-2.3690
+n= 44  FIT          0.9997      80.51   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+28.3205  apparentTempC=+21.0532  cloudCover=-125.5213  apparentMinusTemp=-17.7878  windSpeedKPH=-3.6071  tempMinusWetBulb=-2.1751  precipitationMM=-1.2554
+         raw:         b₀=+6.8468  apparentTempC=+1.7141  cloudCover=-5.9954  apparentMinusTemp=-1.4338  windSpeedKPH=-0.5445  tempMinusWetBulb=-1.5489  precipitationMM=-1.8740
+n= 45  FIT          0.9997      80.94   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+27.6221  apparentTempC=+21.0403  cloudCover=-124.1434  apparentMinusTemp=-17.7339  windSpeedKPH=-3.5612  tempMinusWetBulb=-2.1659  precipitationMM=-1.2479
+         raw:         b₀=+6.8238  apparentTempC=+1.7162  cloudCover=-5.9954  apparentMinusTemp=-1.4350  windSpeedKPH=-0.5438  tempMinusWetBulb=-1.5520  precipitationMM=-1.8810
+n= 46  FIT          0.9997      84.33   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, precipitationMM]  β₀=+26.9810  apparentTempC=+18.9624  cloudCover=-122.7388  apparentMinusTemp=-13.6556  windSpeedKPH=-3.7531  precipitationMM=-1.5399
+         raw:         b₀=+2.5596  apparentTempC=+1.5620  cloudCover=-5.9920  apparentMinusTemp=-1.1126  windSpeedKPH=-0.5613  precipitationMM=-2.3432
+n= 47  FIT          0.9997      82.82   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+26.5011  apparentTempC=+20.4593  cloudCover=-121.5001  apparentMinusTemp=-17.2391  windSpeedKPH=-3.7622  tempMinusWetBulb=-2.1741  precipitationMM=-1.2046
+         raw:         b₀=+6.7845  apparentTempC=+1.6958  cloudCover=-5.9946  apparentMinusTemp=-1.4096  windSpeedKPH=-0.5558  tempMinusWetBulb=-1.5084  precipitationMM=-1.8502
+n= 48  FIT          0.9997      84.02   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+25.7579  apparentTempC=+20.4290  cloudCover=-120.2504  apparentMinusTemp=-17.1382  windSpeedKPH=-3.7377  tempMinusWetBulb=-2.2036  precipitationMM=-1.1859
+         raw:         b₀=+6.9542  apparentTempC=+1.6851  cloudCover=-5.9947  apparentMinusTemp=-1.4062  windSpeedKPH=-0.5529  tempMinusWetBulb=-1.5447  precipitationMM=-1.8383
+n= 49  FIT          0.9997      87.19   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+25.3384  apparentTempC=+19.9243  cloudCover=-119.0307  apparentMinusTemp=-16.8232  windSpeedKPH=-3.7171  tempMinusWetBulb=-2.3374  precipitationMM=-1.1771
+         raw:         b₀=+7.2006  apparentTempC=+1.6597  cloudCover=-5.9944  apparentMinusTemp=-1.3857  windSpeedKPH=-0.5557  tempMinusWetBulb=-1.6239  precipitationMM=-1.8410
+n= 50  FIT          0.9996      95.72   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+24.9476  apparentTempC=+20.2184  cloudCover=-117.4623  apparentMinusTemp=-18.5036  windSpeedKPH=-4.0303  tempMinusWetBulb=-3.0338
+         raw:         b₀=+9.3032  apparentTempC=+1.6968  cloudCover=-5.9736  apparentMinusTemp=-1.5351  windSpeedKPH=-0.6053  tempMinusWetBulb=-2.1289
+n= 51  FIT          0.9996      96.50   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+24.3378  apparentTempC=+20.1826  cloudCover=-116.3259  apparentMinusTemp=-18.3895  windSpeedKPH=-3.9966  tempMinusWetBulb=-3.0526
+         raw:         b₀=+9.4567  apparentTempC=+1.6917  cloudCover=-5.9738  apparentMinusTemp=-1.5351  windSpeedKPH=-0.6060  tempMinusWetBulb=-2.1628
+n= 52  FIT          0.9996      97.23   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+24.2406  apparentTempC=+19.8666  cloudCover=-115.2146  apparentMinusTemp=-18.1178  windSpeedKPH=-3.9760  tempMinusWetBulb=-3.0838
+         raw:         b₀=+9.4793  apparentTempC=+1.6791  cloudCover=-5.9736  apparentMinusTemp=-1.5227  windSpeedKPH=-0.6057  tempMinusWetBulb=-2.1674
+n= 53  FIT          0.9996      98.63   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+23.7006  apparentTempC=+19.8967  cloudCover=-114.1325  apparentMinusTemp=-18.0732  windSpeedKPH=-3.9274  tempMinusWetBulb=-3.0597
+         raw:         b₀=+9.3879  apparentTempC=+1.6843  cloudCover=-5.9733  apparentMinusTemp=-1.5245  windSpeedKPH=-0.6041  tempMinusWetBulb=-2.1652
+n= 54  FIT          0.9996      99.25   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+23.2695  apparentTempC=+19.9261  cloudCover=-113.0917  apparentMinusTemp=-18.1159  windSpeedKPH=-3.8912  tempMinusWetBulb=-3.0514
+         raw:         b₀=+9.3602  apparentTempC=+1.6837  cloudCover=-5.9728  apparentMinusTemp=-1.5216  windSpeedKPH=-0.6028  tempMinusWetBulb=-2.1584
+n= 55  FIT          0.9996     100.89   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+23.0194  apparentTempC=+19.8645  cloudCover=-112.0471  apparentMinusTemp=-17.9725  windSpeedKPH=-3.9957  tempMinusWetBulb=-2.9592
+         raw:         b₀=+9.2984  apparentTempC=+1.6704  cloudCover=-5.9706  apparentMinusTemp=-1.4968  windSpeedKPH=-0.6122  tempMinusWetBulb=-2.0931
+n= 56  FIT          0.9996     101.71   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+22.7448  apparentTempC=+19.7570  cloudCover=-111.0551  apparentMinusTemp=-17.9433  windSpeedKPH=-3.9510  tempMinusWetBulb=-2.9413
+         raw:         b₀=+9.2076  apparentTempC=+1.6753  cloudCover=-5.9706  apparentMinusTemp=-1.4997  windSpeedKPH=-0.6105  tempMinusWetBulb=-2.0650
+n= 57  FIT          0.9996     103.29   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+22.2251  apparentTempC=+19.7995  cloudCover=-110.5456  apparentMinusTemp=-17.1893  windSpeedKPH=-3.6387  tempMinusWetBulb=-2.8403  precipitationMM=-1.1023
+         raw:         b₀=+8.3312  apparentTempC=+1.6852  cloudCover=-5.9942  apparentMinusTemp=-1.4428  windSpeedKPH=-0.5567  tempMinusWetBulb=-1.9810  precipitationMM=-1.8338
+n= 58  FIT          0.9996     108.17   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+22.2080  apparentTempC=+20.3546  cloudCover=-109.2002  apparentMinusTemp=-18.8644  windSpeedKPH=-3.8744  tempMinusWetBulb=-3.3603
+         raw:         b₀=+9.7232  apparentTempC=+1.7469  cloudCover=-5.9723  apparentMinusTemp=-1.5938  windSpeedKPH=-0.5955  tempMinusWetBulb=-2.3475
+n= 59  FIT          0.9996     109.48   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+21.7422  apparentTempC=+20.1739  cloudCover=-108.2947  apparentMinusTemp=-18.6074  windSpeedKPH=-3.8502  tempMinusWetBulb=-3.2496
+         raw:         b₀=+9.5266  apparentTempC=+1.7361  cloudCover=-5.9719  apparentMinusTemp=-1.5765  windSpeedKPH=-0.5967  tempMinusWetBulb=-2.2581
+n= 60  FIT          0.9996     110.09   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb]  β₀=+21.2872  apparentTempC=+20.2069  cloudCover=-107.3993  apparentMinusTemp=-18.6205  windSpeedKPH=-3.8216  tempMinusWetBulb=-3.2860
+         raw:         b₀=+9.5614  apparentTempC=+1.7381  cloudCover=-5.9720  apparentMinusTemp=-1.5795  windSpeedKPH=-0.5969  tempMinusWetBulb=-2.2728
+n= 61  FIT          0.9996     112.06   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+20.9147  apparentTempC=+20.0067  cloudCover=-106.9356  apparentMinusTemp=-17.2075  windSpeedKPH=-3.4897  tempMinusWetBulb=-2.6946  precipitationMM=-1.1222
+         raw:         b₀=+7.7512  apparentTempC=+1.7273  cloudCover=-5.9950  apparentMinusTemp=-1.4688  windSpeedKPH=-0.5402  tempMinusWetBulb=-1.8794  precipitationMM=-1.9236
+n= 62  FIT          0.9997     112.79   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+30.3186  apparentTempC=+20.2711  cloudCover=-128.7229  apparentMinusTemp=-17.5190  windSpeedKPH=-3.5053  tempMinusWetBulb=-2.7152  precipitationMM=-1.1002
+         raw:         b₀=+7.7626  apparentTempC=+1.7287  cloudCover=-5.9901  apparentMinusTemp=-1.4727  windSpeedKPH=-0.5384  tempMinusWetBulb=-1.8912  precipitationMM=-1.8519
+n= 63  FIT          0.9997     115.75   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+29.7808  apparentTempC=+20.0470  cloudCover=-127.7239  apparentMinusTemp=-17.1098  windSpeedKPH=-3.4577  tempMinusWetBulb=-2.5106  precipitationMM=-1.1121
+         raw:         b₀=+7.3767  apparentTempC=+1.7072  cloudCover=-5.9900  apparentMinusTemp=-1.4397  windSpeedKPH=-0.5339  tempMinusWetBulb=-1.7410  precipitationMM=-1.8850
+n= 64  FIT          0.9998     116.29   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+38.5786  apparentTempC=+20.4233  cloudCover=-145.1565  apparentMinusTemp=-17.5051  windSpeedKPH=-3.5447  tempMinusWetBulb=-2.5325  precipitationMM=-1.1633
+         raw:         b₀=+7.3744  apparentTempC=+1.7073  cloudCover=-5.9901  apparentMinusTemp=-1.4396  windSpeedKPH=-0.5337  tempMinusWetBulb=-1.7408  precipitationMM=-1.8862
+n= 65  FIT          0.9998     118.13   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+38.2266  apparentTempC=+20.4832  cloudCover=-144.0869  apparentMinusTemp=-17.5903  windSpeedKPH=-3.6195  tempMinusWetBulb=-2.6136  precipitationMM=-1.1537
+         raw:         b₀=+7.6479  apparentTempC=+1.7181  cloudCover=-5.9897  apparentMinusTemp=-1.4547  windSpeedKPH=-0.5411  tempMinusWetBulb=-1.8045  precipitationMM=-1.8849
+n= 66  FIT          0.9998     118.98   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+37.5298  apparentTempC=+20.4978  cloudCover=-143.0407  apparentMinusTemp=-17.5568  windSpeedKPH=-3.6022  tempMinusWetBulb=-2.6313  precipitationMM=-1.1402
+         raw:         b₀=+7.7582  apparentTempC=+1.7149  cloudCover=-5.9898  apparentMinusTemp=-1.4561  windSpeedKPH=-0.5400  tempMinusWetBulb=-1.8307  precipitationMM=-1.8749
+n= 67  FIT          0.9998     119.50   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+37.0104  apparentTempC=+20.3711  cloudCover=-142.0318  apparentMinusTemp=-17.4541  windSpeedKPH=-3.6238  tempMinusWetBulb=-2.6157  precipitationMM=-1.1340
+         raw:         b₀=+7.7522  apparentTempC=+1.7149  cloudCover=-5.9898  apparentMinusTemp=-1.4560  windSpeedKPH=-0.5397  tempMinusWetBulb=-1.8304  precipitationMM=-1.8768
+n= 68  FIT          0.9998     120.04   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+36.3593  apparentTempC=+20.3865  cloudCover=-141.0266  apparentMinusTemp=-17.4025  windSpeedKPH=-3.6034  tempMinusWetBulb=-2.6000  precipitationMM=-1.1271
+         raw:         b₀=+7.7378  apparentTempC=+1.7131  cloudCover=-5.9898  apparentMinusTemp=-1.4539  windSpeedKPH=-0.5394  tempMinusWetBulb=-1.8228  precipitationMM=-1.8775
+n= 69  FIT          0.9998     121.02   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+35.8235  apparentTempC=+20.2319  cloudCover=-140.0393  apparentMinusTemp=-17.2539  windSpeedKPH=-3.5981  tempMinusWetBulb=-2.5667  precipitationMM=-1.1184
+         raw:         b₀=+7.6962  apparentTempC=+1.7096  cloudCover=-5.9896  apparentMinusTemp=-1.4482  windSpeedKPH=-0.5414  tempMinusWetBulb=-1.8098  precipitationMM=-1.8746
+n= 70  FIT          0.9998     121.53   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+35.3366  apparentTempC=+20.0767  cloudCover=-139.0914  apparentMinusTemp=-17.1215  windSpeedKPH=-3.5723  tempMinusWetBulb=-2.5418  precipitationMM=-1.1114
+         raw:         b₀=+7.6794  apparentTempC=+1.7088  cloudCover=-5.9896  apparentMinusTemp=-1.4468  windSpeedKPH=-0.5413  tempMinusWetBulb=-1.8052  precipitationMM=-1.8745
+n= 71  FIT          0.9998     125.87   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+34.7225  apparentTempC=+19.7361  cloudCover=-138.1582  apparentMinusTemp=-16.6033  windSpeedKPH=-3.5836  tempMinusWetBulb=-2.3300  precipitationMM=-1.1243
+         raw:         b₀=+7.2567  apparentTempC=+1.6896  cloudCover=-5.9892  apparentMinusTemp=-1.4101  windSpeedKPH=-0.5457  tempMinusWetBulb=-1.6667  precipitationMM=-1.9080
+n= 72  FIT          0.9998     126.66   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+34.4289  apparentTempC=+19.5230  cloudCover=-137.2282  apparentMinusTemp=-16.3479  windSpeedKPH=-3.5679  tempMinusWetBulb=-2.2799  precipitationMM=-1.1081
+         raw:         b₀=+7.2063  apparentTempC=+1.6792  cloudCover=-5.9890  apparentMinusTemp=-1.3983  windSpeedKPH=-0.5472  tempMinusWetBulb=-1.6424  precipitationMM=-1.8920
+n= 73  FIT          0.9998     127.47   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+34.0069  apparentTempC=+19.4831  cloudCover=-136.3240  apparentMinusTemp=-16.3225  windSpeedKPH=-3.5640  tempMinusWetBulb=-2.3018  precipitationMM=-1.1132
+         raw:         b₀=+7.1948  apparentTempC=+1.6828  cloudCover=-5.9892  apparentMinusTemp=-1.4018  windSpeedKPH=-0.5429  tempMinusWetBulb=-1.6609  precipitationMM=-1.9121
+n= 74  FIT          0.9998     128.01   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+33.4414  apparentTempC=+19.4782  cloudCover=-135.4685  apparentMinusTemp=-16.3447  windSpeedKPH=-3.6257  tempMinusWetBulb=-2.3015  precipitationMM=-1.1490
+         raw:         b₀=+7.1961  apparentTempC=+1.6821  cloudCover=-5.9898  apparentMinusTemp=-1.4010  windSpeedKPH=-0.5442  tempMinusWetBulb=-1.6576  precipitationMM=-1.9442
+n= 75  FIT          0.9998     128.50   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+33.0225  apparentTempC=+19.3434  cloudCover=-134.6151  apparentMinusTemp=-16.2624  windSpeedKPH=-3.6021  tempMinusWetBulb=-2.2995  precipitationMM=-1.1424
+         raw:         b₀=+7.1989  apparentTempC=+1.6816  cloudCover=-5.9898  apparentMinusTemp=-1.4005  windSpeedKPH=-0.5442  tempMinusWetBulb=-1.6588  precipitationMM=-1.9443
+n= 76  FIT          0.9998     129.19   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+32.4644  apparentTempC=+19.3687  cloudCover=-133.7654  apparentMinusTemp=-16.2659  windSpeedKPH=-3.6047  tempMinusWetBulb=-2.3184  precipitationMM=-1.1338
+         raw:         b₀=+7.2804  apparentTempC=+1.6812  cloudCover=-5.9900  apparentMinusTemp=-1.4038  windSpeedKPH=-0.5424  tempMinusWetBulb=-1.6836  precipitationMM=-1.9407
+n= 77  FIT          0.9997     130.85   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+32.0243  apparentTempC=+19.4016  cloudCover=-132.9401  apparentMinusTemp=-16.4508  windSpeedKPH=-3.5799  tempMinusWetBulb=-2.4098  precipitationMM=-1.1034
+         raw:         b₀=+7.4946  apparentTempC=+1.6933  cloudCover=-5.9900  apparentMinusTemp=-1.4262  windSpeedKPH=-0.5386  tempMinusWetBulb=-1.7616  precipitationMM=-1.9008
+n= 78  FIT          0.9997     131.91   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+31.8853  apparentTempC=+19.4645  cloudCover=-132.1157  apparentMinusTemp=-16.4740  windSpeedKPH=-3.5437  tempMinusWetBulb=-2.3806  precipitationMM=-1.1061
+         raw:         b₀=+7.3248  apparentTempC=+1.7068  cloudCover=-5.9901  apparentMinusTemp=-1.4349  windSpeedKPH=-0.5365  tempMinusWetBulb=-1.7199  precipitationMM=-1.9161
+n= 79  FIT          0.9997     132.64   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+31.4085  apparentTempC=+19.4091  cloudCover=-131.3262  apparentMinusTemp=-16.4683  windSpeedKPH=-3.5256  tempMinusWetBulb=-2.4004  precipitationMM=-1.0992
+         raw:         b₀=+7.4035  apparentTempC=+1.7094  cloudCover=-5.9902  apparentMinusTemp=-1.4407  windSpeedKPH=-0.5352  tempMinusWetBulb=-1.7455  precipitationMM=-1.9146
+n= 80  FIT          0.9997     134.57   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+31.1654  apparentTempC=+19.3030  cloudCover=-130.5255  apparentMinusTemp=-16.4308  windSpeedKPH=-3.6024  tempMinusWetBulb=-2.4023  precipitationMM=-1.0698
+         raw:         b₀=+7.5468  apparentTempC=+1.7103  cloudCover=-5.9900  apparentMinusTemp=-1.4454  windSpeedKPH=-0.5433  tempMinusWetBulb=-1.7557  precipitationMM=-1.8736
+n= 81  FIT          0.9997     137.38   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+30.8024  apparentTempC=+19.2609  cloudCover=-129.7588  apparentMinusTemp=-16.5140  windSpeedKPH=-3.5995  tempMinusWetBulb=-2.4809  precipitationMM=-1.0457
+         raw:         b₀=+7.8274  apparentTempC=+1.7151  cloudCover=-5.9901  apparentMinusTemp=-1.4601  windSpeedKPH=-0.5462  tempMinusWetBulb=-1.8246  precipitationMM=-1.8413
+n= 82  FIT          0.9998     137.90   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+37.8064  apparentTempC=+19.5395  cloudCover=-143.2547  apparentMinusTemp=-16.8971  windSpeedKPH=-3.6219  tempMinusWetBulb=-2.5156  precipitationMM=-1.0029
+         raw:         b₀=+7.8481  apparentTempC=+1.7166  cloudCover=-5.9886  apparentMinusTemp=-1.4641  windSpeedKPH=-0.5462  tempMinusWetBulb=-1.8331  precipitationMM=-1.7769
+n= 83  FIT          0.9998     139.22   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+37.5102  apparentTempC=+19.3487  cloudCover=-142.4141  apparentMinusTemp=-16.5750  windSpeedKPH=-3.6013  tempMinusWetBulb=-2.3743  precipitationMM=-1.0199
+         raw:         b₀=+7.3233  apparentTempC=+1.7102  cloudCover=-5.9881  apparentMinusTemp=-1.4394  windSpeedKPH=-0.5450  tempMinusWetBulb=-1.6582  precipitationMM=-1.8165
+n= 84  FIT          0.9998     140.40   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+37.3285  apparentTempC=+19.4001  cloudCover=-141.6036  apparentMinusTemp=-16.6936  windSpeedKPH=-3.6502  tempMinusWetBulb=-2.4234  precipitationMM=-0.9968
+         raw:         b₀=+7.4830  apparentTempC=+1.7234  cloudCover=-5.9881  apparentMinusTemp=-1.4580  windSpeedKPH=-0.5494  tempMinusWetBulb=-1.7011  precipitationMM=-1.7847
+n= 85  FIT          0.9998     141.10   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+36.9128  apparentTempC=+19.3042  cloudCover=-140.8009  apparentMinusTemp=-16.5834  windSpeedKPH=-3.6934  tempMinusWetBulb=-2.4159  precipitationMM=-0.9808
+         raw:         b₀=+7.5614  apparentTempC=+1.7191  cloudCover=-5.9880  apparentMinusTemp=-1.4557  windSpeedKPH=-0.5531  tempMinusWetBulb=-1.7060  precipitationMM=-1.7652
+n= 86  FIT          0.9998     141.88   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+36.5503  apparentTempC=+19.1725  cloudCover=-140.0142  apparentMinusTemp=-16.4296  windSpeedKPH=-3.6672  tempMinusWetBulb=-2.3660  precipitationMM=-0.9844
+         raw:         b₀=+7.4544  apparentTempC=+1.7165  cloudCover=-5.9879  apparentMinusTemp=-1.4494  windSpeedKPH=-0.5512  tempMinusWetBulb=-1.6806  precipitationMM=-1.7807
+n= 87  FIT          0.9998     142.98   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+36.1663  apparentTempC=+19.0634  cloudCover=-139.2356  apparentMinusTemp=-16.3103  windSpeedKPH=-3.7209  tempMinusWetBulb=-2.3462  precipitationMM=-0.9610
+         raw:         b₀=+7.5314  apparentTempC=+1.7096  cloudCover=-5.9877  apparentMinusTemp=-1.4446  windSpeedKPH=-0.5568  tempMinusWetBulb=-1.6747  precipitationMM=-1.7473
+n= 88  FIT          0.9998     143.93   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+35.6216  apparentTempC=+19.1745  cloudCover=-138.4724  apparentMinusTemp=-16.3272  windSpeedKPH=-3.7389  tempMinusWetBulb=-2.3403  precipitationMM=-0.9535
+         raw:         b₀=+7.5250  apparentTempC=+1.7143  cloudCover=-5.9875  apparentMinusTemp=-1.4482  windSpeedKPH=-0.5589  tempMinusWetBulb=-1.6785  precipitationMM=-1.7423
+n= 89  FIT          0.9998     145.03   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+35.0943  apparentTempC=+19.0163  cloudCover=-137.7355  apparentMinusTemp=-16.1538  windSpeedKPH=-3.8448  tempMinusWetBulb=-2.2856  precipitationMM=-0.9419
+         raw:         b₀=+7.4796  apparentTempC=+1.7082  cloudCover=-5.9872  apparentMinusTemp=-1.4389  windSpeedKPH=-0.5649  tempMinusWetBulb=-1.6487  precipitationMM=-1.7308
+n= 90  FIT          0.9998     145.47   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+34.7691  apparentTempC=+18.9269  cloudCover=-136.9996  apparentMinusTemp=-16.0871  windSpeedKPH=-3.8328  tempMinusWetBulb=-2.2760  precipitationMM=-0.9365
+         raw:         b₀=+7.4861  apparentTempC=+1.7083  cloudCover=-5.9872  apparentMinusTemp=-1.4392  windSpeedKPH=-0.5651  tempMinusWetBulb=-1.6496  precipitationMM=-1.7293
+n= 91  FIT          0.9998     145.97   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+34.2966  apparentTempC=+18.9719  cloudCover=-136.2749  apparentMinusTemp=-16.0939  windSpeedKPH=-3.8300  tempMinusWetBulb=-2.2837  precipitationMM=-0.9306
+         raw:         b₀=+7.5058  apparentTempC=+1.7103  cloudCover=-5.9872  apparentMinusTemp=-1.4416  windSpeedKPH=-0.5658  tempMinusWetBulb=-1.6584  precipitationMM=-1.7267
+n= 92  FIT          0.9998     148.21   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+33.7896  apparentTempC=+19.1817  cloudCover=-135.5619  apparentMinusTemp=-16.1795  windSpeedKPH=-3.8072  tempMinusWetBulb=-2.2898  precipitationMM=-0.9342
+         raw:         b₀=+7.4610  apparentTempC=+1.7229  cloudCover=-5.9872  apparentMinusTemp=-1.4517  windSpeedKPH=-0.5652  tempMinusWetBulb=-1.6706  precipitationMM=-1.7418
+n= 93  FIT          0.9998     149.39   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+33.5318  apparentTempC=+18.9213  cloudCover=-134.8490  apparentMinusTemp=-15.8992  windSpeedKPH=-3.8212  tempMinusWetBulb=-2.2218  precipitationMM=-0.9263
+         raw:         b₀=+7.3781  apparentTempC=+1.7082  cloudCover=-5.9867  apparentMinusTemp=-1.4328  windSpeedKPH=-0.5684  tempMinusWetBulb=-1.6284  precipitationMM=-1.7352
+n= 94  FIT          0.9998     149.88   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+33.2635  apparentTempC=+18.8301  cloudCover=-134.1647  apparentMinusTemp=-15.8394  windSpeedKPH=-3.8478  tempMinusWetBulb=-2.2282  precipitationMM=-0.9189
+         raw:         b₀=+7.4324  apparentTempC=+1.7092  cloudCover=-5.9867  apparentMinusTemp=-1.4351  windSpeedKPH=-0.5698  tempMinusWetBulb=-1.6404  precipitationMM=-1.7295
+n= 95  FIT          0.9998     152.09   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+32.8921  apparentTempC=+18.7243  cloudCover=-133.4843  apparentMinusTemp=-15.6681  windSpeedKPH=-3.8116  tempMinusWetBulb=-2.1349  precipitationMM=-0.9296
+         raw:         b₀=+7.2212  apparentTempC=+1.7016  cloudCover=-5.9867  apparentMinusTemp=-1.4215  windSpeedKPH=-0.5656  tempMinusWetBulb=-1.5678  precipitationMM=-1.7580
+n= 96  FIT          0.9998     152.52   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+32.5697  apparentTempC=+18.9341  cloudCover=-132.8315  apparentMinusTemp=-15.9597  windSpeedKPH=-3.7943  tempMinusWetBulb=-2.1623  precipitationMM=-0.9167
+         raw:         b₀=+7.2401  apparentTempC=+1.7025  cloudCover=-5.9868  apparentMinusTemp=-1.4241  windSpeedKPH=-0.5659  tempMinusWetBulb=-1.5739  precipitationMM=-1.7426
+n= 97  FIT          0.9998     153.30   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+38.4006  apparentTempC=+19.1260  cloudCover=-143.9268  apparentMinusTemp=-16.1811  windSpeedKPH=-3.7997  tempMinusWetBulb=-2.1746  precipitationMM=-0.8730
+         raw:         b₀=+7.2537  apparentTempC=+1.7009  cloudCover=-5.9838  apparentMinusTemp=-1.4242  windSpeedKPH=-0.5688  tempMinusWetBulb=-1.5697  precipitationMM=-1.6579
+n= 98  FIT          0.9998     153.87   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+38.0391  apparentTempC=+19.2671  cloudCover=-143.2324  apparentMinusTemp=-16.3164  windSpeedKPH=-3.7733  tempMinusWetBulb=-2.1630  precipitationMM=-0.8945
+         raw:         b₀=+7.1911  apparentTempC=+1.6979  cloudCover=-5.9834  apparentMinusTemp=-1.4157  windSpeedKPH=-0.5676  tempMinusWetBulb=-1.5494  precipitationMM=-1.7075
+n= 99  FIT          0.9998     154.39   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+37.6016  apparentTempC=+19.2391  cloudCover=-142.5590  apparentMinusTemp=-16.2917  windSpeedKPH=-3.7562  tempMinusWetBulb=-2.1718  precipitationMM=-0.8930
+         raw:         b₀=+7.1974  apparentTempC=+1.6996  cloudCover=-5.9835  apparentMinusTemp=-1.4177  windSpeedKPH=-0.5668  tempMinusWetBulb=-1.5583  precipitationMM=-1.7122
+n=100  FIT          0.9998     155.57   [apparentTempC, cloudCover, apparentMinusTemp, windSpeedKPH, tempMinusWetBulb, precipitationMM]  β₀=+37.1905  apparentTempC=+19.2452  cloudCover=-141.8778  apparentMinusTemp=-16.2992  windSpeedKPH=-3.7371  tempMinusWetBulb=-2.1936  precipitationMM=-0.8905
+         raw:         b₀=+7.2227  apparentTempC=+1.7030  cloudCover=-5.9835  apparentMinusTemp=-1.4214  windSpeedKPH=-0.5667  tempMinusWetBulb=-1.5767  precipitationMM=-1.7151
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────

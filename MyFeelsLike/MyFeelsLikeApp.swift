@@ -2,31 +2,34 @@
 //  MyFeelsLikeApp.swift
 //  MyFeelsLike
 //
-//  Created by Rob Boer on 5/9/26.
-//
 
 import SwiftUI
 import SwiftData
 
 @main
 struct MyFeelsLikeApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+    init() {
+        // On first launch only: choose °F or °C based on the device region.
+        let fahrenheitRegions: Set<String> = [
+            "US", "PR", "GU", "VI",   // United States & territories
+            "BS",                      // Bahamas
+            "BZ",                      // Belize
+            "KY",                      // Cayman Islands
+            "PW",                      // Palau
+            "FM",                      // Federated States of Micronesia
+            "MH"                       // Marshall Islands
+        ]
+        if UserDefaults.standard.object(forKey: "useFahrenheit") == nil {
+            let region = Locale.current.region?.identifier ?? ""
+            UserDefaults.standard.set(fahrenheitRegions.contains(region), forKey: "useFahrenheit")
         }
-    }()
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(for: Rating.self)
     }
 }
