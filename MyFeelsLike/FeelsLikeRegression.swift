@@ -27,48 +27,11 @@
 
 import Foundation
 
-// MARK: - Feature definitions
+// Feature, FeatureSource, Scenario, ForecastFeatureSource and RegressionState
+// now live in FeelsLikeInference.swift (shared with the watch app). This file
+// keeps the iOS-only training engine and the Rating feature conformance.
 
-/// Every regressor the model knows about.  Order matters only for stable
-/// serialization; selection is by name.
-enum Feature: String, CaseIterable, Codable {
-    /// The anchor — always included.
-    case apparentTempC
-
-    // Collinearity-reduced temperature relatives.
-    case apparentMinusTemp        // apparent − temperature   (wind/RH correction)
-    case tempMinusWetBulb         // wet-bulb depression
-    case wetBulbMinusDewPoint     // humidity gap
-
-    // Other weather variables.
-    case humidity
-    case stationPressurePa
-    case windSpeedKPH
-    case precipProbability
-    case precipitationMM
-    case cloudCover
-    case cloudCoverLow
-    case cloudCoverMedium
-    case cloudCoverHigh
-    case uvIndex
-    case isDaylight               // 0 / 1
-
-    // Self-report (ordinal).
-    case activity                 // 0…3
-    case dress                    // -2…+2
-    case sun                      // -1…+1
-
-    /// Candidate set for stepwise selection (excludes the anchor).
-    static var candidates: [Feature] {
-        Feature.allCases.filter { $0 != .apparentTempC }
-    }
-}
-
-// MARK: - Feature extraction
-
-protocol FeatureSource {
-    func value(for f: Feature) -> Double
-}
+// MARK: - Feature extraction (training side: Rating → features)
 
 extension Rating: FeatureSource {
     func value(for f: Feature) -> Double {
@@ -91,67 +54,17 @@ extension Rating: FeatureSource {
         case .activity:             return Double(activity)
         case .dress:                return Double(dress)
         case .sun:                  return Double(sun)
+        // Hinges
+        case .hinge_cold_10:        return max(0, 10 - apparentTemperatureC)
+        case .hinge_warm_18:        return max(0, apparentTemperatureC - 18)
+        case .hinge_hot_26:         return max(0, apparentTemperatureC - 26)
+        case .hinge_wind_15:        return max(0, windSpeedKPH - 15)
+        case .hinge_uv_4:           return max(0, uvIndex - 4)
+        // Interactions
+        case .ix_apparent_humidity: return apparentTemperatureC * humidity
+        case .ix_apparent_uv:       return apparentTemperatureC * uvIndex
+        case .ix_apparent_activity: return apparentTemperatureC * Double(activity)
         }
-    }
-}
-
-/// A "scenario" is the user's expected current state used at inference time
-/// for self-report features that the forecast can't know.
-struct Scenario {
-    var activity: Int = 1
-    var dress: Int = 0
-    var sun: Int = 0
-}
-
-/// Forecast point + scenario combination acts as a feature source.
-struct ForecastFeatureSource: FeatureSource {
-    let p: ForecastPoint
-    let scenario: Scenario
-
-    func value(for f: Feature) -> Double {
-        switch f {
-        case .apparentTempC:        return p.apparentTemperatureC
-        case .apparentMinusTemp:    return p.apparentTemperatureC - p.temperatureC
-        case .tempMinusWetBulb:     return p.temperatureC - p.wetBulbC
-        case .wetBulbMinusDewPoint: return p.wetBulbC - p.dewPointC
-        case .humidity:             return p.humidity
-        case .stationPressurePa:    return p.stationPressurePa
-        case .windSpeedKPH:         return p.windSpeedKPH
-        case .precipProbability:    return p.precipProbability
-        case .precipitationMM:      return p.precipitationMM
-        case .cloudCover:           return p.cloudCover
-        case .cloudCoverLow:        return p.cloudCoverLow
-        case .cloudCoverMedium:     return p.cloudCoverMedium
-        case .cloudCoverHigh:       return p.cloudCoverHigh
-        case .uvIndex:              return p.uvIndex
-        case .isDaylight:           return p.isDaylight ? 1 : 0
-        case .activity:             return Double(scenario.activity)
-        case .dress:                return Double(scenario.dress)
-        case .sun:                  return Double(scenario.sun)
-        }
-    }
-}
-
-// MARK: - Persistable regression state
-
-struct RegressionState: Codable {
-    var selectedFeatures: [Feature]   // includes apparentTempC at index 0
-    var coefficients: [Double]        // β0 (intercept) + one per selectedFeatures
-    var means: [Double]               // means[i] for selectedFeatures[i]
-    var stds: [Double]                // stds[i] for selectedFeatures[i] (≥ epsilon)
-    var rSquared: Double
-    var aicc: Double
-    var ratingCount: Int
-    var lastFitAt: Date
-
-    /// Predicted feels-like (°C) for a feature source.
-    func predict(_ src: FeatureSource) -> Double {
-        var y = coefficients[0]
-        for (i, f) in selectedFeatures.enumerated() {
-            let xStd = (src.value(for: f) - means[i]) / stds[i]
-            y += coefficients[i + 1] * xStd
-        }
-        return y
     }
 }
 
@@ -159,13 +72,14 @@ struct RegressionState: Codable {
 
 enum FeelsLikeRegression {
 
-    /// Trigger threshold: at least 5 ratings AND ≥ 5 °C spread of
-    /// user-reported feels-like values.
+    /// Trigger threshold: at least 5 ratings AND ≥ 80-point spread (out of
+    /// 1000) of user-reported feels-like scores. 80 points is roughly the
+    /// score-scale equivalent of the previous 5 °C spread.
     static func canFit(ratings: [Rating]) -> Bool {
         guard ratings.count >= 5 else { return false }
-        let ys = ratings.map { $0.feelsLikeC }
+        let ys = ratings.map { $0.feelsLikeScore }
         guard let lo = ys.min(), let hi = ys.max() else { return false }
-        return (hi - lo) >= 5.0
+        return (hi - lo) >= 80.0
     }
 
     /// How many extra (beyond apparent) features the budget allows.
@@ -188,8 +102,8 @@ enum FeelsLikeRegression {
         guard var bestState = fitOLS(ratings: ratings, features: selected) else { return nil }
 
         // Forward stepwise: add up to `budget` more features.
-        let candidates = Feature.candidates
-        var remaining = Set(candidates)
+        // Candidate pool is n-aware: hinges unlock at 25, interactions at 40.
+        var remaining = Set(Feature.candidates(for: n))
         for _ in 0..<budget {
             var bestNext: (Feature, RegressionState)? = nil
             for f in remaining {
@@ -226,7 +140,7 @@ enum FeelsLikeRegression {
             for (j, f) in features.enumerated() {
                 raw[i][j] = r.value(for: f)
             }
-            y[i] = r.feelsLikeC
+            y[i] = r.feelsLikeScore
         }
 
         // Standardize columns.
@@ -263,7 +177,17 @@ enum FeelsLikeRegression {
             for b in 0..<a { XtX[a][b] = XtX[b][a] }
         }
 
-        guard let beta = solveSPD(XtX, Xty) else { return nil }
+        guard let L = cholesky(XtX) else { return nil }
+        let beta = cholSolve(L: L, b: Xty)
+
+        // Inverse of XtX via repeated solves on unit vectors — reused for
+        // leverage at inference time.
+        var inv = Array(repeating: Array(repeating: 0.0, count: m), count: m)
+        for j in 0..<m {
+            var e = Array(repeating: 0.0, count: m); e[j] = 1
+            let col = cholSolve(L: L, b: e)
+            for i in 0..<m { inv[i][j] = col[i] }
+        }
 
         // Residuals → R² and AICc.
         var rss = 0.0
@@ -293,15 +217,16 @@ enum FeelsLikeRegression {
             rSquared: r2,
             aicc: aicc,
             ratingCount: n,
-            lastFitAt: Date()
+            lastFitAt: Date(),
+            invXtX: inv
         )
     }
 
     // MARK: - Cholesky on a symmetric positive-definite system
 
-    /// Solve A x = b where A is symmetric positive-definite (m × m).
-    /// Returns nil if A is not PD (numerically singular).
-    static func solveSPD(_ A: [[Double]], _ b: [Double]) -> [Double]? {
+    /// Cholesky factor: returns lower-triangular L such that L L' = A.
+    /// nil if A is not numerically positive-definite.
+    static func cholesky(_ A: [[Double]]) -> [[Double]]? {
         let m = A.count
         var L = Array(repeating: Array(repeating: 0.0, count: m), count: m)
         for i in 0..<m {
@@ -316,6 +241,12 @@ enum FeelsLikeRegression {
                 }
             }
         }
+        return L
+    }
+
+    /// Given Cholesky factor L (L L' = A), solve A x = b for x.
+    static func cholSolve(L: [[Double]], b: [Double]) -> [Double] {
+        let m = L.count
         // Forward solve L y = b
         var ysol = Array(repeating: 0.0, count: m)
         for i in 0..<m {
@@ -332,6 +263,13 @@ enum FeelsLikeRegression {
             x[i] = s / L[i][i]
         }
         return x
+    }
+
+    /// Convenience: one-shot Cholesky solve.  Kept for callers (and the
+    /// regression unit tests) that don't need the factor itself.
+    static func solveSPD(_ A: [[Double]], _ b: [Double]) -> [Double]? {
+        guard let L = cholesky(A) else { return nil }
+        return cholSolve(L: L, b: b)
     }
 }
 
