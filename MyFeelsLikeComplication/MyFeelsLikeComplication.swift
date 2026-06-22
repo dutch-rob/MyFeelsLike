@@ -93,6 +93,7 @@ struct MyFeelsLikeComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: FeelsProvider()) { entry in
             FeelsCornerView(snapshot: entry.snapshot)
+                .containerBackground(.clear, for: .widget)
         }
         .configurationDisplayName("Feels Like")
         .description("Current temperature with today's feels-like range.")

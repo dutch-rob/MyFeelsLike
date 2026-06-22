@@ -104,6 +104,27 @@
 			);
 			target = 155ADB942FE9F22100339B99 /* MyFeelsLikeComplicationExtension */;
 		};
+		155ADBC62FE9FAF000339B99 /* Exceptions for "MyFeelsLike" folder in "MyFeelsLike Watch App Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ColorScale.swift,
+				ComplicationSnapshot.swift,
+				FeelsLikeInference.swift,
+				ForecastPoint.swift,
+				psychropy.swift,
+				WatchSyncPayload.swift,
+				WeatherMapping.swift,
+			);
+			target = 155ADB652FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App */;
+		};
+		155ADBC92FE9FB2800339B99 /* Exceptions for "MyFeelsLike" folder in "MyFeelsLikeComplicationExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ColorScale.swift,
+				ComplicationSnapshot.swift,
+			);
+			target = 155ADB942FE9F22100339B99 /* MyFeelsLikeComplicationExtension */;
+		};
 		1594454A2FB542300095DD24 /* Exceptions for "MyFeelsLikeTests" folder in "MyFeelsLikeTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -149,6 +170,8 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				15D8939D2FB12BFC00E168B3 /* Exceptions for "MyFeelsLike" folder in "MyFeelsLike" target */,
+				155ADBC62FE9FAF000339B99 /* Exceptions for "MyFeelsLike" folder in "MyFeelsLike Watch App Watch App" target */,
+				155ADBC92FE9FB2800339B99 /* Exceptions for "MyFeelsLike" folder in "MyFeelsLikeComplicationExtension" target */,
 			);
 			path = MyFeelsLike;
 			sourceTree = "<group>";
@@ -659,7 +682,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -695,7 +718,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
@@ -820,7 +843,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -855,7 +878,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
