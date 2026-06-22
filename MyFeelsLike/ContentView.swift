@@ -296,6 +296,7 @@ struct ContentView: View {
         }
         .onChange(of: ratings.count) { _, _ in refitRegression() }
         .onAppear {
+            PhoneWatchSync.shared.start()
             if !didWipeForScoreV1 {
                 for r in ratings { modelContext.delete(r) }
                 try? modelContext.save()
@@ -305,6 +306,10 @@ struct ContentView: View {
             }
             refitRegression()
         }
+        .onChange(of: useFahrenheit) { _, _ in pushToWatch() }
+        .onChange(of: scenarioActivity) { _, _ in pushToWatch() }
+        .onChange(of: scenarioDress) { _, _ in pushToWatch() }
+        .onChange(of: scenarioSun) { _, _ in pushToWatch() }
         .onReceive(progressTimer) { nowTick = $0 }
     }
 
@@ -323,6 +328,15 @@ struct ContentView: View {
         let new = FeelsLikeRegression.fit(ratings: ratings)
         regressionState = new
         RegressionStateStore.save(new)
+        pushToWatch()
+    }
+
+    /// Send the current model + display settings to the watch app.
+    private func pushToWatch() {
+        PhoneWatchSync.shared.update(
+            state: regressionState,
+            useFahrenheit: useFahrenheit,
+            activity: scenarioActivity, dress: scenarioDress, sun: scenarioSun)
     }
 
     private func loadWeather(preserveData: Bool = false) async {

@@ -1,21 +1,36 @@
 //
 //  ContentView.swift
-//  MyFeelsLike Watch App Watch App
+//  MyFeelsLike Watch App
 //
-//  Created by Rob Boer on 6/22/26.
+//  Root screen: horizontal page tabs Today → 10-day → Table. The Today page
+//  scrolls vertically to reveal the wind/precip graph. Fetches on appear /
+//  foreground; re-applies the model (no refetch) when a fresh sync arrives.
 //
 
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var model = WatchWeatherModel()
+    @ObservedObject private var sync = WatchSyncReceiver.shared
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView {
+            WatchTodayView(model: model)
+            WatchTenDayView(model: model)
+            WatchTableView(model: model)
         }
-        .padding()
+        .tabViewStyle(.page)
+        .onAppear {
+            sync.start()
+            model.refresh()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { model.refresh() }
+        }
+        .onChange(of: sync.version) { _, _ in
+            model.applyModel()
+        }
     }
 }
 
