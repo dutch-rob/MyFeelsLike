@@ -6,7 +6,42 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		155ADB862FE9F10000339B99 /* MyFeelsLike Watch App Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 155ADB662FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		155ADB982FE9F22100339B99 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 155ADB972FE9F22100339B99 /* WidgetKit.framework */; };
+		155ADB9A2FE9F22100339B99 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 155ADB992FE9F22100339B99 /* SwiftUI.framework */; };
+		155ADBA52FE9F22400339B99 /* MyFeelsLikeComplicationExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 155ADB952FE9F22100339B99 /* MyFeelsLikeComplicationExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		155ADB732FE9F10000339B99 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 159E8A072FAFC3CA0003EBF0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 155ADB652FE9F0FC00339B99;
+			remoteInfo = "MyFeelsLike Watch App Watch App";
+		};
+		155ADB7D2FE9F10000339B99 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 159E8A072FAFC3CA0003EBF0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 155ADB652FE9F0FC00339B99;
+			remoteInfo = "MyFeelsLike Watch App Watch App";
+		};
+		155ADB842FE9F10000339B99 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 159E8A072FAFC3CA0003EBF0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 155ADB652FE9F0FC00339B99;
+			remoteInfo = "MyFeelsLike Watch App Watch App";
+		};
+		155ADBA32FE9F22400339B99 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 159E8A072FAFC3CA0003EBF0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 155ADB942FE9F22100339B99;
+			remoteInfo = MyFeelsLikeComplicationExtension;
+		};
 		159E8A1F2FAFC3CF0003EBF0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 159E8A072FAFC3CA0003EBF0 /* Project object */;
@@ -23,13 +58,52 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		155ADB872FE9F10000339B99 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				155ADB862FE9F10000339B99 /* MyFeelsLike Watch App Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADBAA2FE9F22400339B99 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				155ADBA52FE9F22400339B99 /* MyFeelsLikeComplicationExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		155ADB662FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MyFeelsLike Watch App Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		155ADB722FE9F10000339B99 /* MyFeelsLike Watch App Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "MyFeelsLike Watch App Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		155ADB7C2FE9F10000339B99 /* MyFeelsLike Watch App Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "MyFeelsLike Watch App Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		155ADB952FE9F22100339B99 /* MyFeelsLikeComplicationExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MyFeelsLikeComplicationExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		155ADB972FE9F22100339B99 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		155ADB992FE9F22100339B99 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		155ADBAC2FE9F31700339B99 /* MyFeelsLikeComplicationExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyFeelsLikeComplicationExtension.entitlements; sourceTree = "<group>"; };
 		159E8A0F2FAFC3CA0003EBF0 /* MyFeelsLike.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyFeelsLike.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		159E8A1E2FAFC3CF0003EBF0 /* MyFeelsLikeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyFeelsLikeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		159E8A282FAFC3CF0003EBF0 /* MyFeelsLikeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyFeelsLikeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		155ADBA92FE9F22400339B99 /* Exceptions for "MyFeelsLikeComplication" folder in "MyFeelsLikeComplicationExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 155ADB942FE9F22100339B99 /* MyFeelsLikeComplicationExtension */;
+		};
 		1594454A2FB542300095DD24 /* Exceptions for "MyFeelsLikeTests" folder in "MyFeelsLikeTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -48,6 +122,29 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		155ADB672FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "MyFeelsLike Watch App Watch App";
+			sourceTree = "<group>";
+		};
+		155ADB752FE9F10000339B99 /* MyFeelsLike Watch App Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "MyFeelsLike Watch App Watch AppTests";
+			sourceTree = "<group>";
+		};
+		155ADB7F2FE9F10000339B99 /* MyFeelsLike Watch App Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "MyFeelsLike Watch App Watch AppUITests";
+			sourceTree = "<group>";
+		};
+		155ADB9B2FE9F22100339B99 /* MyFeelsLikeComplication */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				155ADBA92FE9F22400339B99 /* Exceptions for "MyFeelsLikeComplication" folder in "MyFeelsLikeComplicationExtension" target */,
+			);
+			path = MyFeelsLikeComplication;
+			sourceTree = "<group>";
+		};
 		159E8A112FAFC3CA0003EBF0 /* MyFeelsLike */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -72,6 +169,36 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		155ADB632FE9F0FC00339B99 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADB6F2FE9F10000339B99 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADB792FE9F10000339B99 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADB922FE9F22100339B99 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				155ADB9A2FE9F22100339B99 /* SwiftUI.framework in Frameworks */,
+				155ADB982FE9F22100339B99 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		159E8A0C2FAFC3CA0003EBF0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -96,12 +223,27 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		155ADB962FE9F22100339B99 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				155ADB972FE9F22100339B99 /* WidgetKit.framework */,
+				155ADB992FE9F22100339B99 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		159E8A062FAFC3CA0003EBF0 = {
 			isa = PBXGroup;
 			children = (
+				155ADBAC2FE9F31700339B99 /* MyFeelsLikeComplicationExtension.entitlements */,
 				159E8A112FAFC3CA0003EBF0 /* MyFeelsLike */,
 				159E8A212FAFC3CF0003EBF0 /* MyFeelsLikeTests */,
 				159E8A2B2FAFC3CF0003EBF0 /* MyFeelsLikeUITests */,
+				155ADB672FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App */,
+				155ADB752FE9F10000339B99 /* MyFeelsLike Watch App Watch AppTests */,
+				155ADB7F2FE9F10000339B99 /* MyFeelsLike Watch App Watch AppUITests */,
+				155ADB9B2FE9F22100339B99 /* MyFeelsLikeComplication */,
+				155ADB962FE9F22100339B99 /* Frameworks */,
 				159E8A102FAFC3CA0003EBF0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -112,6 +254,10 @@
 				159E8A0F2FAFC3CA0003EBF0 /* MyFeelsLike.app */,
 				159E8A1E2FAFC3CF0003EBF0 /* MyFeelsLikeTests.xctest */,
 				159E8A282FAFC3CF0003EBF0 /* MyFeelsLikeUITests.xctest */,
+				155ADB662FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App.app */,
+				155ADB722FE9F10000339B99 /* MyFeelsLike Watch App Watch AppTests.xctest */,
+				155ADB7C2FE9F10000339B99 /* MyFeelsLike Watch App Watch AppUITests.xctest */,
+				155ADB952FE9F22100339B99 /* MyFeelsLikeComplicationExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -119,6 +265,98 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		155ADB652FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 155ADB8E2FE9F10000339B99 /* Build configuration list for PBXNativeTarget "MyFeelsLike Watch App Watch App" */;
+			buildPhases = (
+				155ADB622FE9F0FC00339B99 /* Sources */,
+				155ADB632FE9F0FC00339B99 /* Frameworks */,
+				155ADB642FE9F0FC00339B99 /* Resources */,
+				155ADBAA2FE9F22400339B99 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				155ADBA42FE9F22400339B99 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				155ADB672FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App */,
+			);
+			name = "MyFeelsLike Watch App Watch App";
+			packageProductDependencies = (
+			);
+			productName = "MyFeelsLike Watch App Watch App";
+			productReference = 155ADB662FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		155ADB712FE9F10000339B99 /* MyFeelsLike Watch App Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 155ADB8F2FE9F10000339B99 /* Build configuration list for PBXNativeTarget "MyFeelsLike Watch App Watch AppTests" */;
+			buildPhases = (
+				155ADB6E2FE9F10000339B99 /* Sources */,
+				155ADB6F2FE9F10000339B99 /* Frameworks */,
+				155ADB702FE9F10000339B99 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				155ADB742FE9F10000339B99 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				155ADB752FE9F10000339B99 /* MyFeelsLike Watch App Watch AppTests */,
+			);
+			name = "MyFeelsLike Watch App Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "MyFeelsLike Watch App Watch AppTests";
+			productReference = 155ADB722FE9F10000339B99 /* MyFeelsLike Watch App Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		155ADB7B2FE9F10000339B99 /* MyFeelsLike Watch App Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 155ADB902FE9F10000339B99 /* Build configuration list for PBXNativeTarget "MyFeelsLike Watch App Watch AppUITests" */;
+			buildPhases = (
+				155ADB782FE9F10000339B99 /* Sources */,
+				155ADB792FE9F10000339B99 /* Frameworks */,
+				155ADB7A2FE9F10000339B99 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				155ADB7E2FE9F10000339B99 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				155ADB7F2FE9F10000339B99 /* MyFeelsLike Watch App Watch AppUITests */,
+			);
+			name = "MyFeelsLike Watch App Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "MyFeelsLike Watch App Watch AppUITests";
+			productReference = 155ADB7C2FE9F10000339B99 /* MyFeelsLike Watch App Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		155ADB942FE9F22100339B99 /* MyFeelsLikeComplicationExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 155ADBA62FE9F22400339B99 /* Build configuration list for PBXNativeTarget "MyFeelsLikeComplicationExtension" */;
+			buildPhases = (
+				155ADB912FE9F22100339B99 /* Sources */,
+				155ADB922FE9F22100339B99 /* Frameworks */,
+				155ADB932FE9F22100339B99 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				155ADB9B2FE9F22100339B99 /* MyFeelsLikeComplication */,
+			);
+			name = MyFeelsLikeComplicationExtension;
+			packageProductDependencies = (
+			);
+			productName = MyFeelsLikeComplicationExtension;
+			productReference = 155ADB952FE9F22100339B99 /* MyFeelsLikeComplicationExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		159E8A0E2FAFC3CA0003EBF0 /* MyFeelsLike */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 159E8A322FAFC3CF0003EBF0 /* Build configuration list for PBXNativeTarget "MyFeelsLike" */;
@@ -126,10 +364,12 @@
 				159E8A0B2FAFC3CA0003EBF0 /* Sources */,
 				159E8A0C2FAFC3CA0003EBF0 /* Frameworks */,
 				159E8A0D2FAFC3CA0003EBF0 /* Resources */,
+				155ADB872FE9F10000339B99 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				155ADB852FE9F10000339B99 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				159E8A112FAFC3CA0003EBF0 /* MyFeelsLike */,
@@ -194,9 +434,23 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2640;
+				LastSwiftUpdateCheck = 2650;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
+					155ADB652FE9F0FC00339B99 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					155ADB712FE9F10000339B99 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 155ADB652FE9F0FC00339B99;
+					};
+					155ADB7B2FE9F10000339B99 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 155ADB652FE9F0FC00339B99;
+					};
+					155ADB942FE9F22100339B99 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 					159E8A0E2FAFC3CA0003EBF0 = {
 						CreatedOnToolsVersion = 26.4.1;
 					};
@@ -227,11 +481,43 @@
 				159E8A0E2FAFC3CA0003EBF0 /* MyFeelsLike */,
 				159E8A1D2FAFC3CF0003EBF0 /* MyFeelsLikeTests */,
 				159E8A272FAFC3CF0003EBF0 /* MyFeelsLikeUITests */,
+				155ADB652FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App */,
+				155ADB712FE9F10000339B99 /* MyFeelsLike Watch App Watch AppTests */,
+				155ADB7B2FE9F10000339B99 /* MyFeelsLike Watch App Watch AppUITests */,
+				155ADB942FE9F22100339B99 /* MyFeelsLikeComplicationExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		155ADB642FE9F0FC00339B99 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADB702FE9F10000339B99 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADB7A2FE9F10000339B99 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADB932FE9F22100339B99 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		159E8A0D2FAFC3CA0003EBF0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -256,6 +542,34 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		155ADB622FE9F0FC00339B99 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADB6E2FE9F10000339B99 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADB782FE9F10000339B99 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		155ADB912FE9F22100339B99 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		159E8A0B2FAFC3CA0003EBF0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -280,6 +594,26 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		155ADB742FE9F10000339B99 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 155ADB652FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App */;
+			targetProxy = 155ADB732FE9F10000339B99 /* PBXContainerItemProxy */;
+		};
+		155ADB7E2FE9F10000339B99 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 155ADB652FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App */;
+			targetProxy = 155ADB7D2FE9F10000339B99 /* PBXContainerItemProxy */;
+		};
+		155ADB852FE9F10000339B99 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 155ADB652FE9F0FC00339B99 /* MyFeelsLike Watch App Watch App */;
+			targetProxy = 155ADB842FE9F10000339B99 /* PBXContainerItemProxy */;
+		};
+		155ADBA42FE9F22400339B99 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 155ADB942FE9F22100339B99 /* MyFeelsLikeComplicationExtension */;
+			targetProxy = 155ADBA32FE9F22400339B99 /* PBXContainerItemProxy */;
+		};
 		159E8A202FAFC3CF0003EBF0 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 159E8A0E2FAFC3CA0003EBF0 /* MyFeelsLike */;
@@ -293,6 +627,238 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		155ADB882FE9F10000339B99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "MyFeelsLike Watch App Watch App/MyFeelsLike Watch App Watch App.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96ND29QYH3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "MyFeelsLike Watch App";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Shows weather for your current location";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = robotex.MyFeelsLike;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = robotex.MyFeelsLike.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		155ADB892FE9F10000339B99 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "MyFeelsLike Watch App Watch App/MyFeelsLike Watch App Watch App.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96ND29QYH3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "MyFeelsLike Watch App";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Shows weather for your current location";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = robotex.MyFeelsLike;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = robotex.MyFeelsLike.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
+		155ADB8A2FE9F10000339B99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96ND29QYH3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "robotex.MyFeelsLike-Watch-App-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MyFeelsLike Watch App Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MyFeelsLike Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		155ADB8B2FE9F10000339B99 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96ND29QYH3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "robotex.MyFeelsLike-Watch-App-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MyFeelsLike Watch App Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MyFeelsLike Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
+		155ADB8C2FE9F10000339B99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96ND29QYH3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "robotex.MyFeelsLike-Watch-App-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "MyFeelsLike Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		155ADB8D2FE9F10000339B99 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96ND29QYH3;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "robotex.MyFeelsLike-Watch-App-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "MyFeelsLike Watch App Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
+		155ADBA72FE9F22400339B99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = MyFeelsLikeComplicationExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96ND29QYH3;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyFeelsLikeComplication/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MyFeelsLikeComplication;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = robotex.MyFeelsLike.watchkitapp.MyFeelsLikeComplication;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		155ADBA82FE9F22400339B99 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = MyFeelsLikeComplicationExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 96ND29QYH3;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyFeelsLikeComplication/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MyFeelsLikeComplication;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = robotex.MyFeelsLike.watchkitapp.MyFeelsLikeComplication;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
 		159E8A302FAFC3CF0003EBF0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -579,6 +1145,42 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		155ADB8E2FE9F10000339B99 /* Build configuration list for PBXNativeTarget "MyFeelsLike Watch App Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				155ADB882FE9F10000339B99 /* Debug */,
+				155ADB892FE9F10000339B99 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		155ADB8F2FE9F10000339B99 /* Build configuration list for PBXNativeTarget "MyFeelsLike Watch App Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				155ADB8A2FE9F10000339B99 /* Debug */,
+				155ADB8B2FE9F10000339B99 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		155ADB902FE9F10000339B99 /* Build configuration list for PBXNativeTarget "MyFeelsLike Watch App Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				155ADB8C2FE9F10000339B99 /* Debug */,
+				155ADB8D2FE9F10000339B99 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		155ADBA62FE9F22400339B99 /* Build configuration list for PBXNativeTarget "MyFeelsLikeComplicationExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				155ADBA72FE9F22400339B99 /* Debug */,
+				155ADBA82FE9F22400339B99 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		159E8A0A2FAFC3CA0003EBF0 /* Build configuration list for PBXProject "MyFeelsLike" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

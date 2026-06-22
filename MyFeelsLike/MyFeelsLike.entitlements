@@ -16,5 +16,9 @@
 	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
 	<key>com.apple.developer.weatherkit</key>
 	<true/>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.robotex.MyFeelsLike</string>
+	</array>
 </dict>
 </plist>
