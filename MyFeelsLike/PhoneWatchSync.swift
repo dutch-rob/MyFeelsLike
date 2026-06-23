@@ -25,12 +25,13 @@ final class PhoneWatchSync: NSObject, WCSessionDelegate {
         session.activate()
     }
 
-    /// Call whenever the model or settings change.
+    /// Call whenever the model, settings, or saved places change.
     func update(state: RegressionState?, useFahrenheit: Bool,
-                activity: Int, dress: Int, sun: Int) {
+                activity: Int, dress: Int, sun: Int, places: [PlaceDTO]) {
         let payload = WatchSyncPayload(
             regressionState: state, useFahrenheit: useFahrenheit,
-            scenarioActivity: activity, scenarioDress: dress, scenarioSun: sun)
+            scenarioActivity: activity, scenarioDress: dress, scenarioSun: sun,
+            places: places)
         lastPayload = payload
         send(payload)
     }

@@ -9,12 +9,22 @@
 
 import Foundation
 
+/// Lightweight place for the watch (no PlacesViewModel dependency).
+struct PlaceDTO: Codable, Identifiable, Hashable {
+    let id: UUID
+    let name: String
+    let latitude: Double
+    let longitude: Double
+    let altitude: Double
+}
+
 struct WatchSyncPayload: Codable {
     var regressionState: RegressionState?
     var useFahrenheit: Bool
     var scenarioActivity: Int
     var scenarioDress: Int
     var scenarioSun: Int
+    var places: [PlaceDTO] = []
 
     var scenario: Scenario {
         Scenario(activity: scenarioActivity, dress: scenarioDress, sun: scenarioSun)

@@ -311,6 +311,7 @@ struct ContentView: View {
         .onChange(of: scenarioActivity) { _, _ in pushToWatch() }
         .onChange(of: scenarioDress) { _, _ in pushToWatch() }
         .onChange(of: scenarioSun) { _, _ in pushToWatch() }
+        .onChange(of: places.places) { _, _ in pushToWatch() }
         .onReceive(progressTimer) { nowTick = $0 }
     }
 
@@ -332,12 +333,17 @@ struct ContentView: View {
         pushToWatch()
     }
 
-    /// Send the current model + display settings to the watch app.
+    /// Send the current model + display settings + saved places to the watch.
     private func pushToWatch() {
+        let placeDTOs = places.places.map {
+            PlaceDTO(id: $0.id, name: $0.name, latitude: $0.latitude,
+                     longitude: $0.longitude, altitude: $0.altitude)
+        }
         PhoneWatchSync.shared.update(
             state: regressionState,
             useFahrenheit: useFahrenheit,
-            activity: scenarioActivity, dress: scenarioDress, sun: scenarioSun)
+            activity: scenarioActivity, dress: scenarioDress, sun: scenarioSun,
+            places: placeDTOs)
     }
 
     private func loadWeather(preserveData: Bool = false) async {

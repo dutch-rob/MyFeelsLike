@@ -21,6 +21,10 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
     @Published var current: ForecastPoint?
     @Published var isLoading = false
     @Published var errorText: String?
+    /// nil = current location; otherwise a place synced from the phone.
+    @Published var selectedPlace: PlaceDTO?
+
+    var placeName: String { selectedPlace?.name ?? "Current Location" }
 
     private let manager = CLLocationManager()
     private let weatherService = WeatherKit.WeatherService()
@@ -34,7 +38,20 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
 
     func refresh() {
         isLoading = true
-        manager.requestLocation()
+        if let p = selectedPlace {
+            let loc = CLLocation(
+                coordinate: CLLocationCoordinate2D(latitude: p.latitude, longitude: p.longitude),
+                altitude: p.altitude, horizontalAccuracy: 1, verticalAccuracy: 1, timestamp: Date())
+            Task { await load(for: loc) }
+        } else {
+            manager.requestLocation()
+        }
+    }
+
+    /// Switch to a place (nil = back to current location) and refetch.
+    func select(_ place: PlaceDTO?) {
+        selectedPlace = place
+        refresh()
     }
 
     // MARK: CLLocationManagerDelegate
