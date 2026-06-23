@@ -61,6 +61,14 @@ struct WatchTodayView: View {
                      series: .value("s", "temp"))
                 .foregroundStyle(.blue)
             LineMark(x: .value("t", p.date),
+                     y: .value("wet", useF ? p.wetBulbF : p.wetBulbC),
+                     series: .value("s", "wet"))
+                .foregroundStyle(.green)
+            LineMark(x: .value("t", p.date),
+                     y: .value("dew", useF ? p.dewPointF : p.dewPointC),
+                     series: .value("s", "dew"))
+                .foregroundStyle(.red)
+            LineMark(x: .value("t", p.date),
                      y: .value("app", useF ? p.apparentTemperatureF : p.apparentTemperatureC),
                      series: .value("s", "app"))
                 .foregroundStyle(.purple)
@@ -70,11 +78,15 @@ struct WatchTodayView: View {
         }
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
-                AxisGridLine(); AxisValueLabel().font(.system(size: 9))
+                AxisGridLine(); AxisValueLabel().font(.system(size: 13))
             }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 6)) { _ in AxisGridLine() }
+            AxisMarks(values: .stride(by: .hour, count: 6)) { value in
+                AxisGridLine()
+                AxisValueLabel(format: .dateTime.hour(), centered: true)
+                    .font(.system(size: 13))
+            }
         }
     }
 
@@ -89,11 +101,15 @@ struct WatchTodayView: View {
         }
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
-                AxisGridLine(); AxisValueLabel().font(.system(size: 9))
+                AxisGridLine(); AxisValueLabel().font(.system(size: 13))
             }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 6)) { _ in AxisGridLine() }
+            AxisMarks(values: .stride(by: .hour, count: 6)) { value in
+                AxisGridLine()
+                AxisValueLabel(format: .dateTime.hour(), centered: true)
+                    .font(.system(size: 13))
+            }
         }
     }
 }

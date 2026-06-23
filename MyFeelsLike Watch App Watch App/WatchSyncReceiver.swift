@@ -54,6 +54,10 @@ final class WatchSyncReceiver: NSObject, ObservableObject, WCSessionDelegate {
         apply(applicationContext)
     }
 
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        apply(userInfo)
+    }
+
     func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
         if !session.receivedApplicationContext.isEmpty {
             apply(session.receivedApplicationContext)

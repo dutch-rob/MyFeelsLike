@@ -39,12 +39,15 @@ final class PhoneWatchSync: NSObject, WCSessionDelegate {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         guard session.activationState == .activated else { return }
+        let context = payload.asApplicationContext()
+        // Channel 1: application context (latest-wins, delivered in background).
         do {
-            try session.updateApplicationContext(payload.asApplicationContext())
+            try session.updateApplicationContext(context)
         } catch {
-            // Non-fatal: the watch will pick up the next successful sync.
-            print("Watch sync failed: \(error.localizedDescription)")
+            print("Watch sync (context) failed: \(error.localizedDescription)")
         }
+        // Channel 2: a queued user-info transfer as a reliability backup.
+        session.transferUserInfo(context)
     }
 
     // MARK: WCSessionDelegate

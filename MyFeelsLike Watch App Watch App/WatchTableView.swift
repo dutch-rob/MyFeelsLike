@@ -2,8 +2,8 @@
 //  WatchTableView.swift
 //  MyFeelsLike Watch App
 //
-//  Compact hourly table. Fewer columns than the phone (time · feels-colour ·
-//  temp/feels · wind) so rows stay legible; scroll with the Digital Crown.
+//  Hourly table with the same columns as the phone, scrollable both ways
+//  (vertical for hours, horizontal for the extra columns).
 //
 
 import SwiftUI
@@ -19,51 +19,84 @@ struct WatchTableView: View {
         return df
     }()
 
+    // Column widths
+    private let wTime: CGFloat = 48
+    private let wSw:   CGFloat = 18
+    private let wTemp: CGFloat = 54
+    private let wWet:  CGFloat = 34
+    private let wDew:  CGFloat = 34
+    private let wWind: CGFloat = 34
+    private let wPcp:  CGFloat = 40
+    private let wCld:  CGFloat = 34
+    private var totalW: CGFloat { wTime + wSw + wTemp + wWet + wDew + wWind + wPcp + wCld + 12 }
+
     var body: some View {
-        List {
-            if model.series10d.isEmpty {
-                HStack { Spacer(); ProgressView(); Spacer() }
-            } else {
-                ForEach(model.series10d) { p in
-                    row(p)
+        if model.series10d.isEmpty {
+            VStack { Spacer(); ProgressView(); Spacer() }
+        } else {
+            ScrollView([.vertical, .horizontal]) {
+                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
+                    Section {
+                        ForEach(model.series10d) { p in row(p) }
+                    } header: {
+                        header
+                    }
                 }
+                .frame(minWidth: totalW)
             }
         }
-        .listStyle(.plain)
+    }
+
+    private var header: some View {
+        HStack(spacing: 0) {
+            cell("Time", wTime, .leading)
+            cell("",     wSw,   .center)
+            cell(useF ? "T/fl°F" : "T/fl°C", wTemp, .trailing)
+            cell("Wet",  wWet,  .trailing)
+            cell("Dew",  wDew,  .trailing)
+            cell("Wnd",  wWind, .trailing)
+            cell("Pcp",  wPcp,  .trailing)
+            cell("Cld",  wCld,  .trailing)
+        }
+        .font(.system(size: 12, weight: .semibold))
+        .padding(.vertical, 3).padding(.horizontal, 6)
+        .background(.bar)
     }
 
     @ViewBuilder private func row(_ p: ForecastPoint) -> some View {
-        HStack(spacing: 6) {
-            Text(Self.timeFmt.string(from: p.date))
-                .font(.system(size: 11)).foregroundStyle(.secondary)
-                .frame(width: 46, alignment: .leading)
-            swatch(p)
-            Text(tempText(p)).font(.system(size: 12)).monospacedDigit()
-            Spacer()
-            Text(windText(p)).font(.system(size: 11)).foregroundStyle(.secondary)
+        HStack(spacing: 0) {
+            cell(Self.timeFmt.string(from: p.date), wTime, .leading)
+            swatch(p).frame(width: wSw, alignment: .center)
+            cell(tempText(p), wTemp, .trailing)
+            cell(fmt0(useF ? p.wetBulbF  : p.wetBulbC),  wWet,  .trailing)
+            cell(fmt0(useF ? p.dewPointF : p.dewPointC), wDew,  .trailing)
+            cell(fmt0(useF ? p.windSpeedMPH : p.windSpeedKPH), wWind, .trailing)
+            cell(String(format: "%.0f%%", p.precipProbability * 100), wPcp, .trailing)
+            cell(String(format: "%.0f", p.cloudCover * 100), wCld, .trailing)
         }
+        .font(.system(size: 13))
+        .padding(.vertical, 2).padding(.horizontal, 6)
     }
 
     @ViewBuilder private func swatch(_ p: ForecastPoint) -> some View {
         if let s = p.myFeelsLikeScore {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(ColorScale.color(forScore: s))
-                .frame(width: 14, height: 14)
+            RoundedRectangle(cornerRadius: 3).fill(ColorScale.color(forScore: s))
+                .frame(width: 13, height: 13)
         } else {
-            RoundedRectangle(cornerRadius: 3)
-                .stroke(.secondary.opacity(0.5))
-                .frame(width: 14, height: 14)
+            RoundedRectangle(cornerRadius: 3).stroke(.secondary.opacity(0.5))
+                .frame(width: 13, height: 13)
         }
     }
+
+    @ViewBuilder private func cell(_ text: String, _ width: CGFloat, _ align: Alignment) -> some View {
+        Text(text).frame(width: width, alignment: align).lineLimit(1)
+    }
+
+    private func fmt0(_ n: Double) -> String { String(format: "%.0f", n) }
 
     private func tempText(_ p: ForecastPoint) -> String {
         let t = useF ? p.temperatureF : p.temperatureC
         let a = useF ? p.apparentTemperatureF : p.apparentTemperatureC
         return String(format: "%.0f(%.0f)", t, a)
-    }
-
-    private func windText(_ p: ForecastPoint) -> String {
-        let w = useF ? p.windSpeedMPH : p.windSpeedKPH
-        return String(format: "%.0f", w)
     }
 }

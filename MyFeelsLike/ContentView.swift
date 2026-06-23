@@ -283,6 +283,7 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
+            pushToWatch()    // keep the watch's settings/model current
             // Auto-refresh when returning from background if data is ≥ 30 min old.
             if let fetched = weather.lastFetchedAt,
                Date().timeIntervalSince(fetched) > 1800,

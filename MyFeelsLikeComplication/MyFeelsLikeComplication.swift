@@ -43,7 +43,8 @@ struct FeelsCornerView: View {
 
     var body: some View {
         Text(tempLabel)
-            .font(.system(.title3, design: .rounded).weight(.medium))
+            .font(.system(size: 30, weight: .semibold, design: .rounded))
+            .minimumScaleFactor(0.5)
             .widgetLabel {
                 Gauge(value: gaugeValue, in: gaugeRange) { EmptyView() }
                     .tint(gaugeGradient)
@@ -72,18 +73,28 @@ struct FeelsCornerView: View {
     }
 
     private var gaugeGradient: Gradient {
-        guard let s = snapshot, s.hasModel else {
-            // Neutral cold→hot gradient for the cold-start (no-model) case.
-            return Gradient(colors: [.blue, .green, .yellow, .orange, .red])
+        guard let s = snapshot else {
+            return Gradient(colors: [.gray.opacity(0.5)])
         }
-        // Sample the MyFeelsLike colour scale across today's feels-like range.
         let n = 5
-        let lo = s.feelsMin, hi = max(s.feelsMax, s.feelsMin + 1)
-        let colors = (0..<n).map { i -> Color in
-            let score = lo + (hi - lo) * Double(i) / Double(n - 1)
-            return ColorScale.color(forScore: score)
+        if s.hasModel {
+            // MyFeelsLike colour scale across today's feels-like score range.
+            let lo = s.feelsMin, hi = max(s.feelsMax, s.feelsMin + 1)
+            let colors = (0..<n).map { i -> Color in
+                let score = lo + (hi - lo) * Double(i) / Double(n - 1)
+                return ColorScale.color(forScore: score)
+            }
+            return Gradient(colors: colors)
+        } else {
+            // Before a model: same colour language, driven by today's
+            // temperature range (ColorScale's temperature mapping).
+            let lo = s.todayTempMinC, hi = max(s.todayTempMaxC, s.todayTempMinC + 1)
+            let colors = (0..<n).map { i -> Color in
+                let t = lo + (hi - lo) * Double(i) / Double(n - 1)
+                return ColorScale.color(forC: t)
+            }
+            return Gradient(colors: colors)
         }
-        return Gradient(colors: colors)
     }
 }
 
