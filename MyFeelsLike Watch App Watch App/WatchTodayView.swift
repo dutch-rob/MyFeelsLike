@@ -22,35 +22,37 @@ struct WatchTodayView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 6) {
-                placeHeader
-                if model.series24h.isEmpty {
-                    placeholder
-                } else {
-                    label("24-hour")
-                    tempChart.frame(height: 120)
-                    label("Wind / precip")
-                    windChart.frame(height: 100)
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 6) {
+                    if model.series24h.isEmpty {
+                        placeholder
+                    } else {
+                        label("24-hour")
+                        tempChart.frame(height: 140)
+                        label("Wind / precip")
+                        windChart.frame(height: 100)
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+            // Place name in the system top bar (left of the clock). watchOS
+            // reserves the clock's space automatically; long names truncate.
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showPlaces = true } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "mappin.and.ellipse")
+                            Text(model.placeName).lineLimit(1)
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 4)
-        }
-        .sheet(isPresented: $showPlaces) {
-            NavigationStack { WatchPlacesView(model: model) }
-        }
-    }
-
-    private var placeHeader: some View {
-        Button { showPlaces = true } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "mappin.and.ellipse").font(.system(size: 11))
-                Text(model.placeName)
-                    .font(.system(size: 13, weight: .semibold)).lineLimit(1)
+            .sheet(isPresented: $showPlaces) {
+                NavigationStack { WatchPlacesView(model: model) }
             }
-            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder private func label(_ s: String) -> some View {
