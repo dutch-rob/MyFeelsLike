@@ -45,12 +45,14 @@ struct FeelsCornerView: View {
         // Apple Weather layout: large number in the corner; the colour band
         // (gauge) curves along the centre-side bezel via widgetLabel.
         Text(tempLabel)
-            .font(.system(size: 34, weight: .semibold, design: .rounded))
+            .font(.system(size: 40, weight: .semibold, design: .rounded))
             .minimumScaleFactor(0.5)
-            // Straight tilt (~40°) to echo Apple Weather's angled number.
-            // Tuned for the top-left (NW) corner; other corners would tilt
-            // the wrong way since WidgetKit doesn't expose the corner.
-            .rotationEffect(.degrees(-40))
+            // Straight tilt to echo Apple Weather's angled number, nudged
+            // toward the dial. Tuned for the top-left (NW) corner; other
+            // corners would tilt the wrong way since WidgetKit doesn't
+            // expose which corner the complication occupies.
+            .rotationEffect(.degrees(-33))
+            .offset(x: 8, y: 3)
             .widgetLabel {
                 Gauge(value: gaugeValue, in: gaugeRange) { EmptyView() }
                     .tint(gaugeGradient)
