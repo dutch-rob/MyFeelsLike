@@ -60,7 +60,7 @@ struct WatchTableView: View {
         }
         .font(.system(size: 12, weight: .semibold))
         .padding(.vertical, 3).padding(.horizontal, 6)
-        .background(.bar)
+        .background(Color(white: 0.18))
     }
 
     @ViewBuilder private func row(_ p: ForecastPoint) -> some View {
