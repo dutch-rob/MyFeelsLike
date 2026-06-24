@@ -11,6 +11,7 @@ import SwiftUI
 @main
 struct MyFeelsLikeComplicationBundle: WidgetBundle {
     var body: some Widget {
-        MyFeelsLikeComplication()
+        MyFeelsLikeComplication()          // corner
+        MyFeelsLikeCircularComplication()  // inner circular
     }
 }

@@ -136,6 +136,6 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
             feelsMax: fMax,
             feelsCurrent: cur.myFeelsLikeScore ?? (fMin + fMax) / 2)
         snap.save()
-        WidgetCenter.shared.reloadTimelines(ofKind: "MyFeelsLikeComplication")
+        WidgetCenter.shared.reloadAllTimelines()   // corner + circular
     }
 }
