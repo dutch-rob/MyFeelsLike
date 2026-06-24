@@ -1,17 +1,40 @@
 //
 //  MyFeelsLike_Watch_AppApp.swift
-//  MyFeelsLike Watch App Watch App
-//
-//  Created by Rob Boer on 6/22/26.
+//  MyFeelsLike Watch App
 //
 
 import SwiftUI
+import WatchKit
 
 @main
 struct MyFeelsLike_Watch_App_Watch_AppApp: App {
+    @WKApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+        }
+    }
+}
+
+/// Handles periodic background refresh so the complication's forecast data
+/// updates without opening the app.
+final class AppDelegate: NSObject, WKApplicationDelegate {
+    func applicationDidFinishLaunching() {
+        BackgroundWeatherRefresh.schedule()
+    }
+
+    func handle(_ backgroundTasks: Set<WKRefreshBackgroundTask>) {
+        for task in backgroundTasks {
+            if let refresh = task as? WKApplicationRefreshBackgroundTask {
+                Task {
+                    await BackgroundWeatherRefresh.run()
+                    BackgroundWeatherRefresh.schedule()      // chain the next one
+                    refresh.setTaskCompletedWithSnapshot(false)
+                }
+            } else {
+                task.setTaskCompletedWithSnapshot(false)
+            }
         }
     }
 }

@@ -88,6 +88,7 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
             current   = cur
             isLoading = false
             errorText = nil
+            BackgroundWeatherRefresh.saveLocation(location)   // for background refresh
             applyModel()      // colours + snapshot
         } catch {
             errorText = error.localizedDescription
@@ -112,51 +113,10 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
     // MARK: Complication snapshot
 
     private func writeSnapshot() {
-        let cal = Calendar.current
-        let hasModel = WatchSyncReceiver.shared.payload?.regressionState != nil
-
-        // Per-day ranges (temp + feels-like) from the full forecast.
-        func dayKey(_ d: Date) -> Date { cal.startOfDay(for: d) }
-        var dTempMin: [Date: Double] = [:], dTempMax: [Date: Double] = [:]
-        var dFeelMin: [Date: Double] = [:], dFeelMax: [Date: Double] = [:]
-        for p in series10d {
-            let k = dayKey(p.date)
-            dTempMin[k] = min(dTempMin[k] ?? .greatestFiniteMagnitude, p.temperatureC)
-            dTempMax[k] = max(dTempMax[k] ?? -.greatestFiniteMagnitude, p.temperatureC)
-            if let s = p.myFeelsLikeScore {
-                dFeelMin[k] = min(dFeelMin[k] ?? .greatestFiniteMagnitude, s)
-                dFeelMax[k] = max(dFeelMax[k] ?? -.greatestFiniteMagnitude, s)
-            }
-        }
-
-        // Hourly source points: "now" first, then forecast hours up to +48 h.
-        var hours: [ForecastPoint] = []
-        if let cur = current { hours.append(cur) }
-        let cutoff = Date().addingTimeInterval(48 * 3600)
-        let afterNow = current?.date ?? Date()
-        hours += series10d.filter { $0.date > afterNow && $0.date <= cutoff }
-
-        let frames: [ComplicationFrame] = hours.map { p in
-            let k = dayKey(p.date)
-            let tMin = dTempMin[k] ?? p.temperatureC
-            let tMax = dTempMax[k] ?? p.temperatureC
-            let fMin = dFeelMin[k] ?? 0
-            let fMax = dFeelMax[k] ?? 1000
-            return ComplicationFrame(
-                date: p.date,
-                currentTempC: p.temperatureC,
-                feelsCurrent: p.myFeelsLikeScore ?? (fMin + fMax) / 2,
-                feelsMin: fMin, feelsMax: fMax,
-                todayTempMinC: tMin, todayTempMaxC: tMax)
-        }
-        guard !frames.isEmpty else { return }
-
-        let snap = ComplicationSnapshot(
-            updated: Date(),
-            useFahrenheit: WatchSyncReceiver.shared.payload?.useFahrenheit ?? false,
-            hasModel: hasModel,
-            frames: frames)
-        snap.save()
-        WidgetCenter.shared.reloadAllTimelines()   // corner + circular
+        WatchComplicationWriter.write(
+            current: current,
+            series10d: series10d,
+            hasModel: WatchSyncReceiver.shared.payload?.regressionState != nil,
+            useFahrenheit: WatchSyncReceiver.shared.payload?.useFahrenheit ?? false)
     }
 }
