@@ -21,6 +21,17 @@ struct WatchTodayView: View {
         return f...l
     }
 
+    /// Tight y-range covering the four temperature curves (+ small padding).
+    private var tempYDomain: ClosedRange<Double> {
+        let vals = model.series24h.flatMap { p -> [Double] in
+            useF ? [p.temperatureF, p.wetBulbF, p.dewPointF, p.apparentTemperatureF]
+                 : [p.temperatureC, p.wetBulbC, p.dewPointC, p.apparentTemperatureC]
+        }
+        guard let lo = vals.min(), let hi = vals.max() else { return 0...1 }
+        let pad = max(1, (hi - lo) * 0.08)
+        return (lo - pad)...(hi + pad)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -45,6 +56,8 @@ struct WatchTodayView: View {
                             Image(systemName: "mappin.and.ellipse")
                             Text(model.placeName).lineLimit(1)
                         }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.cyan)
                     }
                     .buttonStyle(.plain)
                 }
@@ -95,7 +108,7 @@ struct WatchTodayView: View {
         .chartBackground { proxy in
             watchFeelsChartBackground(proxy, series: model.series24h, domain: domain)
         }
-        .chartYScale(domain: .automatic(includesZero: false))
+        .chartYScale(domain: tempYDomain)
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
                 AxisGridLine(); AxisValueLabel().font(.system(size: 13))

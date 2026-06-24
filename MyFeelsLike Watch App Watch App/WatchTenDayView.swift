@@ -18,6 +18,17 @@ struct WatchTenDayView: View {
         return f...l
     }
 
+    /// Tight y-range covering the four temperature curves (+ small padding).
+    private var tempYDomain: ClosedRange<Double> {
+        let vals = model.series10d.flatMap { p -> [Double] in
+            useF ? [p.temperatureF, p.wetBulbF, p.dewPointF, p.apparentTemperatureF]
+                 : [p.temperatureC, p.wetBulbC, p.dewPointC, p.apparentTemperatureC]
+        }
+        guard let lo = vals.min(), let hi = vals.max() else { return 0...1 }
+        let pad = max(1, (hi - lo) * 0.08)
+        return (lo - pad)...(hi + pad)
+    }
+
     var body: some View {
         VStack(spacing: 6) {
             Text("10-day").font(.system(size: 11)).foregroundStyle(.secondary)
@@ -53,7 +64,7 @@ struct WatchTenDayView: View {
         .chartBackground { proxy in
             watchFeelsChartBackground(proxy, series: model.series10d, domain: domain)
         }
-        .chartYScale(domain: .automatic(includesZero: false))
+        .chartYScale(domain: tempYDomain)
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
                 AxisGridLine(); AxisValueLabel().font(.system(size: 13))
