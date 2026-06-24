@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  MyFeelsLike Watch App
 //
-//  Root screen: horizontal page tabs Today → 10-day → Table. The Today page
+//  Root screen: horizontal page tabs Toda+y → 10-day → Table. The Today page
 //  scrolls vertically to reveal the wind/precip graph. Fetches on appear /
 //  foreground; re-applies the model (no refetch) when a fresh sync arrives.
 //
