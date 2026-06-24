@@ -88,14 +88,10 @@ struct FeelsCornerView: View {
             }
             return Gradient(colors: colors)
         } else {
-            // Before a model: same colour language, driven by today's
-            // temperature range (ColorScale's temperature mapping).
-            let lo = s.todayTempMinC, hi = max(s.todayTempMaxC, s.todayTempMinC + 1)
-            let colors = (0..<n).map { i -> Color in
-                let t = lo + (hi - lo) * Double(i) / Double(n - 1)
-                return ColorScale.color(forC: t)
-            }
-            return Gradient(colors: colors)
+            // No personalised model yet: a neutral grey band — colouring a
+            // narrow temperature range would be misleading. The dot still
+            // marks where the current temperature sits in today's range.
+            return Gradient(colors: [.gray.opacity(0.55), .gray.opacity(0.85)])
         }
     }
 }
