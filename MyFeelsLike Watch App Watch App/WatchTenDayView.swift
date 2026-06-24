@@ -32,16 +32,20 @@ struct WatchTenDayView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 6) {
-                Text("10-day").font(.system(size: 11)).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if model.series10d.isEmpty {
-                    Spacer(); ProgressView(); Spacer()
-                } else {
-                    chart
+            ScrollView {
+                VStack(spacing: 6) {
+                    if model.series10d.isEmpty {
+                        VStack { ProgressView() }
+                            .frame(maxWidth: .infinity, minHeight: 150)
+                    } else {
+                        label("10-day")
+                        tempChart.frame(height: 140)
+                        label("Wind / precip")
+                        windChart.frame(height: 150)
+                    }
                 }
+                .padding(.horizontal, 4)
             }
-            .padding(.horizontal, 4)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showPlaces = true } label: {
@@ -60,7 +64,12 @@ struct WatchTenDayView: View {
         }
     }
 
-    private var chart: some View {
+    @ViewBuilder private func label(_ s: String) -> some View {
+        Text(s).font(.system(size: 11)).foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var tempChart: some View {
         Chart(model.series10d) { p in
             LineMark(x: .value("t", p.date),
                      y: .value("temp", useF ? p.temperatureF : p.temperatureC),
@@ -84,6 +93,19 @@ struct WatchTenDayView: View {
         }
         .chartYScale(domain: tempYDomain)
         .chartYAxis { tempYAxis(useF: useF) }
+        .chartXAxis { dailyXAxis() }
+    }
+
+    private var windChart: some View {
+        Chart(model.series10d) { p in
+            AreaMark(x: .value("t", p.date), y: .value("precip", p.precipProbability * 100))
+                .foregroundStyle(.blue.opacity(0.3))
+            LineMark(x: .value("t", p.date),
+                     y: .value("wind", useF ? p.windSpeedMPH : p.windSpeedKPH),
+                     series: .value("s", "wind"))
+                .foregroundStyle(.red)
+        }
+        .chartYAxis { plainYAxis() }
         .chartXAxis { dailyXAxis() }
     }
 }
