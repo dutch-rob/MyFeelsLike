@@ -32,6 +32,63 @@ func watchFeelsBackgroundStops(_ series: [ForecastPoint],
     }
 }
 
+// MARK: - Shared axis styling
+//
+// Prominent gridlines, drawn at a finer interval than the labels (e.g. labels
+// every 10°, gridlines every 5°). Font size on axis labels IS honoured (unlike
+// the top-bar title).
+
+private let gridLine = StrokeStyle(lineWidth: 0.5)
+private let gridFine = Color.gray.opacity(0.3)
+private let gridBold = Color.gray.opacity(0.6)
+private let axisLabelFont = Font.system(size: 13)
+
+/// Temperature y-axis: gridlines twice as dense as labels.
+@AxisContentBuilder
+func tempYAxis(useF: Bool) -> some AxisContent {
+    let gridStride: Double  = useF ? 5  : 2.5
+    let labelStride: Double = useF ? 10 : 5
+    AxisMarks(position: .leading, values: .stride(by: gridStride)) {
+        AxisGridLine(stroke: gridLine).foregroundStyle(gridBold)
+    }
+    AxisMarks(position: .leading, values: .stride(by: labelStride)) {
+        AxisValueLabel().font(axisLabelFont)
+    }
+}
+
+/// Generic (wind/precip) y-axis: prominent gridlines at the default ticks.
+@AxisContentBuilder
+func plainYAxis() -> some AxisContent {
+    AxisMarks(position: .leading) { _ in
+        AxisGridLine(stroke: gridLine).foregroundStyle(gridBold)
+        AxisValueLabel().font(axisLabelFont)
+    }
+}
+
+/// 24-hour x-axis: faint gridlines every 3 h, labelled bold gridlines every 6 h.
+@AxisContentBuilder
+func hourlyXAxis() -> some AxisContent {
+    AxisMarks(values: .stride(by: .hour, count: 3)) {
+        AxisGridLine(stroke: gridLine).foregroundStyle(gridFine)
+    }
+    AxisMarks(values: .stride(by: .hour, count: 6)) {
+        AxisGridLine(stroke: gridLine).foregroundStyle(gridBold)
+        AxisValueLabel(format: .dateTime.hour()).font(axisLabelFont)
+    }
+}
+
+/// 10-day x-axis: faint gridlines every day, labelled bold gridlines every 2.
+@AxisContentBuilder
+func dailyXAxis() -> some AxisContent {
+    AxisMarks(values: .stride(by: .day, count: 1)) {
+        AxisGridLine(stroke: gridLine).foregroundStyle(gridFine)
+    }
+    AxisMarks(values: .stride(by: .day, count: 2)) {
+        AxisGridLine(stroke: gridLine).foregroundStyle(gridBold)
+        AxisValueLabel(format: .dateTime.weekday()).font(axisLabelFont)
+    }
+}
+
 /// MyFeelsLike colour background filling a chart's plot area, time-aligned.
 @ViewBuilder
 func watchFeelsChartBackground(_ proxy: ChartProxy,

@@ -10,6 +10,7 @@ import Charts
 
 struct WatchTenDayView: View {
     @ObservedObject var model: WatchWeatherModel
+    @State private var showPlaces = false
     private var useF: Bool { WatchSyncReceiver.shared.payload?.useFahrenheit ?? false }
 
     private var domain: ClosedRange<Date>? {
@@ -30,16 +31,33 @@ struct WatchTenDayView: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
-            Text("10-day").font(.system(size: 11)).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            if model.series10d.isEmpty {
-                Spacer(); ProgressView(); Spacer()
-            } else {
-                chart
+        NavigationStack {
+            VStack(spacing: 6) {
+                Text("10-day").font(.system(size: 11)).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if model.series10d.isEmpty {
+                    Spacer(); ProgressView(); Spacer()
+                } else {
+                    chart
+                }
+            }
+            .padding(.horizontal, 4)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showPlaces = true } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "mappin.and.ellipse")
+                            Text(model.placeName).lineLimit(1)
+                        }
+                        .foregroundStyle(.cyan)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .sheet(isPresented: $showPlaces) {
+                NavigationStack { WatchPlacesView(model: model) }
             }
         }
-        .padding(.horizontal, 4)
     }
 
     private var chart: some View {
@@ -65,17 +83,7 @@ struct WatchTenDayView: View {
             watchFeelsChartBackground(proxy, series: model.series10d, domain: domain)
         }
         .chartYScale(domain: tempYDomain)
-        .chartYAxis {
-            AxisMarks(position: .leading) { _ in
-                AxisGridLine(); AxisValueLabel().font(.system(size: 13))
-            }
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: 2)) { value in
-                AxisGridLine()
-                AxisValueLabel(format: .dateTime.weekday(), centered: true)
-                    .font(.system(size: 13))
-            }
-        }
+        .chartYAxis { tempYAxis(useF: useF) }
+        .chartXAxis { dailyXAxis() }
     }
 }

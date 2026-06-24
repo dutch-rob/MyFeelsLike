@@ -42,7 +42,7 @@ struct WatchTodayView: View {
                         label("24-hour")
                         tempChart.frame(height: 140)
                         label("Wind / precip")
-                        windChart.frame(height: 100)
+                        windChart.frame(height: 150)
                     }
                 }
                 .padding(.horizontal, 4)
@@ -56,7 +56,9 @@ struct WatchTodayView: View {
                             Image(systemName: "mappin.and.ellipse")
                             Text(model.placeName).lineLimit(1)
                         }
-                        .font(.system(size: 15, weight: .semibold))
+                        // watchOS controls the top-bar title font size, so a
+                        // .font(...) here is ignored — only colour applies.
+                        // (Change colour here; size isn't adjustable in this slot.)
                         .foregroundStyle(.cyan)
                     }
                     .buttonStyle(.plain)
@@ -109,18 +111,8 @@ struct WatchTodayView: View {
             watchFeelsChartBackground(proxy, series: model.series24h, domain: domain)
         }
         .chartYScale(domain: tempYDomain)
-        .chartYAxis {
-            AxisMarks(position: .leading) { _ in
-                AxisGridLine(); AxisValueLabel().font(.system(size: 13))
-            }
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 6)) { value in
-                AxisGridLine()
-                AxisValueLabel(format: .dateTime.hour(), centered: true)
-                    .font(.system(size: 13))
-            }
-        }
+        .chartYAxis { tempYAxis(useF: useF) }
+        .chartXAxis { hourlyXAxis() }
     }
 
     private var windChart: some View {
@@ -132,17 +124,7 @@ struct WatchTodayView: View {
                      series: .value("s", "wind"))
                 .foregroundStyle(.red)
         }
-        .chartYAxis {
-            AxisMarks(position: .leading) { _ in
-                AxisGridLine(); AxisValueLabel().font(.system(size: 13))
-            }
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 6)) { value in
-                AxisGridLine()
-                AxisValueLabel(format: .dateTime.hour(), centered: true)
-                    .font(.system(size: 13))
-            }
-        }
+        .chartYAxis { plainYAxis() }
+        .chartXAxis { hourlyXAxis() }
     }
 }
