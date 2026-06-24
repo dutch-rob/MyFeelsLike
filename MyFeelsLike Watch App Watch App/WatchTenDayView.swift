@@ -53,6 +53,7 @@ struct WatchTenDayView: View {
         .chartBackground { proxy in
             watchFeelsChartBackground(proxy, series: model.series10d, domain: domain)
         }
+        .chartYScale(domain: .automatic(includesZero: false))
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
                 AxisGridLine(); AxisValueLabel().font(.system(size: 13))

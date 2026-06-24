@@ -42,12 +42,13 @@ struct FeelsCornerView: View {
     let snapshot: ComplicationSnapshot?
 
     var body: some View {
-        Text(tempLabel)
-            .font(.system(size: 30, weight: .semibold, design: .rounded))
-            .minimumScaleFactor(0.5)
+        // Gauge as the corner ring; the temperature number curves along the
+        // bezel (widgetLabel), the way Apple Weather's corner reads.
+        Gauge(value: gaugeValue, in: gaugeRange) { EmptyView() }
+            .gaugeStyle(.accessoryCircular)
+            .tint(gaugeGradient)
             .widgetLabel {
-                Gauge(value: gaugeValue, in: gaugeRange) { EmptyView() }
-                    .tint(gaugeGradient)
+                Text(tempLabel)
             }
     }
 

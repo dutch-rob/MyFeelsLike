@@ -93,6 +93,7 @@ struct WatchTodayView: View {
         .chartBackground { proxy in
             watchFeelsChartBackground(proxy, series: model.series24h, domain: domain)
         }
+        .chartYScale(domain: .automatic(includesZero: false))
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
                 AxisGridLine(); AxisValueLabel().font(.system(size: 13))
