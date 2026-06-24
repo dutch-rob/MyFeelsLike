@@ -97,8 +97,8 @@ struct FeelsCornerView: View {
         // Horizontal number (reads correctly in any corner) + colour band on
         // the inner arc via widgetLabel.
         Text(g.tempLabel)
-            .font(.system(size: 38, weight: .semibold, design: .rounded))
-            .minimumScaleFactor(0.5)
+            .font(.system(size: 50, weight: .semibold, design: .rounded))
+            .minimumScaleFactor(0.4)
             .widgetLabel {
                 Gauge(value: g.value, in: g.range) { EmptyView() }
                     .tint(g.gradient)
@@ -132,7 +132,7 @@ struct MyFeelsLikeComplication: Widget {
             FeelsCornerView(snapshot: entry.snapshot)
                 .containerBackground(.clear, for: .widget)
         }
-        .configurationDisplayName("Feels Like (corner)")
+        .configurationDisplayName("Feels Like")
         .description("Current temperature with today's feels-like range.")
         .supportedFamilies([.accessoryCorner])
     }
@@ -145,7 +145,7 @@ struct MyFeelsLikeCircularComplication: Widget {
             FeelsCircularView(snapshot: entry.snapshot)
                 .containerBackground(.clear, for: .widget)
         }
-        .configurationDisplayName("Feels Like (circular)")
+        .configurationDisplayName("Feels Like")
         .description("Current temperature ringed by today's feels-like range.")
         .supportedFamilies([.accessoryCircular])
     }
