@@ -2,20 +2,17 @@
 //  MyFeelsLikeComplication.swift
 //  MyFeelsLikeComplication
 //
-//  Two complications, both driven by the App-Group ComplicationSnapshot the
-//  watch app writes after each fetch:
+//  Two complications (corner + circular), both driven by the App-Group
+//  ComplicationSnapshot the watch app writes after each fetch. The snapshot
+//  holds an hourly series of frames, so the timeline emits one entry per hour
+//  and the complication advances automatically every hour from already-
+//  downloaded forecast data — no new fetch needed between updates.
 //
-//    • Corner (.accessoryCorner): number = current temperature in the corner;
-//      a colour band along the inner arc = today's feels-like range with the
-//      current value marked. Number is horizontal so it reads correctly in any
-//      of the four corners (WidgetKit can't curve the outer corner element).
+//    • Corner (.accessoryCorner): number = temperature; colour band on the
+//      inner arc = the day's feels-like range with the hour's value marked.
+//    • Circular (.accessoryCircular): ring gauge, temperature large in centre.
 //
-//    • Circular (.accessoryCircular): a ring gauge with the current temperature
-//      large in the centre and the feels-like colour around it. Identical in
-//      all four inner slots.
-//
-//  The colour is the MyFeelsLike gradient once a model exists, otherwise a
-//  neutral grey (colouring a narrow temperature range would mislead).
+//  Colour is the MyFeelsLike gradient once a model exists, else neutral grey.
 //
 
 import WidgetKit
@@ -25,55 +22,78 @@ import SwiftUI
 
 struct FeelsEntry: TimelineEntry {
     let date: Date
-    let snapshot: ComplicationSnapshot?
+    let frame: ComplicationFrame?
+    let useFahrenheit: Bool
+    let hasModel: Bool
 }
 
 struct FeelsProvider: TimelineProvider {
     func placeholder(in context: Context) -> FeelsEntry {
-        FeelsEntry(date: .now, snapshot: nil)
+        FeelsEntry(date: .now, frame: nil, useFahrenheit: false, hasModel: false)
     }
+
     func getSnapshot(in context: Context, completion: @escaping (FeelsEntry) -> Void) {
-        completion(FeelsEntry(date: .now, snapshot: ComplicationSnapshot.load()))
+        let snap = ComplicationSnapshot.load()
+        completion(FeelsEntry(date: .now, frame: snap?.frames.first,
+                              useFahrenheit: snap?.useFahrenheit ?? false,
+                              hasModel: snap?.hasModel ?? false))
     }
+
     func getTimeline(in context: Context, completion: @escaping (Timeline<FeelsEntry>) -> Void) {
-        let entry = FeelsEntry(date: .now, snapshot: ComplicationSnapshot.load())
-        // The watch app reloads us on each fetch; this is just a fallback.
-        let next = Date().addingTimeInterval(30 * 60)
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        guard let snap = ComplicationSnapshot.load(), !snap.frames.isEmpty else {
+            // No data yet: show a placeholder and try again soon.
+            let entry = placeholder(in: context)
+            completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(30 * 60))))
+            return
+        }
+        let now = Date()
+        var entries = snap.frames.map { f in
+            FeelsEntry(date: f.date, frame: f,
+                       useFahrenheit: snap.useFahrenheit, hasModel: snap.hasModel)
+        }
+        // Make sure something is valid right now (first frame may be future).
+        if let first = entries.first, first.date > now {
+            entries.insert(FeelsEntry(date: now, frame: snap.frames.first,
+                                      useFahrenheit: snap.useFahrenheit,
+                                      hasModel: snap.hasModel), at: 0)
+        }
+        // .atEnd asks for a fresh timeline once the hourly entries run out.
+        completion(Timeline(entries: entries, policy: .atEnd))
     }
 }
 
 // MARK: - Shared gauge values
 
-/// Derives the gauge's number, value, range and colour from a snapshot.
-/// Shared by the corner and circular complications.
+/// Derives the gauge's number, value, range and colour from one frame.
 struct FeelsGauge {
-    let snapshot: ComplicationSnapshot?
+    let frame: ComplicationFrame?
+    let useFahrenheit: Bool
+    let hasModel: Bool
 
     var tempLabel: String {
-        guard let s = snapshot else { return "--°" }
-        return "\(s.currentTempDisplay)°"
+        guard let f = frame else { return "--°" }
+        let t = useFahrenheit ? f.currentTempC * 9.0 / 5.0 + 32.0 : f.currentTempC
+        return "\(Int(t.rounded()))°"
     }
 
     var range: ClosedRange<Double> {
-        guard let s = snapshot else { return 0...1 }
-        let lo: Double = s.hasModel ? s.feelsMin : s.todayTempMinC
-        let hi: Double = s.hasModel ? s.feelsMax : s.todayTempMaxC
-        return hi > lo ? lo...hi : lo...(lo + 1)   // guard zero-width
+        guard let f = frame else { return 0...1 }
+        let lo = hasModel ? f.feelsMin : f.todayTempMinC
+        let hi = hasModel ? f.feelsMax : f.todayTempMaxC
+        return hi > lo ? lo...hi : lo...(lo + 1)
     }
 
-    /// Current marker, clamped into the range.
     var value: Double {
-        guard let s = snapshot else { return 0.5 }
+        guard let f = frame else { return 0.5 }
         let r = range
-        let v = s.hasModel ? s.feelsCurrent : s.currentTempC
+        let v = hasModel ? f.feelsCurrent : f.currentTempC
         return min(max(v, r.lowerBound), r.upperBound)
     }
 
     var gradient: Gradient {
-        guard let s = snapshot else { return Gradient(colors: [.gray.opacity(0.5)]) }
-        if s.hasModel {
-            let lo = s.feelsMin, hi = max(s.feelsMax, s.feelsMin + 1)
+        guard let f = frame else { return Gradient(colors: [.gray.opacity(0.5)]) }
+        if hasModel {
+            let lo = f.feelsMin, hi = max(f.feelsMax, f.feelsMin + 1)
             let n = 5
             let colors = (0..<n).map { i -> Color in
                 let score = lo + (hi - lo) * Double(i) / Double(n - 1)
@@ -81,21 +101,23 @@ struct FeelsGauge {
             }
             return Gradient(colors: colors)
         } else {
-            // No model yet: neutral grey; the dot still shows current position.
             return Gradient(colors: [.gray.opacity(0.55), .gray.opacity(0.85)])
         }
     }
+
+    init(_ entry: FeelsEntry) {
+        self.frame = entry.frame
+        self.useFahrenheit = entry.useFahrenheit
+        self.hasModel = entry.hasModel
+    }
 }
 
-// MARK: - Corner view
+// MARK: - Views
 
 struct FeelsCornerView: View {
-    let snapshot: ComplicationSnapshot?
-
+    let entry: FeelsEntry
     var body: some View {
-        let g = FeelsGauge(snapshot: snapshot)
-        // Horizontal number (reads correctly in any corner) + colour band on
-        // the inner arc via widgetLabel.
+        let g = FeelsGauge(entry)
         Text(g.tempLabel)
             .font(.system(size: 50, weight: .semibold, design: .rounded))
             .minimumScaleFactor(0.4)
@@ -106,13 +128,10 @@ struct FeelsCornerView: View {
     }
 }
 
-// MARK: - Circular view
-
 struct FeelsCircularView: View {
-    let snapshot: ComplicationSnapshot?
-
+    let entry: FeelsEntry
     var body: some View {
-        let g = FeelsGauge(snapshot: snapshot)
+        let g = FeelsGauge(entry)
         Gauge(value: g.value, in: g.range) {
             EmptyView()
         } currentValueLabel: {
@@ -129,7 +148,7 @@ struct MyFeelsLikeComplication: Widget {
     let kind = "MyFeelsLikeComplication"
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: FeelsProvider()) { entry in
-            FeelsCornerView(snapshot: entry.snapshot)
+            FeelsCornerView(entry: entry)
                 .containerBackground(.clear, for: .widget)
         }
         .configurationDisplayName("Feels Like")
@@ -142,7 +161,7 @@ struct MyFeelsLikeCircularComplication: Widget {
     let kind = "MyFeelsLikeCircular"
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: FeelsProvider()) { entry in
-            FeelsCircularView(snapshot: entry.snapshot)
+            FeelsCircularView(entry: entry)
                 .containerBackground(.clear, for: .widget)
         }
         .configurationDisplayName("Feels Like")
@@ -154,5 +173,5 @@ struct MyFeelsLikeCircularComplication: Widget {
 #Preview(as: .accessoryCircular) {
     MyFeelsLikeCircularComplication()
 } timeline: {
-    FeelsEntry(date: .now, snapshot: nil)
+    FeelsEntry(date: .now, frame: nil, useFahrenheit: false, hasModel: false)
 }

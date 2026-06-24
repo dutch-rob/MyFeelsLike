@@ -2,37 +2,36 @@
 //  ComplicationSnapshot.swift
 //  MyFeelsLike  (shared: watch app + complication widget)
 //
-//  Compact state the watch app writes to the App Group after each weather
-//  fetch; the complication's timeline provider reads it. Holds everything the
-//  corner complication needs without the widget having to fetch or predict.
+//  The watch app writes this to the App Group after each fetch. It holds an
+//  hourly series of frames covering the next ~48 h, so the complication's
+//  timeline can advance every hour from already-downloaded forecast data
+//  (no new fetch needed between updates).
 //
 
 import Foundation
 
-struct ComplicationSnapshot: Codable {
-    var updated: Date
-    /// Current temperature in Celsius (formatted per `useFahrenheit`).
+/// One hour's worth of complication state.
+struct ComplicationFrame: Codable {
+    var date: Date
     var currentTempC: Double
-    var useFahrenheit: Bool
-    /// True when a personalised feels-like model exists; drives whether the
-    /// gauge shows the feels-like colour gradient or a plain temperature range.
-    var hasModel: Bool
-    /// Today's temperature range (used for the cold-start gauge).
-    var todayTempMinC: Double
-    var todayTempMaxC: Double
-    /// Today's feels-like score range + current (0…1000), valid when hasModel.
+    /// Feels-like score (0…1000) at this hour, and the range for this hour's day.
+    var feelsCurrent: Double
     var feelsMin: Double
     var feelsMax: Double
-    var feelsCurrent: Double
+    /// This hour's day temperature range (used for the cold-start gauge).
+    var todayTempMinC: Double
+    var todayTempMaxC: Double
+}
+
+struct ComplicationSnapshot: Codable {
+    var updated: Date
+    var useFahrenheit: Bool
+    var hasModel: Bool
+    /// Hourly frames, oldest → newest (first ≈ now).
+    var frames: [ComplicationFrame]
 
     static let appGroup = "group.robotex.MyFeelsLike"
     static let key = "complicationSnapshot"
-
-    /// Current temperature rounded for display, in the user's unit.
-    var currentTempDisplay: Int {
-        let t = useFahrenheit ? currentTempC * 9.0 / 5.0 + 32.0 : currentTempC
-        return Int(t.rounded())
-    }
 
     func save() {
         guard let store = UserDefaults(suiteName: Self.appGroup),
