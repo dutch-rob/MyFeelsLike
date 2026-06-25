@@ -21,8 +21,10 @@ enum WatchComplicationWriter {
     }
 
     /// "now" + forecast hours up to +48 h, each tagged with its day's range.
-    private static func build(current: ForecastPoint?, series10d: [ForecastPoint],
-                              hasModel: Bool, useFahrenheit: Bool) -> ComplicationSnapshot? {
+    /// `now` is injectable so tests are deterministic.
+    static func build(current: ForecastPoint?, series10d: [ForecastPoint],
+                      hasModel: Bool, useFahrenheit: Bool,
+                      now: Date = Date()) -> ComplicationSnapshot? {
         let cal = Calendar.current
         func dayKey(_ d: Date) -> Date { cal.startOfDay(for: d) }
 
@@ -40,8 +42,8 @@ enum WatchComplicationWriter {
 
         var hours: [ForecastPoint] = []
         if let c = current { hours.append(c) }
-        let cutoff = Date().addingTimeInterval(48 * 3600)
-        let afterNow = current?.date ?? Date()
+        let cutoff = now.addingTimeInterval(48 * 3600)
+        let afterNow = current?.date ?? now
         hours += series10d.filter { $0.date > afterNow && $0.date <= cutoff }
 
         let frames: [ComplicationFrame] = hours.map { p in

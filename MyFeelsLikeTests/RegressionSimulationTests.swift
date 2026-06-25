@@ -122,9 +122,9 @@ struct RegressionSimulationTests {
             if ratings.count < 5 {
                 reason = "fewer than 5 ratings"
             } else {
-                let ys     = ratings.map { $0.feelsLikeC }
+                let ys     = ratings.map { $0.feelsLikeScore }
                 let spread = (ys.max() ?? 0) - (ys.min() ?? 0)
-                reason     = String(format: "spread=%.2f°C (need ≥5.00°C)", spread)
+                reason     = String(format: "spread=%.1f (need ≥80 score-units)", spread)
             }
             return "\(tag)NO MODEL    \(reason)"
         }
@@ -189,17 +189,17 @@ struct RegressionSimulationTests {
                 precipitationMM:      precipMM,
                 windSpeedMPH:         windKPH / 1.60934,
                 windSpeedKPH:         windKPH,
+                windGustMPH:          0,
+                windGustKPH:          0,
                 cloudCover:           cloudCover,
                 cloudCoverLow:        0,
                 cloudCoverMedium:     0,
                 cloudCoverHigh:       0,
                 humidity:             humidPct / 100.0,
-                stationPressurePa:    101_325,
-                myFeelsLikeC:         nil,
-                myFeelsLikeF:         nil
+                stationPressurePa:    101_325
             )
 
-            out.append(Rating(feelsLikeC: feelsLike,
+            out.append(Rating(feelsLikeScore: feelsLike,
                               activity:   1,
                               dress:      0,
                               sun:        0,
