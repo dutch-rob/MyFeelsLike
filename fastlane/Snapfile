@@ -1,0 +1,21 @@
+# fastlane snapshot configuration — App Store screenshots
+# Run with:  fastlane screenshots
+
+# 6.9" iPhone + 13" iPad cover the two required App Store size classes.
+devices([
+  "iPhone 17 Pro Max",
+  "iPad Pro 13-inch (M5)"
+])
+
+languages(["en-US"])
+
+scheme("MyFeelsLike")
+
+# Only the screenshot UI test (skip the template UI tests).
+only_testing(["MyFeelsLikeUITests/ScreenshotUITests"])
+
+output_directory("./fastlane/screenshots")
+clear_previous_screenshots(true)
+
+# More reliable on a single Mac.
+concurrent_simulators(false)
