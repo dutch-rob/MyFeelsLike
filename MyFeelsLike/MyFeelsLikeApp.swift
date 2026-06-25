@@ -30,6 +30,16 @@ struct MyFeelsLikeApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: Rating.self)
+        .modelContainer(Self.modelContainer)
     }
+
+    /// Demo/screenshot runs use an in-memory store so seeded sample ratings
+    /// never touch the user's real data; normal launches use the persistent store.
+    static let modelContainer: ModelContainer = {
+        if DemoMode.isActive {
+            let config = ModelConfiguration(isStoredInMemoryOnly: true)
+            return try! ModelContainer(for: Rating.self, configurations: config)
+        }
+        return try! ModelContainer(for: Rating.self)
+    }()
 }

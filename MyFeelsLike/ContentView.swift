@@ -225,11 +225,13 @@ struct ContentView: View {
                         Label("Places", systemImage: "mappin.and.ellipse")
                             .padding(.vertical, 10)
                     }
+                    .accessibilityIdentifier("placesButton")
                     Button { showRate = true } label: {
                         Label("Rate Feels Like", systemImage: "thermometer.medium")
                             .padding(.vertical, 10)
                     }
                     .disabled(weather.series24h.isEmpty)
+                    .accessibilityIdentifier("rateButton")
                 }
 
                 HStack {
@@ -242,6 +244,7 @@ struct ContentView: View {
                             .padding(.horizontal)
                             .padding(.vertical, 10)
                     }
+                    .accessibilityIdentifier("settingsButton")
                 }
             }
             .background(.bar)
@@ -277,7 +280,7 @@ struct ContentView: View {
             // Only fire on a location update when there is no data yet.
             // Prevents this from racing with pull-to-refresh or the
             // foreground auto-refresh and invalidating their loadGeneration.
-            if selectedPlace == nil && weather.series24h.isEmpty {
+            if !DemoMode.isActive && selectedPlace == nil && weather.series24h.isEmpty {
                 Task { await weather.loadFor(location: loc) }
             }
         }
@@ -292,13 +295,18 @@ struct ContentView: View {
             }
         }
         .task {
-            await loadWeather()
-            places.refreshWeatherIfNeeded()
+            if DemoMode.isActive {
+                seedDemo()
+                weather.loadDemo()
+            } else {
+                await loadWeather()
+                places.refreshWeatherIfNeeded()
+            }
         }
         .onChange(of: ratings.count) { _, _ in refitRegression() }
         .onAppear {
             PhoneWatchSync.shared.start()
-            if !didWipeForScoreV1 {
+            if !DemoMode.isActive && !didWipeForScoreV1 {
                 for r in ratings { modelContext.delete(r) }
                 try? modelContext.save()
                 RegressionStateStore.save(nil)
@@ -331,6 +339,17 @@ struct ContentView: View {
         regressionState = new
         RegressionStateStore.save(new)
         pushToWatch()
+    }
+
+    /// Seed canned sample ratings + places for demo/screenshot runs (in-memory).
+    private func seedDemo() {
+        if ratings.isEmpty {
+            for r in DemoMode.ratings() { modelContext.insert(r) }
+            try? modelContext.save()
+        }
+        if places.places.isEmpty {
+            places.places = DemoMode.places()
+        }
     }
 
     /// Send the current model + display settings + saved places to the watch.

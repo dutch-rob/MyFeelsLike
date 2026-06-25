@@ -113,6 +113,20 @@ final class WeatherService: ObservableObject {
     // Weather → ForecastPoint mapping now lives in WeatherMapping.swift
     // (shared with the watch app).
 
+    /// Populate with canned data for App Store screenshots (no network/location).
+    func loadDemo() {
+        let (s24, s10, cur) = DemoMode.forecast()
+        series24h = s24
+        series10d = s10
+        current = cur
+        historic24h = []
+        historicUnavailable = false
+        placeDescription = DemoMode.placeName
+        isRefreshing = false
+        lastErrorMessage = nil
+        lastFetchedAt = Date()
+    }
+
     func loadFor(location: CLLocation, now: Date = .now, preserveData: Bool = false) async {
         // Only keep existing data visible when there is actually data to show.
         let shouldPreserve = preserveData && !series24h.isEmpty
