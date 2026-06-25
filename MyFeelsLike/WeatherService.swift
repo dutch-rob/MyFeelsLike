@@ -63,7 +63,10 @@ final class LocationProvider: NSObject, ObservableObject, CLLocationManagerDeleg
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        manager.requestWhenInUseAuthorization()
+        // Demo/screenshot runs must not prompt for location (it covers the shot).
+        if !DemoMode.isActive {
+            manager.requestWhenInUseAuthorization()
+        }
     }
 
     func requestLocation() { manager.requestLocation() }
