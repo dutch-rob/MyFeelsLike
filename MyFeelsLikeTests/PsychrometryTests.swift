@@ -19,8 +19,8 @@ struct PsychrometryTests {
     }
 
     @Test func satPressAtFreezingIsKnownConstant() {
-        // Saturation vapour pressure of water at 0 °C ≈ 611 Pa (textbook).
-        #expect(abs(PsychrometryCalculator.satPress(0) - 611) < 20)
+        // satPress is in kPa; saturation vapour pressure at 0 °C ≈ 0.611 kPa.
+        #expect(abs(PsychrometryCalculator.satPress(0) - 0.6113) < 0.02)
     }
 
     @Test func wetBulbNeverExceedsDryBulbAtRealisticPressures() {
