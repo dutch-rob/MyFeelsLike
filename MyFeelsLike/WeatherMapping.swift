@@ -22,8 +22,10 @@ enum WeatherMapping {
         location: CLLocation
     ) -> (stationPa: Double, wetF: Double, wetC: Double) {
         let altitudeM = location.altitude
+        // Reduce sea-level pressure to the station's altitude (barometric
+        // formula). Positive exponent → pressure falls with altitude.
         let stationPa = seaLevelPa * pow(
-            1 - 0.0065 * altitudeM / (tempC + 0.0065 * altitudeM + 273.15), -5.257)
+            1 - 0.0065 * altitudeM / (tempC + 0.0065 * altitudeM + 273.15), 5.257)
         let wetF = PsychrometryCalculator.psychF(pressurePa: stationPa,
                                                  dryBulbFahrenheit: tempF,
                                                  relativeHumidity: rh)
