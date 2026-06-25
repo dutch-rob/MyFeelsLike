@@ -42,10 +42,9 @@ struct RegressionSimulationTests {
         }
         print("\nFound \(csvURLs.count) CSV file(s)")
 
-        // ── Output folder: ~/Desktop/simulated_ratings_output/ ────────────────
-        let desktop   = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Desktop")
-        let outputDir = desktop.appendingPathComponent("simulated_ratings_output")
+        // ── Output folder: a temp dir (cross-platform; the path is printed) ───
+        let outputDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("simulated_ratings_output")
         try FileManager.default.createDirectory(at: outputDir,
                                                 withIntermediateDirectories: true)
 

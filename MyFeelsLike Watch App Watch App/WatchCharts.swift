@@ -97,11 +97,13 @@ func watchFeelsChartBackground(_ proxy: ChartProxy,
     let stops = watchFeelsBackgroundStops(series, domain: domain)
     if !stops.isEmpty {
         GeometryReader { geo in
-            let frame = geo[proxy.plotAreaFrame]
-            LinearGradient(gradient: Gradient(stops: stops),
-                           startPoint: .leading, endPoint: .trailing)
-                .frame(width: frame.width, height: frame.height)
-                .position(x: frame.midX, y: frame.midY)
+            if let plotFrame = proxy.plotFrame {           // plotFrame: watchOS 10+
+                let frame = geo[plotFrame]
+                LinearGradient(gradient: Gradient(stops: stops),
+                               startPoint: .leading, endPoint: .trailing)
+                    .frame(width: frame.width, height: frame.height)
+                    .position(x: frame.midX, y: frame.midY)
+            }
         }
     }
 }
