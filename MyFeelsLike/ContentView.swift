@@ -770,6 +770,54 @@ struct TenDayView: View {
         }
     }
 
+    /// Feels-like heatmap: one column per day, hour-of-day on the y-axis, cell
+    /// colour = personalised feels-like. Separated from the temperature curves
+    /// so day-to-day and time-of-day patterns are legible (the curves' x-axis
+    /// is time; this grid's y-axis is hour-of-day).
+    @ViewBuilder
+    private func feelsLikeHeatmap(height: CGFloat) -> some View {
+        let cal = Calendar.current
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Feels-like by time of day")
+                .font(.caption2).foregroundStyle(.secondary)
+                .padding(.leading, 36)
+            Chart(allPoints) { p in
+                let dayStart = cal.startOfDay(for: p.date)
+                let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+                let hour = cal.component(.hour, from: p.date)
+                RectangleMark(
+                    xStart: .value("Day", dayStart),
+                    xEnd:   .value("Day end", dayEnd),
+                    yStart: .value("Hour", hour),
+                    yEnd:   .value("Hour end", hour + 1)
+                )
+                .foregroundStyle(heatColor(p))
+            }
+            .chartYScale(domain: 0...24)
+            .chartYAxis {
+                AxisMarks(position: .leading, values: [0, 6, 12, 18]) { v in
+                    AxisValueLabel {
+                        Text(String(format: "%02d", v.as(Int.self) ?? 0)).font(.caption2)
+                    }
+                }
+            }
+            .chartXAxis {
+                AxisMarks(values: .stride(by: .day, count: 1)) { value in
+                    AxisValueLabel {
+                        Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "").font(.caption)
+                    }
+                }
+            }
+            .frame(height: height - 16)
+        }
+    }
+
+    private func heatColor(_ p: ForecastPoint) -> Color {
+        guard let s = p.myFeelsLikeScore else { return Color.gray.opacity(0.25) }
+        let alpha = max(0.25, min(1, p.myFeelsLikeOpacity))
+        return ColorScale.color(forScore: s).opacity(alpha)
+    }
+
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
@@ -781,8 +829,9 @@ struct TenDayView: View {
                 } else {
                     VStack(spacing: 8) {
                         ScenarioStrip(activeFeatures: activeFeatures)
-                        temperatureChart(height: h * 0.55)
-                        precipWindChart(height: h * 0.36)
+                        temperatureChart(height: h * 0.42)
+                        feelsLikeHeatmap(height: h * 0.30)
+                        precipWindChart(height: h * 0.32)
                         if let attribution {
                             WeatherAttributionLink(info: attribution)
                         }
@@ -810,22 +859,10 @@ struct TenDayView: View {
             Chart {
                 // Dashed past (historic → now), solid future (now → forecast);
                 // the two share the "now" point so the lines join.
+                // Personalised feels-like colour now lives in the heatmap panel,
+                // not as a background here.
                 tempLines(historicPlus, suffix: "h", dash: [4, 3])
                 tempLines(forecastPlus, suffix: "",  dash: nil)
-            }
-            .chartBackground { proxy in
-                let stops = myFeelsLikeBackgroundStops(allPoints, domain: dateDomain)
-                if !stops.isEmpty {
-                    GeometryReader { geo in
-                        let frame = geo[proxy.plotAreaFrame]
-                        LinearGradient(
-                            gradient: Gradient(stops: stops),
-                            startPoint: .leading, endPoint: .trailing
-                        )
-                        .frame(width: frame.width, height: frame.height)
-                        .position(x: frame.midX, y: frame.midY)
-                    }
-                }
             }
             .chartLegend(.hidden)
             .chartYScale(domain: .automatic(includesZero: false))
