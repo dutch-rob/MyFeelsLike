@@ -13,36 +13,29 @@ import XCTest
 
 final class ScreenshotUITests: XCTestCase {
 
+    let app = XCUIApplication()
+
     override func setUpWithError() throws {
         continueAfterFailure = false
+        app.launchArguments += ["-UITestDemo"]
+        setupSnapshot(app)
+        app.launch()
     }
 
     @MainActor
     func testCaptureScreenshots() throws {
-        let app = XCUIApplication()
-        app.launchArguments += ["-UITestDemo"]
-        setupSnapshot(app)
-        app.launch()
-
         // Wait until the canned data has loaded (the Rate button appears).
-        let rate = app.buttons["rateButton"]
-        XCTAssertTrue(rate.waitForExistence(timeout: 20), "Main screen never appeared")
+        XCTAssertTrue(app.buttons["rateButton"].waitForExistence(timeout: 30),
+                      "Main screen never appeared")
+        sleep(1)
 
-        // 1 — 24-hour graph (start screen)
+        // The main screens are a paged TabView (24h → 10-day → table).
         snapshot("01_today")
+        pageForward(); snapshot("02_tenday")
+        pageForward(); snapshot("03_table")
 
-        // 2 — 10-day graph
-        app.swipeLeft()
-        sleep(1)
-        snapshot("02_tenday")
-
-        // 3 — Table
-        app.swipeLeft()
-        sleep(1)
-        snapshot("03_table")
-
-        // 4 — Rate Feels Like sheet
-        rate.tap()
+        // Rate Feels Like sheet
+        app.buttons["rateButton"].tap()
         sleep(1)
         snapshot("04_rate")
         if app.buttons["Cancel"].waitForExistence(timeout: 3) {
@@ -50,9 +43,19 @@ final class ScreenshotUITests: XCTestCase {
             sleep(1)
         }
 
-        // 5 — Places
+        // Places
         app.buttons["placesButton"].tap()
         sleep(1)
         snapshot("05_places")
+    }
+
+    /// A deliberate long horizontal drag across the chart area to page the
+    /// TabView one screen forward. `swipeLeft()` was unreliable (it didn't
+    /// register as a page swipe on the large iPad screen).
+    private func pageForward() {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.45))
+        let end   = app.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.45))
+        start.press(forDuration: 0.1, thenDragTo: end)
+        sleep(2)
     }
 }

@@ -347,9 +347,8 @@ struct ContentView: View {
             for r in DemoMode.ratings() { modelContext.insert(r) }
             try? modelContext.save()
         }
-        if places.places.isEmpty {
-            places.places = DemoMode.places()
-        }
+        // Force demo places so the list matches the shown place name.
+        places.places = DemoMode.places()
     }
 
     /// Send the current model + display settings + saved places to the watch.
@@ -612,8 +611,8 @@ struct HereTodayView: View {
                     LineMark(x: .value("Time", p.date),
                              y: .value("Gust", useFahrenheit ? p.windGustMPH : p.windGustKPH),
                              series: .value("S", "G"))
-                        .foregroundStyle(.red.opacity(0.45)).interpolationMethod(.linear)
-                        .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+                        .foregroundStyle(.red.opacity(0.7)).interpolationMethod(.linear)
+                        .lineStyle(StrokeStyle(lineWidth: 2.4, dash: [4, 3]))
                         .symbol(Circle()).symbolSize(0)
                     LineMark(x: .value("Time", p.date),
                              y: .value("Wind", useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH),
@@ -759,8 +758,8 @@ struct TenDayView: View {
             LineMark(x: .value("Time", p.date),
                      y: .value("Gust", useFahrenheit ? p.windGustMPH : p.windGustKPH),
                      series: .value("S", "G" + suffix))
-                .foregroundStyle(.red.opacity(0.45)).interpolationMethod(.linear)
-                .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+                .foregroundStyle(.red.opacity(0.7)).interpolationMethod(.linear)
+                .lineStyle(StrokeStyle(lineWidth: 2.4, dash: [4, 3]))
                 .symbol(Circle()).symbolSize(0)
             LineMark(x: .value("Time", p.date),
                      y: .value("Wind", useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH),
