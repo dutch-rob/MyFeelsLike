@@ -90,6 +90,25 @@ enum FeelsLikeRegression {
         return max(0, min(raw, stabilityCap))
     }
 
+    /// Plain-language reasons a personalised model can't be fit yet (empty when
+    /// one can). Used by the UI to explain the absence of personalised colour.
+    static func readinessReasons(ratings: [Rating]) -> [String] {
+        let n = ratings.count
+        if n < 5 {
+            return ["You have \(n) of the 5 ratings needed to start a personalised model — keep rating how the weather feels."]
+        }
+        let ys = ratings.map { $0.feelsLikeScore }
+        let spread = (ys.max() ?? 0) - (ys.min() ?? 0)
+        if spread < 80 {
+            let pct = max(1, Int((spread / 10).rounded()))
+            return ["Your \(n) ratings cover only about \(pct)% of the feels-like colour range; at least ~8% is needed. Rate some conditions that feel clearly cooler or warmer than the ones you've rated so far."]
+        }
+        if fit(ratings: ratings) == nil {
+            return ["A model couldn't be fit from these \(n) ratings yet — rating across more varied weather should help."]
+        }
+        return []
+    }
+
     /// Refit the model from scratch.  Returns nil if the trigger condition
     /// isn't met yet.
     static func fit(ratings: [Rating]) -> RegressionState? {

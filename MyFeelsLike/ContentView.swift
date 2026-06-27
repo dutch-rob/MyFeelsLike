@@ -404,9 +404,16 @@ struct ContentView: View {
                 errorMessage: weather.lastErrorMessage,
                 attribution: weather.attribution,
                 onRefresh: { await loadWeather(preserveData: true) },
-                activeFeatures: activeFeatures
+                activeFeatures: activeFeatures,
+                modelReasons: modelReasons
             )
         }
+    }
+
+    /// Why no personalised model yet (empty once one exists). Shown on the
+    /// 10-day heatmap panel while it's grey.
+    private var modelReasons: [String] {
+        regressionState == nil ? FeelsLikeRegression.readinessReasons(ratings: ratings) : []
     }
 
     private var forecastTableTab: some View {
@@ -669,8 +676,16 @@ struct TenDayView: View {
     /// Features currently in the regression model. Used to decide which
     /// scenario adjusters to show. Empty = no model, no chips shown.
     var activeFeatures: Set<Feature> = []
+    /// Plain-language reasons there's no personalised model yet (empty when one
+    /// exists). Shown on the grey heatmap panel.
+    var modelReasons: [String] = []
 
     @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
+
+    /// Whether the forecast carries personalised feels-like scores.
+    private var hasModel: Bool {
+        allPoints.contains { $0.myFeelsLikeScore != nil }
+    }
 
     /// Historic + "now", used for the dashed past line.
     private var historicPlus: [ForecastPoint] {
@@ -776,39 +791,70 @@ struct TenDayView: View {
     /// is time; this grid's y-axis is hour-of-day).
     @ViewBuilder
     private func feelsLikeHeatmap(height: CGFloat) -> some View {
-        let cal = Calendar.current
         VStack(alignment: .leading, spacing: 2) {
             Text("Feels-like by time of day")
                 .font(.caption2).foregroundStyle(.secondary)
                 .padding(.leading, 36)
-            Chart(allPoints) { p in
-                let dayStart = cal.startOfDay(for: p.date)
-                let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
-                let hour = cal.component(.hour, from: p.date)
-                RectangleMark(
-                    xStart: .value("Day", dayStart),
-                    xEnd:   .value("Day end", dayEnd),
-                    yStart: .value("Hour", hour),
-                    yEnd:   .value("Hour end", hour + 1)
-                )
-                .foregroundStyle(heatColor(p))
+            if hasModel {
+                heatmapChart.frame(height: height - 16)
+            } else {
+                noModelPanel.frame(height: height - 16)
             }
-            .chartYScale(domain: 0...24)
-            .chartYAxis {
-                AxisMarks(position: .leading, values: [0, 6, 12, 18]) { v in
-                    AxisValueLabel {
-                        Text(String(format: "%02d", v.as(Int.self) ?? 0)).font(.caption2)
+        }
+    }
+
+    private var heatmapChart: some View {
+        let cal = Calendar.current
+        return Chart(allPoints) { p in
+            let dayStart = cal.startOfDay(for: p.date)
+            let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+            let hour = cal.component(.hour, from: p.date)
+            RectangleMark(
+                xStart: .value("Day", dayStart),
+                xEnd:   .value("Day end", dayEnd),
+                yStart: .value("Hour", hour),
+                yEnd:   .value("Hour end", hour + 1)
+            )
+            .foregroundStyle(heatColor(p))
+        }
+        .chartYScale(domain: 0...24)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0, 6, 12, 18]) { v in
+                AxisValueLabel {
+                    Text(String(format: "%02d", v.as(Int.self) ?? 0)).font(.caption2)
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day, count: 1)) { value in
+                AxisValueLabel {
+                    Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "").font(.caption)
+                }
+            }
+        }
+    }
+
+    /// Grey panel shown in place of the heatmap until a personalised model
+    /// exists, explaining why (with quantities where possible).
+    private var noModelPanel: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.18))
+            VStack(alignment: .leading, spacing: 6) {
+                Text("No personalised feels-like colour yet")
+                    .font(.caption.weight(.semibold))
+                if modelReasons.isEmpty {
+                    Text("Building your model…")
+                        .font(.caption2).foregroundStyle(.secondary)
+                } else {
+                    ForEach(modelReasons, id: \.self) { reason in
+                        Text("• " + reason)
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .day, count: 1)) { value in
-                    AxisValueLabel {
-                        Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "").font(.caption)
-                    }
-                }
-            }
-            .frame(height: height - 16)
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
