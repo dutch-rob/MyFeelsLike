@@ -50,6 +50,7 @@ struct CodableRoundTripTests {
     @Test func complicationSnapshotRoundTrips() throws {
         let frame = ComplicationFrame(
             date: Date(timeIntervalSince1970: 500),
+            
             currentTempC: 21, feelsCurrent: 500, feelsMin: 200, feelsMax: 800,
             todayTempMinC: 15, todayTempMaxC: 27)
         let snap = ComplicationSnapshot(
