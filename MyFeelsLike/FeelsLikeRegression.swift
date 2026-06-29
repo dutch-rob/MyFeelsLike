@@ -72,14 +72,18 @@ extension Rating: FeatureSource {
 
 enum FeelsLikeRegression {
 
-    /// Trigger threshold: at least 5 ratings AND ≥ 80-point spread (out of
-    /// 1000) of user-reported feels-like scores. 80 points is roughly the
-    /// score-scale equivalent of the previous 5 °C spread.
+    /// Minimum spread (out of 1000) of user-reported feels-like scores needed
+    /// before a model is fit. Relaxed from 80 → 50 (5% of the colour scale) so
+    /// a model triggers with fewer varied ratings.
+    static let minScoreSpread: Double = 50.0
+
+    /// Trigger threshold: at least 5 ratings AND ≥ `minScoreSpread` spread of
+    /// user-reported feels-like scores.
     static func canFit(ratings: [Rating]) -> Bool {
         guard ratings.count >= 5 else { return false }
         let ys = ratings.map { $0.feelsLikeScore }
         guard let lo = ys.min(), let hi = ys.max() else { return false }
-        return (hi - lo) >= 80.0
+        return (hi - lo) >= minScoreSpread
     }
 
     /// How many extra (beyond apparent) features the budget allows.
@@ -99,9 +103,10 @@ enum FeelsLikeRegression {
         }
         let ys = ratings.map { $0.feelsLikeScore }
         let spread = (ys.max() ?? 0) - (ys.min() ?? 0)
-        if spread < 80 {
+        if spread < minScoreSpread {
             let pct = max(1, Int((spread / 10).rounded()))
-            return ["Your \(n) ratings cover only about \(pct)% of the feels-like colour range; at least ~8% is needed. Rate some conditions that feel clearly cooler or warmer than the ones you've rated so far."]
+            let needPct = Int((minScoreSpread / 10).rounded())
+            return ["Your \(n) ratings cover only about \(pct)% of the feels-like colour range; at least ~\(needPct)% is needed. Rate some conditions that feel clearly cooler or warmer than the ones you've rated so far."]
         }
         if fit(ratings: ratings) == nil {
             return ["A model couldn't be fit from these \(n) ratings yet — rating across more varied weather should help."]

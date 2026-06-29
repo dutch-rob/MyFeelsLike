@@ -238,7 +238,7 @@ private struct ColorScoreColumn: View {
         GeometryReader { geo in
             let h = max(1, geo.size.height)
             let contentHeight = h * 3.0     // 2h scroll range → factor-2 stretch vs original
-            let coordSpace = "ColorScoreColumn"
+            let usableRange = contentHeight - h
             let indicatorOverhang: CGFloat = 12
 
             ZStack(alignment: .topLeading) {
@@ -254,28 +254,24 @@ private struct ColorScoreColumn: View {
                         }
                         .frame(height: contentHeight)
                         .background(
-                            GeometryReader { innerGeo in
-                                LinearGradient(
-                                    gradient: paddedScoreGradient(),
-                                    startPoint: .top, endPoint: .bottom
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .preference(
-                                    key: ScrollMinYKey.self,
-                                    value: innerGeo.frame(in: .named(coordSpace)).minY
-                                )
-                            }
+                            LinearGradient(
+                                gradient: paddedScoreGradient(),
+                                startPoint: .top, endPoint: .bottom
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         )
                     }
-                    .coordinateSpace(name: coordSpace)
                     .frame(height: h)
-                    .onPreferenceChange(ScrollMinYKey.self) { minY in
-                        // contentOffset goes 0…(contentHeight−h) as user scrolls down.
-                        // frac 0→1 maps hot→cold, matching the gradient direction.
-                        let contentOffset = -minY
-                        let usableRange = contentHeight - h
+                    // Read the actual scroll offset directly. The previous
+                    // GeometryReader/preference approach could get stuck reading
+                    // the top of the column, recording 1000 on every rating.
+                    .onScrollGeometryChange(for: CGFloat.self) { geoProxy in
+                        geoProxy.contentOffset.y
+                    } action: { _, offsetY in
+                        // contentOffset 0…usableRange as the user scrolls down;
+                        // frac 0→1 maps hot→cold (top = 1000, bottom = 0).
                         guard usableRange > 0 else { return }
-                        let frac = contentOffset / usableRange
+                        let frac = offsetY / usableRange
                         let s = (1.0 - max(0, min(1, frac))) * 1000.0
                         if abs(s - score) > 0.5 { score = s }
                     }
@@ -330,13 +326,6 @@ private struct ColorScoreColumn: View {
         stops.append(.init(color: .clear, location: 1.0 - padFrac + 2 * eps))
         stops.append(.init(color: .clear, location: 1.0))
         return Gradient(stops: stops)
-    }
-}
-
-private struct ScrollMinYKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 

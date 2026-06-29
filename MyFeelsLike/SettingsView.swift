@@ -16,6 +16,11 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var ratings: [Rating]
 
+    /// Currently-displayed forecast + place name, for the temporary developer
+    /// aid that exports the forecast table as CSV.
+    var forecast: [ForecastPoint] = []
+    var placeName: String = ""
+
     @State private var showResetConfirm = false
     @State private var showInfo = false
 
@@ -75,6 +80,17 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(importMessage.hasPrefix("Import failed") ? .red : .secondary)
                 }
+
+                Button {
+                    exportForecast()
+                } label: {
+                    Label("Export forecast table (CSV)…", systemImage: "tablecells")
+                }
+                .disabled(forecast.isEmpty)
+
+                Text("Temporary developer aid: exports the forecast currently shown for \(placeName.isEmpty ? "this place" : placeName) as a CSV file (hourly, 10 days) so it can be inspected or sent to the developer.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } header: {
                 Text("Data")
             }
@@ -166,6 +182,44 @@ struct SettingsView: View {
         let stamp = Self.fileStampFormatter.string(from: Date())
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("MyFeelsLike-export-\(stamp).json")
+        try data.write(to: url, options: .atomic)
+        return url
+    }
+
+    // MARK: - Forecast export (temporary developer aid)
+
+    private func exportForecast() {
+        exportError = nil
+        do {
+            let url = try writeForecastCSV(forecast: forecast, placeName: placeName)
+            exportURL = url
+            showExportShare = true
+        } catch {
+            exportError = "Forecast export failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func writeForecastCSV(forecast: [ForecastPoint], placeName: String) throws -> URL {
+        let iso = ISO8601DateFormatter()
+        func f(_ v: Double) -> String { String(format: "%.2f", v) }
+        var lines = ["date,tempC,apparentC,wetBulbC,dewPointC,humidity,windKPH,gustKPH,precipProb,precipMM,cloud,cloudLow,cloudMed,cloudHigh,uv,pressurePa,isDaylight,symbol"]
+        for p in forecast {
+            lines.append([
+                iso.string(from: p.date),
+                f(p.temperatureC), f(p.apparentTemperatureC), f(p.wetBulbC), f(p.dewPointC),
+                f(p.humidity), f(p.windSpeedKPH), f(p.windGustKPH),
+                f(p.precipProbability), f(p.precipitationMM),
+                f(p.cloudCover), f(p.cloudCoverLow), f(p.cloudCoverMedium), f(p.cloudCoverHigh),
+                f(p.uvIndex), f(p.stationPressurePa), p.isDaylight ? "1" : "0", p.symbolName
+            ].joined(separator: ","))
+        }
+        let data = Data(lines.joined(separator: "\n").utf8)
+
+        let stamp = Self.fileStampFormatter.string(from: Date())
+        let safePlace = placeName.isEmpty ? "place"
+            : placeName.components(separatedBy: CharacterSet.alphanumerics.inverted).joined(separator: "-")
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MyFeelsLike-forecast-\(safePlace)-\(stamp).csv")
         try data.write(to: url, options: .atomic)
         return url
     }

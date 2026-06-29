@@ -274,7 +274,10 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            NavigationStack { SettingsView() }
+            NavigationStack {
+                SettingsView(forecast: weather.series10d,
+                             placeName: weather.placeDescription)
+            }
         }
         .onReceive(locationProvider.$currentLocation.compactMap { $0 }) { loc in
             // Only fire on a location update when there is no data yet.
