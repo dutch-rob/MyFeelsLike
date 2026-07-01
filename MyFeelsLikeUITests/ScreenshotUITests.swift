@@ -15,6 +15,7 @@ final class ScreenshotUITests: XCTestCase {
 
     let app = XCUIApplication()
 
+    @MainActor
     override func setUpWithError() throws {
         continueAfterFailure = false
         app.launchArguments += ["-UITestDemo"]

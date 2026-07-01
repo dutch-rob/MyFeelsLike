@@ -16,47 +16,49 @@ enum DemoMode {
     }
 
     /// Display name shown as the current place.
-    static let placeName = "San Francisco"
+    static let placeName = "Adelaide"
 
     // MARK: - Forecast
 
-    // Per-day character over 10 days: a temperature offset (°C) and a rain
-    // "intensity" 0…1. A cool, wet spell sits mid-period (days 4–6).
-    // NOTE: this is hand-made stand-in data. To use a real forecast for
-    // screenshots, replace these arrays (and the formula below) with measured
-    // hourly values — the rest of the app reads only the produced ForecastPoints.
-    private static let dayTempOffset: [Double] = [0, 1.5, 0.5, -1, -4, -3, 0.5, 2, 1, 2.5]
-    private static let dayRain:       [Double] = [0.05, 0.10, 0.25, 0.60, 0.85, 0.55, 0.15, 0.05, 0.10, 0.05]
-
-    /// A 24-hour series, a 10-day (240 h) series, and the "now" point.
+    /// A 24-hour series, a 10-day (240 h) series, and the "now" point, all
+    /// sourced from a real measured forecast (see DemoForecastAdelaide) so
+    /// screenshots show genuine-looking weather rather than a synthetic curve.
     static func forecast(now: Date = Date()) -> (s24: [ForecastPoint],
                                                  s10: [ForecastPoint],
                                                  current: ForecastPoint) {
         let cal = Calendar.current
         let startHour = cal.dateInterval(of: .hour, for: now)?.start ?? now
 
+        let rows = DemoForecastAdelaide.rows
+        guard !rows.isEmpty else {
+            let fallback = point(date: now, kind: .current, tempC: 20, apparentC: 20,
+                                 wetBulbC: 15, dewC: 12, windKPH: 10, uv: 3, daylight: true)
+            return ([fallback], [fallback], fallback)
+        }
+
+        // Line up the CSV's diurnal cycle with the real current hour (UTC) so
+        // "now" doesn't land on a mismatched sun/moon icon or temperature swing.
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(identifier: "UTC")!
+        let nowUTCHour = utcCal.component(.hour, from: now)
+        let phase = rows.prefix(24).firstIndex { utcCal.component(.hour, from: $0.date) == nowUTCHour } ?? 0
+
         func makePoint(hoursFromStart h: Int, kind: ForecastPoint.Kind = .forecast) -> ForecastPoint {
             let date = startHour.addingTimeInterval(Double(h) * 3600)
-            let hod  = Double(cal.component(.hour, from: date))
-            let day  = min(9, h / 24)
-            let rain = dayRain[day]
-            // Irregular hour-to-hour wiggle so curves don't look like pure sines.
-            let noise = 0.7 * sin(Double(h) * 1.3) + 0.4 * sin(Double(h) * 0.45 + 1)
-            let tempC = 18 + dayTempOffset[day] + 6 * sin(2 * .pi * (hod - 9) / 24) + noise
-            let apparentC = tempC - 1.2 - 0.6 * sin(Double(h) * 0.8)
-            let dewC = tempC - 7 + 3 * rain                       // more humid when rainy
-            let wetC = (tempC + dewC) / 2 + 0.4
-            let windKPH = max(2, 9 + 7 * sin(2 * .pi * hod / 24 + 0.5) + 5 * rain + 2 * sin(Double(h) * 0.6))
-            let uv = max(0, 7 * sin(.pi * (hod - 6) / 12) * (1 - 0.6 * rain))
-            let cloud = min(1, 0.2 + rain + 0.12 * sin(Double(h) * 0.5))
-            // Daytime-weighted chance of rain; mm only on the wetter hours.
-            let precipProb = max(0, rain * sin(.pi * max(0, hod - 4) / 16))
-            let precipMM = precipProb > 0.4 ? (precipProb - 0.4) * 5 : 0
-            let daylight = hod >= 6 && hod <= 19
-            return point(date: date, kind: kind, tempC: tempC, apparentC: apparentC,
-                         wetBulbC: wetC, dewC: dewC, windKPH: windKPH, uv: uv,
-                         cloud: cloud, precipProb: precipProb, precipMM: precipMM,
-                         daylight: daylight)
+            let r = rows[(phase + h) % rows.count]
+            return ForecastPoint(
+                kind: kind, date: date, symbolName: r.symbol,
+                isDaylight: r.isDaylight, uvIndex: r.uv,
+                temperatureF: r.tempC * 9/5 + 32, temperatureC: r.tempC,
+                apparentTemperatureF: r.apparentC * 9/5 + 32, apparentTemperatureC: r.apparentC,
+                wetBulbF: r.wetBulbC * 9/5 + 32, wetBulbC: r.wetBulbC,
+                dewPointF: r.dewPointC * 9/5 + 32, dewPointC: r.dewPointC,
+                precipProbability: r.precipProb, precipitationMM: r.precipMM,
+                windSpeedMPH: r.windKPH / 1.60934, windSpeedKPH: r.windKPH,
+                windGustMPH: r.gustKPH / 1.60934, windGustKPH: r.gustKPH,
+                cloudCover: r.cloud, cloudCoverLow: r.cloudLow,
+                cloudCoverMedium: r.cloudMed, cloudCoverHigh: r.cloudHigh,
+                humidity: r.humidity, stationPressurePa: r.pressurePa)
         }
 
         let s24 = (0..<24).map { makePoint(hoursFromStart: $0) }
@@ -82,12 +84,12 @@ enum DemoMode {
     static func places() -> [Place] {
         // First entry matches `placeName` so the main screen agrees with the list.
         [
-            Place(name: "San Francisco", latitude: 37.7749, longitude: -122.4194, altitude: 16),
-            Place(name: "Denver",        latitude: 39.7392, longitude: -104.9903, altitude: 1609),
-            Place(name: "New York",      latitude: 40.7128, longitude:  -74.0060, altitude: 10),
-            Place(name: "London",        latitude: 51.5074, longitude:   -0.1278, altitude: 11),
-            Place(name: "Tokyo",         latitude: 35.6762, longitude:  139.6503, altitude: 40),
-            Place(name: "Sydney",        latitude: -33.8688, longitude: 151.2093, altitude: 58),
+            Place(name: "Adelaide",      latitude: -34.9285, longitude: 138.6007, altitude: 50),
+            Place(name: "Phoenix, AZ",   latitude:  33.4484, longitude: -112.0740, altitude: 331),
+            Place(name: "New York",      latitude:  40.7128, longitude:  -74.0060, altitude: 10),
+            Place(name: "London",        latitude:  51.5074, longitude:   -0.1278, altitude: 11),
+            Place(name: "Tokyo",         latitude:  35.6762, longitude:  139.6503, altitude: 40),
+            Place(name: "New Delhi",     latitude:  28.6139, longitude:   77.2090, altitude: 216),
         ]
     }
 
