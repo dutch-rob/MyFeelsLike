@@ -231,7 +231,7 @@ private struct HintID: Hashable {
 // of the content height carries the anchor colours evenly distributed,
 // padded with solid "hot" above and solid "cold" below.
 
-private struct ColorScoreColumn: View {
+struct ColorScoreColumn: View {
     @Binding var score: Double   // 0…1000
 
     var body: some View {
@@ -255,7 +255,7 @@ private struct ColorScoreColumn: View {
                         .frame(height: contentHeight)
                         .background(
                             LinearGradient(
-                                gradient: paddedScoreGradient(),
+                                gradient: Self.paddedScoreGradient(),
                                 startPoint: .top, endPoint: .bottom
                             )
                             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -268,11 +268,7 @@ private struct ColorScoreColumn: View {
                     .onScrollGeometryChange(for: CGFloat.self) { geoProxy in
                         geoProxy.contentOffset.y
                     } action: { _, offsetY in
-                        // contentOffset 0…usableRange as the user scrolls down;
-                        // frac 0→1 maps hot→cold (top = 1000, bottom = 0).
-                        guard usableRange > 0 else { return }
-                        let frac = offsetY / usableRange
-                        let s = (1.0 - max(0, min(1, frac))) * 1000.0
+                        guard let s = Self.score(forOffsetY: offsetY, usableRange: usableRange) else { return }
                         if abs(s - score) > 0.5 { score = s }
                     }
                     .onAppear {
@@ -293,6 +289,21 @@ private struct ColorScoreColumn: View {
         }
     }
 
+    /// Maps a scroll content offset to a score in 0…1000. `offsetY == 0`
+    /// (top, unscrolled) → 1000 (hot); `offsetY == usableRange` (fully
+    /// scrolled down) → 0 (cold); values outside that span are clamped.
+    /// Returns `nil` for a degenerate (zero or negative) usable range,
+    /// matching the guard in the live scroll-geometry callback above.
+    ///
+    /// This is the exact computation that regressed once before: a stuck
+    /// GeometryReader/preference read meant `offsetY` never changed, so
+    /// every rating silently recorded 1000 regardless of scroll position.
+    static func score(forOffsetY offsetY: CGFloat, usableRange: CGFloat) -> Double? {
+        guard usableRange > 0 else { return nil }
+        let frac = offsetY / usableRange
+        return (1.0 - max(0, min(1, frac))) * 1000.0
+    }
+
     /// Builds the gradient for a contentHeight = h * 3.0 column.
     ///
     /// padFrac = (h/2) / (3h) = 1/6: the top and bottom 1/6 of the content
@@ -302,7 +313,7 @@ private struct ColorScoreColumn: View {
     ///
     /// A power curve (exponent 0.6) is applied so that dark colour transitions
     /// (black → purple near the top) get proportionally more visible space.
-    private func paddedScoreGradient() -> Gradient {
+    static func paddedScoreGradient() -> Gradient {
         let reversed = Array(ColorScale.anchors.reversed())
         let cold = reversed.last!.color
         let padFrac: Double = 1.0 / 6.0          // (h/2) / (3h)
