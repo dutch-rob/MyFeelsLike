@@ -232,28 +232,13 @@ struct SettingsView: View {
         defer { if accessed { url.stopAccessingSecurityScopedResource() } }
         do {
             let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-
-            // Accept both the current FullExport envelope and the legacy flat array.
-            let exports: [RatingExport]
-            if let full = try? decoder.decode(FullExport.self, from: data) {
-                exports = full.ratings
-            } else {
-                exports = try decoder.decode([RatingExport].self, from: data)
-            }
-
             let existingIDs = Set(ratings.map { $0.id })
-            var added = 0
-            for e in exports {
-                guard !existingIDs.contains(e.id) else { continue }
-                modelContext.insert(e.makeRating())
-                added += 1
-            }
+            let result = try decodeRatingsForImport(data: data, existingIDs: existingIDs)
+            for r in result.toInsert { modelContext.insert(r) }
             try? modelContext.save()
-            let skipped = exports.count - added
+            let added = result.toInsert.count
             importMessage = "Added \(added) rating\(added == 1 ? "" : "s")" +
-                (skipped > 0 ? ", \(skipped) already present." : ".")
+                (result.skippedCount > 0 ? ", \(result.skippedCount) already present." : ".")
         } catch {
             importMessage = "Import failed: \(error.localizedDescription)"
         }
@@ -469,6 +454,47 @@ extension RatingExport {
             uvIndex: uvIndex, isDaylight: isDaylight
         )
     }
+}
+
+// MARK: - Import decoding (pure, testable without a live SwiftData context)
+
+/// Result of decoding an import file: ratings ready to insert, plus how many
+/// were skipped because a rating with that id already exists.
+struct ImportDecodeResult {
+    let toInsert: [Rating]
+    let skippedCount: Int
+}
+
+/// Decodes an exported ratings file and filters out ratings already present
+/// (matched by id, so re-importing the same file twice is a no-op the second
+/// time). Accepts both the current `FullExport` envelope and the legacy flat
+/// `[RatingExport]` array some older exports used.
+///
+/// Kept free of SwiftUI/SwiftData so the decode-and-dedup logic — including
+/// the legacy-format fallback, which silently swallows the primary decode
+/// error via `try?` — can be exercised directly in tests instead of only
+/// through a live import in the app.
+func decodeRatingsForImport(data: Data, existingIDs: Set<UUID>) throws -> ImportDecodeResult {
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .iso8601
+
+    let exports: [RatingExport]
+    if let full = try? decoder.decode(FullExport.self, from: data) {
+        exports = full.ratings
+    } else {
+        exports = try decoder.decode([RatingExport].self, from: data)
+    }
+
+    var toInsert: [Rating] = []
+    var skipped = 0
+    for e in exports {
+        if existingIDs.contains(e.id) {
+            skipped += 1
+        } else {
+            toInsert.append(e.makeRating())
+        }
+    }
+    return ImportDecodeResult(toInsert: toInsert, skippedCount: skipped)
 }
 
 // MARK: - UIKit document-picker bridge (import)

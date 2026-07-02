@@ -199,4 +199,56 @@ struct ExportImportTests {
                      + model.diagnostics.n_extrapolated
         #expect(bucketed == ratings.count)
     }
+
+    // MARK: - decodeRatingsForImport (decode + dedup, no SwiftData needed)
+
+    @Test func importDecodesCurrentFullExportEnvelope() throws {
+        let ratings = [mkDistinctRating(), mkDistinctRating()]
+        let full = FullExport(exportedAt: Date(timeIntervalSince1970: 2_000_000_000),
+                              model: nil,
+                              ratings: ratings.map { RatingExport(from: $0, state: nil) })
+        let data = try encode(full)
+
+        let result = try decodeRatingsForImport(data: data, existingIDs: [])
+        #expect(result.toInsert.count == 2)
+        #expect(result.skippedCount == 0)
+        #expect(Set(result.toInsert.map(\.id)) == Set(ratings.map(\.id)))
+    }
+
+    /// Some older exports were a bare `[RatingExport]` array with no
+    /// `FullExport` envelope. `decodeRatingsForImport` tries the envelope
+    /// first via `try?` and silently falls back — if that fallback ever
+    /// broke, old backups would stop importing with no obvious cause.
+    @Test func importDecodesLegacyFlatArrayFormat() throws {
+        let ratings = [mkDistinctRating(), mkDistinctRating()]
+        let exports = ratings.map { RatingExport(from: $0, state: nil) }
+        let data = try encode(exports)   // no FullExport wrapper
+
+        let result = try decodeRatingsForImport(data: data, existingIDs: [])
+        #expect(result.toInsert.count == 2)
+        #expect(Set(result.toInsert.map(\.id)) == Set(ratings.map(\.id)))
+    }
+
+    @Test func importSkipsRatingsAlreadyPresentByID() throws {
+        let keep = mkDistinctRating()
+        let alreadyPresent = mkDistinctRating()
+        let full = FullExport(
+            exportedAt: Date(timeIntervalSince1970: 2_000_000_000),
+            model: nil,
+            ratings: [keep, alreadyPresent].map { RatingExport(from: $0, state: nil) }
+        )
+        let data = try encode(full)
+
+        let result = try decodeRatingsForImport(data: data, existingIDs: [alreadyPresent.id])
+        #expect(result.toInsert.count == 1)
+        #expect(result.toInsert[0].id == keep.id)
+        #expect(result.skippedCount == 1)
+    }
+
+    @Test func importThrowsRatherThanSilentlySucceedingOnGarbageData() {
+        let garbage = Data("not json".utf8)
+        #expect(throws: (any Error).self) {
+            try decodeRatingsForImport(data: garbage, existingIDs: [])
+        }
+    }
 }
