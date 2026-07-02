@@ -41,7 +41,8 @@ func mkForecastPoint(
 
 /// Build a synthetic Rating. `feelsLike` is the 0…1000 target score.
 func mkRating(apparent: Double, humidity: Double = 0.5, wind: Double = 0,
+              activity: Int = 1, dress: Int = 0, sun: Int = 0,
               feelsLike: Double) -> Rating {
-    Rating(feelsLikeScore: feelsLike, activity: 1, dress: 0, sun: 0,
+    Rating(feelsLikeScore: feelsLike, activity: activity, dress: dress, sun: sun,
            snapshot: mkForecastPoint(apparentC: apparent, humidity: humidity, windKPH: wind))
 }

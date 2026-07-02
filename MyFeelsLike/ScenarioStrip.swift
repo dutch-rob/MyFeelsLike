@@ -29,7 +29,7 @@ struct ScenarioStrip: View {
 
     /// Minimum number of ratings at a categorical level for the model to
     /// be considered informative at that level.
-    private static let minObservations = 4
+    static let minObservations = 4
 
     @Query private var ratings: [Rating]
 
@@ -37,15 +37,21 @@ struct ScenarioStrip: View {
     @AppStorage("scenarioDress")    private var dress:    Int = 0
     @AppStorage("scenarioSun")      private var sun:      Int = 0
 
-    private func shows(_ feature: Feature) -> Bool {
+    private var anyChipVisible: Bool {
+        Self.shows(.activity, activeFeatures: activeFeatures)
+            || Self.shows(.dress, activeFeatures: activeFeatures)
+            || Self.shows(.sun, activeFeatures: activeFeatures)
+    }
+
+    /// Whether a chip should be displayed: true for every feature when
+    /// `activeFeatures` is nil (no model yet / caller doesn't know), else
+    /// only for features actually in the model.
+    static func shows(_ feature: Feature, activeFeatures: Set<Feature>?) -> Bool {
         activeFeatures.map { $0.contains(feature) } ?? true
     }
 
-    private var anyChipVisible: Bool {
-        shows(.activity) || shows(.dress) || shows(.sun)
-    }
-
-    private func count(feature: Feature, value: Int) -> Int {
+    /// How many ratings recorded exactly `value` for `feature`.
+    static func count(feature: Feature, value: Int, in ratings: [Rating]) -> Int {
         ratings.lazy.filter { r in
             switch feature {
             case .activity: return r.activity == value
@@ -56,11 +62,17 @@ struct ScenarioStrip: View {
         }.count
     }
 
+    /// Whether an option has too few ratings for the model to be
+    /// informative at that level (< `minObservations`).
+    static func isUnderSampled(count n: Int) -> Bool {
+        n < minObservations
+    }
+
     var body: some View {
         if anyChipVisible {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    if shows(.activity) {
+                    if Self.shows(.activity, activeFeatures: activeFeatures) {
                         pickerChip(title: "Activity",
                                    feature: .activity,
                                    selection: $activity,
@@ -68,7 +80,7 @@ struct ScenarioStrip: View {
                                     (0, "—"), (1, "Light"), (2, "Moderate"), (3, "Vigorous")
                                    ])
                     }
-                    if shows(.dress) {
+                    if Self.shows(.dress, activeFeatures: activeFeatures) {
                         pickerChip(title: "Dressed",
                                    feature: .dress,
                                    selection: $dress,
@@ -77,7 +89,7 @@ struct ScenarioStrip: View {
                                     (1, "warm"), (2, "very warm")
                                    ])
                     }
-                    if shows(.sun) {
+                    if Self.shows(.sun, activeFeatures: activeFeatures) {
                         pickerChip(title: "Sun",
                                    feature: .sun,
                                    selection: $sun,
@@ -101,18 +113,18 @@ struct ScenarioStrip: View {
     ) -> some View {
         Menu {
             ForEach(options, id: \.0) { (raw, label) in
-                let n = count(feature: feature, value: raw)
-                let disabled = n < Self.minObservations
+                let n = Self.count(feature: feature, value: raw, in: ratings)
+                let disabled = Self.isUnderSampled(count: n)
                 Button {
                     selection.wrappedValue = raw
                 } label: {
                     if selection.wrappedValue == raw {
                         // System will style a Label with checkmark image as a
                         // selected menu item on iOS.
-                        Label(displayLabel(label, n: n, disabled: disabled),
+                        Label(Self.displayLabel(label, n: n, disabled: disabled),
                               systemImage: "checkmark")
                     } else {
-                        Text(displayLabel(label, n: n, disabled: disabled))
+                        Text(Self.displayLabel(label, n: n, disabled: disabled))
                     }
                 }
                 .disabled(disabled)
@@ -120,7 +132,7 @@ struct ScenarioStrip: View {
         } label: {
             HStack(spacing: 6) {
                 Text(title).font(.caption2).foregroundStyle(.secondary)
-                Text(currentLabel(for: selection.wrappedValue, in: options))
+                Text(Self.currentLabel(for: selection.wrappedValue, in: options))
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.primary)
                 Image(systemName: "chevron.up.chevron.down")
@@ -135,11 +147,11 @@ struct ScenarioStrip: View {
 
     /// Suffix the option label with an "(n rated)" hint when the level is
     /// under-sampled, so the user can tell *why* it's disabled.
-    private func displayLabel(_ label: String, n: Int, disabled: Bool) -> String {
+    static func displayLabel(_ label: String, n: Int, disabled: Bool) -> String {
         disabled ? "\(label)  ·  \(n) rated" : label
     }
 
-    private func currentLabel(for value: Int, in options: [(Int, String)]) -> String {
+    static func currentLabel(for value: Int, in options: [(Int, String)]) -> String {
         options.first(where: { $0.0 == value })?.1 ?? "?"
     }
 }
