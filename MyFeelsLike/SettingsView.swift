@@ -247,24 +247,7 @@ struct SettingsView: View {
             var added = 0
             for e in exports {
                 guard !existingIDs.contains(e.id) else { continue }
-                let r = Rating(
-                    id: e.id, timestamp: e.timestamp, placeID: e.placeID,
-                    feelsLikeScore: e.feelsLikeScore, activity: e.activity,
-                    dress: e.dress, sun: e.sun,
-                    temperatureC: e.temperatureC,
-                    apparentTemperatureC: e.apparentTemperatureC,
-                    wetBulbC: e.wetBulbC, dewPointC: e.dewPointC,
-                    humidity: e.humidity,
-                    stationPressurePa: e.stationPressurePa,
-                    windSpeedKPH: e.windSpeedKPH,
-                    precipProbability: e.precipProbability,
-                    precipitationMM: e.precipitationMM,
-                    cloudCover: e.cloudCover, cloudCoverLow: e.cloudCoverLow,
-                    cloudCoverMedium: e.cloudCoverMedium,
-                    cloudCoverHigh: e.cloudCoverHigh,
-                    uvIndex: e.uvIndex, isDaylight: e.isDaylight
-                )
-                modelContext.insert(r)
+                modelContext.insert(e.makeRating())
                 added += 1
             }
             try? modelContext.save()
@@ -287,7 +270,7 @@ struct SettingsView: View {
 // MARK: - Top-level export envelope
 
 /// Root object written to the JSON file.
-private struct FullExport: Codable {
+struct FullExport: Codable {
     let exportedAt: Date
     /// Current regression model — null when fewer than 5 ratings exist.
     let model: ModelExport?
@@ -296,7 +279,7 @@ private struct FullExport: Codable {
 
 // MARK: - Model export
 
-private struct ModelExport: Codable {
+struct ModelExport: Codable {
     let fittedAt: Date
     let ratingCount: Int
     let rSquared: Double
@@ -390,7 +373,7 @@ private struct ModelExport: Codable {
 
 // MARK: - Per-rating export
 
-private struct RatingExport: Codable {
+struct RatingExport: Codable {
     // Identity
     let id: UUID
     let timestamp: Date
@@ -462,6 +445,29 @@ private struct RatingExport: Codable {
             leverage_h           = nil
             predictionOpacity    = nil
         }
+    }
+}
+
+extension RatingExport {
+    /// Reconstructs the original Rating, preserving id/timestamp so
+    /// re-imports (matched by id) are idempotent. This is the exact
+    /// field-by-field inverse of `init(from:state:)` above, kept as one
+    /// function rather than duplicated inline at the import call site —
+    /// otherwise the two field lists could silently drift apart (e.g. a
+    /// field added to `Rating` but missed here) and a restored backup
+    /// would quietly lose data with no error and nothing visibly wrong.
+    func makeRating() -> Rating {
+        Rating(
+            id: id, timestamp: timestamp, placeID: placeID,
+            feelsLikeScore: feelsLikeScore, activity: activity, dress: dress, sun: sun,
+            temperatureC: temperatureC, apparentTemperatureC: apparentTemperatureC,
+            wetBulbC: wetBulbC, dewPointC: dewPointC, humidity: humidity,
+            stationPressurePa: stationPressurePa, windSpeedKPH: windSpeedKPH,
+            precipProbability: precipProbability, precipitationMM: precipitationMM,
+            cloudCover: cloudCover, cloudCoverLow: cloudCoverLow,
+            cloudCoverMedium: cloudCoverMedium, cloudCoverHigh: cloudCoverHigh,
+            uvIndex: uvIndex, isDaylight: isDaylight
+        )
     }
 }
 
