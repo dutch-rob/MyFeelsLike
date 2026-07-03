@@ -30,10 +30,15 @@ final class ScreenshotUITests: XCTestCase {
                       "Main screen never appeared")
         sleep(1)
 
-        // The main screens are a paged TabView (24h → 10-day → table).
-        snapshot("01_today")
-        pageForward(); snapshot("02_tenday")
-        pageForward(); snapshot("03_table")
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // iPad shows all three screens on one dashboard — no paging.
+            snapshot("01_today")
+        } else {
+            // The main screens are a paged TabView (24h → 10-day → table).
+            snapshot("01_today")
+            pageForward(); snapshot("02_tenday")
+            pageForward(); snapshot("03_table")
+        }
 
         // Rate Feels Like sheet
         app.buttons["rateButton"].tap()

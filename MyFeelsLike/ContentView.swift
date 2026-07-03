@@ -146,6 +146,15 @@ struct ContentView: View {
     /// fresh score-based model can be built from new data.
     @AppStorage("didWipeForScoreV1") private var didWipeForScoreV1: Bool = false
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    /// Full-size iPad (not a narrow split view): show all three forecast
+    /// screens on one dashboard instead of paging between them.
+    private var useDashboardLayout: Bool {
+        horizontalSizeClass == .regular && verticalSizeClass == .regular
+    }
+
     private var scenario: Scenario {
         Scenario(activity: scenarioActivity, dress: scenarioDress, sun: scenarioSun)
     }
@@ -194,27 +203,46 @@ struct ContentView: View {
 
             Divider()
 
-            // 5-tab layout for circular (wrap-around) swiping:
-            //   0 = table phantom  →  real tab is 3
-            //   1 = 24h (real, default)
-            //   2 = 10d (real)
-            //   3 = table (real)
-            //   4 = 24h phantom  →  real tab is 1
-            // Phantoms show identical content; onChange teleports to the real
-            // tab instantly (no animation) so the user never notices the jump.
-            TabView(selection: $selectedTab) {
-                forecastTableTab.tag(0)
-                hereTodayTab.tag(1)
-                tenDayTab.tag(2)
-                forecastTableTab.tag(3)
-                hereTodayTab.tag(4)
-            }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-            .onChange(of: selectedTab) { _, tab in
-                guard tab == 0 || tab == 4 else { return }
-                var t = Transaction()
-                t.disablesAnimations = true
-                withTransaction(t) { selectedTab = tab == 0 ? 3 : 1 }
+            if useDashboardLayout {
+                // iPad: all three screens on one dashboard — 24h and 10-day
+                // side by side on top, table below (scrolling in its panel).
+                // A single scenario strip up here replaces the per-screen ones.
+                ScenarioStrip(activeFeatures: activeFeatures)
+                GeometryReader { geo in
+                    VStack(spacing: 0) {
+                        HStack(spacing: 0) {
+                            hereTodayTab(chipFeatures: [])
+                            Divider()
+                            tenDayTab(chipFeatures: [])
+                        }
+                        .frame(height: geo.size.height * 0.55)
+                        Divider()
+                        forecastTableTab(chipFeatures: [])
+                    }
+                }
+            } else {
+                // 5-tab layout for circular (wrap-around) swiping:
+                //   0 = table phantom  →  real tab is 3
+                //   1 = 24h (real, default)
+                //   2 = 10d (real)
+                //   3 = table (real)
+                //   4 = 24h phantom  →  real tab is 1
+                // Phantoms show identical content; onChange teleports to the real
+                // tab instantly (no animation) so the user never notices the jump.
+                TabView(selection: $selectedTab) {
+                    forecastTableTab(chipFeatures: activeFeatures).tag(0)
+                    hereTodayTab(chipFeatures: activeFeatures).tag(1)
+                    tenDayTab(chipFeatures: activeFeatures).tag(2)
+                    forecastTableTab(chipFeatures: activeFeatures).tag(3)
+                    hereTodayTab(chipFeatures: activeFeatures).tag(4)
+                }
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                .onChange(of: selectedTab) { _, tab in
+                    guard tab == 0 || tab == 4 else { return }
+                    var t = Transaction()
+                    t.disablesAnimations = true
+                    withTransaction(t) { selectedTab = tab == 0 ? 3 : 1 }
+                }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -377,9 +405,11 @@ struct ContentView: View {
         }
     }
 
-    // MARK: Tab content (used for both real and phantom tabs)
+    // MARK: Tab content (used for both real and phantom tabs, and the iPad
+    // dashboard panes). `chipFeatures` controls the embedded scenario strip:
+    // the dashboard passes [] because it shows a single strip of its own.
 
-    private var hereTodayTab: some View {
+    private func hereTodayTab(chipFeatures: Set<Feature>) -> some View {
         VStack(spacing: 0) {
             tabLabel("24 hour forecast")
             HereTodayView(
@@ -390,12 +420,12 @@ struct ContentView: View {
                 errorMessage: weather.lastErrorMessage,
                 attribution: weather.attribution,
                 onRefresh: { await loadWeather(preserveData: true) },
-                activeFeatures: activeFeatures
+                activeFeatures: chipFeatures
             )
         }
     }
 
-    private var tenDayTab: some View {
+    private func tenDayTab(chipFeatures: Set<Feature>) -> some View {
         VStack(spacing: 0) {
             tabLabel("10 day forecast")
             TenDayView(
@@ -407,7 +437,7 @@ struct ContentView: View {
                 errorMessage: weather.lastErrorMessage,
                 attribution: weather.attribution,
                 onRefresh: { await loadWeather(preserveData: true) },
-                activeFeatures: activeFeatures,
+                activeFeatures: chipFeatures,
                 modelReasons: modelReasons
             )
         }
@@ -419,7 +449,7 @@ struct ContentView: View {
         regressionState == nil ? FeelsLikeRegression.readinessReasons(ratings: ratings) : []
     }
 
-    private var forecastTableTab: some View {
+    private func forecastTableTab(chipFeatures: Set<Feature>) -> some View {
         VStack(spacing: 0) {
             tabLabel("table")
             ForecastTableView(
@@ -427,7 +457,7 @@ struct ContentView: View {
                 nowTick: nowTick,
                 onRefresh: { await loadWeather(preserveData: true) },
                 personalise: { self.personalised($0) },
-                activeFeatures: activeFeatures
+                activeFeatures: chipFeatures
             )
         }
     }
@@ -450,6 +480,7 @@ struct HereTodayView: View {
     var activeFeatures: Set<Feature> = []
 
     @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// Domain begins ~1 h before "now" so the forecast curves sit slightly to
     /// the right, leaving a gap on the left for the prominent current dots.
@@ -485,6 +516,20 @@ struct HereTodayView: View {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
                         .frame(minHeight: h)
+                } else if verticalSizeClass == .compact {
+                    // iPhone landscape: both panels side by side, full height.
+                    VStack(spacing: 8) {
+                        ScenarioStrip(activeFeatures: activeFeatures)
+                        HStack(spacing: 12) {
+                            temperatureChart(height: h * 0.9)
+                            precipWindChart(height: h * 0.9)
+                        }
+                        if let attribution {
+                            WeatherAttributionLink(info: attribution)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .frame(minHeight: h)
                 } else {
                     VStack(spacing: 8) {
                         ScenarioStrip(activeFeatures: activeFeatures)
@@ -684,6 +729,7 @@ struct TenDayView: View {
     var modelReasons: [String] = []
 
     @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// Whether the forecast carries personalised feels-like scores.
     private var hasModel: Bool {
@@ -875,6 +921,26 @@ struct TenDayView: View {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
                         .frame(minHeight: h)
+                } else if verticalSizeClass == .compact {
+                    // iPhone landscape: the dense temperature curves get the
+                    // left half at full height; heatmap and precip/wind stack
+                    // in the right half (both read fine at half height).
+                    VStack(spacing: 8) {
+                        ScenarioStrip(activeFeatures: activeFeatures)
+                        HStack(spacing: 12) {
+                            temperatureChart(height: h * 0.9)
+                                .frame(width: geo.size.width * 0.52)
+                            VStack(spacing: 8) {
+                                feelsLikeHeatmap(height: h * 0.45)
+                                precipWindChart(height: h * 0.45)
+                            }
+                        }
+                        if let attribution {
+                            WeatherAttributionLink(info: attribution)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .frame(minHeight: h)
                 } else {
                     VStack(spacing: 8) {
                         ScenarioStrip(activeFeatures: activeFeatures)
