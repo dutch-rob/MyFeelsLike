@@ -2,7 +2,10 @@
 //  WatchTenDayView.swift
 //  MyFeelsLike Watch App
 //
-//  10-day temperature overview with the MyFeelsLike colour background.
+//  10-day overview. Mirrors the phone's portrait layout: the temperature
+//  curves and the personalised feels-like colour are shown separately —
+//  the curves stay uncoloured, and the feels-like score is a heatmap panel
+//  (one column per day, hour-of-day up the y-axis) below them.
 //
 
 import SwiftUI
@@ -13,10 +16,9 @@ struct WatchTenDayView: View {
     @State private var showPlaces = false
     private var useF: Bool { WatchSyncReceiver.shared.payload?.useFahrenheit ?? false }
 
-    private var domain: ClosedRange<Date>? {
-        guard let f = model.series10d.first?.date,
-              let l = model.series10d.last?.date else { return nil }
-        return f...l
+    /// Whether the forecast carries personalised feels-like scores yet.
+    private var hasModel: Bool {
+        model.series10d.contains { $0.myFeelsLikeScore != nil }
     }
 
     /// Tight y-range covering the four temperature curves (+ small padding).
@@ -40,6 +42,8 @@ struct WatchTenDayView: View {
                     } else {
                         label("10-day")
                         tempChart.frame(height: 140)
+                        label("Feels-like by time of day")
+                        heatmapPanel.frame(height: 120)
                         label("Wind / precip")
                         windChart.frame(height: 150)
                     }
@@ -69,6 +73,8 @@ struct WatchTenDayView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    // MARK: Temperature curves (no feels-like background — see heatmap below)
+
     private var tempChart: some View {
         Chart(model.series10d) { p in
             LineMark(x: .value("t", p.date),
@@ -88,13 +94,67 @@ struct WatchTenDayView: View {
                      series: .value("s", "app"))
                 .foregroundStyle(.purple)
         }
-        .chartBackground { proxy in
-            watchFeelsChartBackground(proxy, series: model.series10d, domain: domain)
-        }
         .chartYScale(domain: tempYDomain)
         .chartYAxis { tempYAxis(useF: useF) }
         .chartXAxis { dailyXAxis() }
     }
+
+    // MARK: Feels-like heatmap (one column per day, hour-of-day on the y-axis)
+
+    @ViewBuilder private var heatmapPanel: some View {
+        if hasModel {
+            heatmapChart
+        } else {
+            noModelPanel
+        }
+    }
+
+    private var heatmapChart: some View {
+        let cal = Calendar.current
+        return Chart(model.series10d) { p in
+            let dayStart = cal.startOfDay(for: p.date)
+            let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+            let hour = cal.component(.hour, from: p.date)
+            RectangleMark(
+                xStart: .value("day", dayStart),
+                xEnd:   .value("day end", dayEnd),
+                yStart: .value("hour", hour),
+                yEnd:   .value("hour end", hour + 1)
+            )
+            .foregroundStyle(heatColor(p))
+        }
+        .chartYScale(domain: 0...24)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0, 6, 12, 18]) { v in
+                AxisValueLabel {
+                    Text(String(format: "%02d", v.as(Int.self) ?? 0))
+                        .font(.system(size: 13))
+                }
+            }
+        }
+        .chartXAxis { dailyXAxis() }
+    }
+
+    /// Compact grey panel shown until a personalised model exists.
+    private var noModelPanel: some View {
+        RoundedRectangle(cornerRadius: 6)
+            .fill(Color.gray.opacity(0.18))
+            .overlay(
+                Text("No personalised colour yet — rate more on your phone.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(8)
+            )
+    }
+
+    private func heatColor(_ p: ForecastPoint) -> Color {
+        guard let s = p.myFeelsLikeScore else { return Color.gray.opacity(0.25) }
+        let alpha = max(0.25, min(1, p.myFeelsLikeOpacity))
+        return ColorScale.color(forScore: s).opacity(alpha)
+    }
+
+    // MARK: Wind / precip
 
     private var windChart: some View {
         Chart(model.series10d) { p in
