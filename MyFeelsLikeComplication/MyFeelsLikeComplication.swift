@@ -105,6 +105,19 @@ struct FeelsGauge {
         }
     }
 
+    /// Fill for the centre disc of the circular complication: the current
+    /// MyFeelsLike colour. Nil until a model exists (leave the centre empty).
+    var centerColor: Color? {
+        guard let f = frame, hasModel else { return nil }
+        return ColorScale.color(forScore: f.feelsCurrent)
+    }
+
+    /// Black or white, whichever reads better on `centerColor`.
+    var centerTextColor: Color? {
+        guard let f = frame, hasModel else { return nil }
+        return ColorScale.contrastingText(forScore: f.feelsCurrent)
+    }
+
     init(_ entry: FeelsEntry) {
         self.frame = entry.frame
         self.useFahrenheit = entry.useFahrenheit
@@ -136,9 +149,18 @@ struct FeelsCircularView: View {
             EmptyView()
         } currentValueLabel: {
             Text(g.tempLabel)
+                .foregroundStyle(g.centerTextColor ?? .primary)
         }
         .gaugeStyle(.accessoryCircular)
         .tint(g.gradient)
+        // Fill the centre disc with the current MyFeelsLike colour, inset so
+        // the range ring stays visible around it. The temperature sits on top
+        // in a contrasting colour.
+        .background {
+            if let c = g.centerColor {
+                Circle().fill(c).padding(5)
+            }
+        }
     }
 }
 
@@ -173,5 +195,11 @@ struct MyFeelsLikeCircularComplication: Widget {
 #Preview(as: .accessoryCircular) {
     MyFeelsLikeCircularComplication()
 } timeline: {
+    FeelsEntry(
+        date: .now,
+        frame: ComplicationFrame(date: .now, currentTempC: 24, feelsCurrent: 640,
+                                 feelsMin: 300, feelsMax: 820,
+                                 todayTempMinC: 15, todayTempMaxC: 30),
+        useFahrenheit: false, hasModel: true)
     FeelsEntry(date: .now, frame: nil, useFahrenheit: false, hasModel: false)
 }
