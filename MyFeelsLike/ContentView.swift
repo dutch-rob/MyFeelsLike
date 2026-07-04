@@ -445,7 +445,7 @@ struct ContentView: View {
             tabLabel("10 day forecast")
             TenDayView(
                 series: weather.isRefreshing ? [] : personalised(weather.series10d),
-                historic: weather.isRefreshing ? [] : personalised(weather.historic24h),
+                historic: weather.isRefreshing ? [] : personalised(weather.historic),
                 current: weather.isRefreshing ? nil : personalised(weather.current),
                 progress: weather.loadProgress,
                 nowTick: nowTick,

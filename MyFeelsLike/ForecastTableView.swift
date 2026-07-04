@@ -34,7 +34,7 @@ struct ForecastTableView: View {
 
     /// Historic (past 24 h) → "now" → forecast, all personalised, in time order.
     private var allRows: [ForecastPoint] {
-        var pts = personalise(weatherService.historic24h)
+        var pts = personalise(weatherService.historic)
         if let c = weatherService.current { pts += personalise([c]) }
         pts += personalise(weatherService.series10d)
         return pts

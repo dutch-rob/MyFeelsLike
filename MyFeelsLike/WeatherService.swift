@@ -93,8 +93,10 @@ private let sharedWeatherService = WeatherKit.WeatherService()
 final class WeatherService: ObservableObject {
     @Published var series24h: [ForecastPoint] = []
     @Published var series10d: [ForecastPoint] = []
-    /// Observed/analysed past ~24 h, oldest → newest (kind .historic).
-    @Published var historic24h: [ForecastPoint] = []
+    /// Observed/analysed past, oldest → newest (kind .historic). Runs from
+    /// 00:00 of the previous day up to "now", so the 10-day heatmap's first
+    /// daily column is complete.
+    @Published var historic: [ForecastPoint] = []
     /// Apple's current-conditions nowcast (kind .current); nil until loaded.
     @Published var current: ForecastPoint? = nil
     /// True when the historic query returned nothing for this location/time.
@@ -122,7 +124,7 @@ final class WeatherService: ObservableObject {
         series24h = s24
         series10d = s10
         current = cur
-        historic24h = []
+        historic = []
         historicUnavailable = false
         placeDescription = DemoMode.placeName
         isRefreshing = false
@@ -145,7 +147,7 @@ final class WeatherService: ObservableObject {
             placeDescription = ""
             series24h        = []
             series10d        = []
-            historic24h      = []
+            historic      = []
             current          = nil
             historicUnavailable = false
         }
@@ -169,9 +171,13 @@ final class WeatherService: ObservableObject {
             isRefreshing  = false          // new data is in; hide spinner
             lastFetchedAt = Date()
 
-            // Observed past ~24 h — a separate query that must not break the
-            // forecast if it fails. Empty result → note shown in the table only.
-            let histStart = now.addingTimeInterval(-24 * 3600)
+            // Observed past — a separate query that must not break the forecast
+            // if it fails. Empty result → note shown in the table only. Starts
+            // at 00:00 of the previous day so the 10-day heatmap's first daily
+            // column is complete (straight left edge).
+            let cal = Calendar.current
+            let histStart = cal.date(byAdding: .day, value: -1, to: cal.startOfDay(for: now))
+                ?? now.addingTimeInterval(-48 * 3600)
             let histWeather = try? await withTimeout(10) {
                 try await sharedWeatherService.weather(
                     for: location,
@@ -182,10 +188,10 @@ final class WeatherService: ObservableObject {
                 let pts = WeatherMapping.mapPoints(from: histWeather.forecast,
                                     start: histStart, end: now,
                                     location: location, kind: .historic)
-                historic24h = pts
+                historic = pts
                 historicUnavailable = pts.isEmpty
             } else {
-                historic24h = []
+                historic = []
                 historicUnavailable = true
             }
 
