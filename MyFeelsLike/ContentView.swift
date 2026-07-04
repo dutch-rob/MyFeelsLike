@@ -865,7 +865,7 @@ struct TenDayView: View {
     @ViewBuilder
     private func feelsLikeHeatmap(height: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Feels-like by time of day")
+            Text("MyFeelsLike by time of day")
                 .font(.caption2).foregroundStyle(.secondary)
                 .padding(.leading, 36)
             if hasModel {

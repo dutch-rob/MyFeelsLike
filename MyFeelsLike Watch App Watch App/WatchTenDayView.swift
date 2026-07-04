@@ -42,7 +42,7 @@ struct WatchTenDayView: View {
                     } else {
                         label("10-day")
                         tempChart.frame(height: 140)
-                        label("Feels-like by time of day")
+                        label("MyFeelsLike by time of day")
                         heatmapPanel.frame(height: 120)
                         label("Wind / precip")
                         windChart.frame(height: 150)
