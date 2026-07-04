@@ -12,6 +12,17 @@ struct SettingsView: View {
     @AppStorage("useFahrenheit") private var useFahrenheit: Bool = false
     @AppStorage("shareDataWithDevs") private var shareData: Bool = false
 
+    // #10: which graph series to show. All default on.
+    @AppStorage(GraphKey.temp)     private var graphTemp     = true
+    @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
+    @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
+    @AppStorage(GraphKey.feels)    private var graphFeels    = true
+    @AppStorage(GraphKey.colour)   private var graphColour   = true
+    @AppStorage(GraphKey.precip)   private var graphPrecip   = true
+    @AppStorage(GraphKey.wind)     private var graphWind     = true
+    @AppStorage(GraphKey.gust)     private var graphGust     = true
+    @AppStorage(GraphKey.sky)      private var graphSky      = true
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query private var ratings: [Rating]
@@ -39,6 +50,22 @@ struct SettingsView: View {
                     Text("Fahrenheit (°F)").tag(true)
                 }
                 .pickerStyle(.segmented)
+            }
+
+            Section {
+                Toggle("Temperature", isOn: $graphTemp)
+                Toggle("Wet bulb", isOn: $graphWetBulb)
+                Toggle("Dew point", isOn: $graphDewPoint)
+                Toggle("MyFeelsLike line", isOn: $graphFeels)
+                Toggle("MyFeelsLike colour", isOn: $graphColour)
+                Toggle("Precipitation", isOn: $graphPrecip)
+                Toggle("Wind", isOn: $graphWind)
+                Toggle("Gust", isOn: $graphGust)
+                Toggle("Weather sky background", isOn: $graphSky)
+            } header: {
+                Text("Graphs")
+            } footer: {
+                Text("Choose which series to show. Emptying a panel hides it; turning everything off leaves just the table.")
             }
 
             Section {
