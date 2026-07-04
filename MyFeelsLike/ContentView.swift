@@ -567,7 +567,11 @@ struct HereTodayView: View {
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
-            ScrollView {
+            ZStack {
+                // #8: current-conditions sky behind the scrolling content.
+                WeatherSkyView(point: series.first ?? current)
+                    .ignoresSafeArea()
+                ScrollView {
                 if series.isEmpty {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
@@ -605,6 +609,7 @@ struct HereTodayView: View {
                 }
             }
             .refreshable { await onRefresh?() }
+            }
         }
     }
 
@@ -1078,7 +1083,11 @@ struct TenDayView: View {
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
-            ScrollView {
+            ZStack {
+                // #8: current-conditions sky behind the scrolling content.
+                WeatherSkyView(point: series.first ?? current)
+                    .ignoresSafeArea()
+                ScrollView {
                 if series.isEmpty {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
@@ -1116,6 +1125,7 @@ struct TenDayView: View {
                 }
             }
             .refreshable { await onRefresh?() }
+            }
         }
     }
 
