@@ -527,6 +527,11 @@ struct HereTodayView: View {
         HereTodayView.hourFormatter.string(from: date)
     }
 
+    /// Whether the forecast carries personalised feels-like scores.
+    private var hasModel: Bool {
+        series.contains { $0.myFeelsLikeScore != nil }
+    }
+
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
@@ -536,12 +541,14 @@ struct HereTodayView: View {
                         .padding()
                         .frame(minHeight: h)
                 } else if verticalSizeClass == .compact {
-                    // iPhone landscape: both panels side by side, full height.
+                    // iPhone landscape: a thin MyFeelsLike strip on top, the two
+                    // charts side by side below it.
                     VStack(spacing: 8) {
                         ScenarioStrip(activeFeatures: activeFeatures)
+                        myFeelsLikePanel(height: h * 0.16)
                         HStack(spacing: 12) {
-                            temperatureChart(height: h * 0.9)
-                            precipWindChart(height: h * 0.9)
+                            temperatureChart(height: h * 0.72)
+                            precipWindChart(height: h * 0.72)
                         }
                         if let attribution {
                             WeatherAttributionLink(info: attribution)
@@ -551,11 +558,12 @@ struct HereTodayView: View {
                     .frame(minHeight: h)
                 } else {
                     // fitsPane (iPad dashboard): slightly smaller fractions so
-                    // both panels + attribution fit without scrolling.
+                    // everything fits without scrolling.
                     VStack(spacing: 8) {
                         ScenarioStrip(activeFeatures: activeFeatures)
-                        temperatureChart(height: h * (fitsPane ? 0.52 : 0.55))
-                        precipWindChart(height: h * (fitsPane ? 0.34 : 0.36))
+                        temperatureChart(height: h * (fitsPane ? 0.46 : 0.50))
+                        myFeelsLikePanel(height: h * (fitsPane ? 0.10 : 0.12))
+                        precipWindChart(height: h * (fitsPane ? 0.30 : 0.34))
                         if let attribution {
                             WeatherAttributionLink(info: attribution)
                         }
@@ -565,6 +573,43 @@ struct HereTodayView: View {
                 }
             }
             .refreshable { await onRefresh?() }
+        }
+    }
+
+    /// A thin horizontal MyFeelsLike colour band across the 24 hours — the 24h
+    /// analogue of the 10-day heatmap, but a single row (narrower). Aligned in
+    /// time with the temperature chart's plot area via the leading padding.
+    @ViewBuilder
+    private func myFeelsLikePanel(height: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("MyFeelsLike by hour")
+                .font(.caption2).foregroundStyle(.secondary)
+                .padding(.leading, 36)
+            if hasModel {
+                Chart(series) { p in
+                    RectangleMark(
+                        xStart: .value("t0", p.date),
+                        xEnd:   .value("t1", p.date.addingTimeInterval(3600)),
+                        yStart: .value("y0", 0),
+                        yEnd:   .value("y1", 1)
+                    )
+                    .foregroundStyle(myFeelsLikeHeatColor(p))
+                }
+                .chartYScale(domain: 0...1)
+                .chartYAxis(.hidden)
+                .chartXAxis(.hidden)
+                .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+                .frame(height: height)
+                .padding(.leading, 36)
+            } else {
+                RoundedRectangle(cornerRadius: 6).fill(Color.gray.opacity(0.18))
+                    .frame(height: height)
+                    .padding(.leading, 36)
+                    .overlay(
+                        Text("No personalised colour yet")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    )
+            }
         }
     }
 
@@ -624,20 +669,8 @@ struct HereTodayView: View {
                         .foregroundStyle(.purple).symbolSize(110)
                 }
             }
-            .chartBackground { proxy in
-                let stops = myFeelsLikeBackgroundStops(series, domain: dateDomain)
-                if !stops.isEmpty {
-                    GeometryReader { geo in
-                        let frame = geo[proxy.plotAreaFrame]
-                        LinearGradient(
-                            gradient: Gradient(stops: stops),
-                            startPoint: .leading, endPoint: .trailing
-                        )
-                        .frame(width: frame.width, height: frame.height)
-                        .position(x: frame.midX, y: frame.midY)
-                    }
-                }
-            }
+            // MyFeelsLike colour now lives in its own panel below (see
+            // myFeelsLikePanel), matching the 10-day screen's heatmap.
             .chartLegend(.hidden)
             .chartYScale(domain: .automatic(includesZero: false))
             .chartYAxis {
@@ -888,7 +921,7 @@ struct TenDayView: View {
                 yStart: .value("Hour", hour),
                 yEnd:   .value("Hour end", hour + 1)
             )
-            .foregroundStyle(heatColor(p))
+            .foregroundStyle(myFeelsLikeHeatColor(p))
         }
         .chartYScale(domain: 0...24)
         .chartYAxis {
@@ -931,11 +964,6 @@ struct TenDayView: View {
         }
     }
 
-    private func heatColor(_ p: ForecastPoint) -> Color {
-        guard let s = p.myFeelsLikeScore else { return Color.gray.opacity(0.25) }
-        let alpha = max(0.25, min(1, p.myFeelsLikeOpacity))
-        return ColorScale.color(forScore: s).opacity(alpha)
-    }
 
     var body: some View {
         GeometryReader { geo in
@@ -1089,6 +1117,14 @@ private let chartBackgroundMaxAlpha: Double = 0.55
 /// the model's own opacity (= leverage fade) capped by chartBackgroundMaxAlpha.
 ///
 /// Returns an empty array when no point has a score (no model fitted).
+/// Cell colour for the MyFeelsLike panels (24h strip + 10-day heatmap): the
+/// score's colour, faded by the prediction's reliability. Grey when no score.
+func myFeelsLikeHeatColor(_ p: ForecastPoint) -> Color {
+    guard let s = p.myFeelsLikeScore else { return Color.gray.opacity(0.25) }
+    let alpha = max(0.25, min(1, p.myFeelsLikeOpacity))
+    return ColorScale.color(forScore: s).opacity(alpha)
+}
+
 private func myFeelsLikeBackgroundStops(
     _ series: [ForecastPoint],
     domain: ClosedRange<Date>?
