@@ -89,20 +89,38 @@ enum ColorScale {
     static let minScore: Double = 0
     static let maxScore: Double = 1000
 
+    /// Power-curve exponent that spaces the colour anchors on the Rate Feels
+    /// Like column (RateFeelsLikeView.paddedScoreGradient), giving the dark
+    /// black→purple end more room. `color(forScore:)` applies the identical
+    /// warp so the colour shown for a forecast score is exactly the colour the
+    /// user saw under the indicator when they recorded that score. Shared here
+    /// so the two mappings can't drift apart.
+    static let scoreGradientExponent: Double = 0.6
+
     /// Color at an arbitrary score (clamped to [0, 1000]).
+    ///
+    /// Must match the rating column: there the anchors run hot→cold top→bottom
+    /// (score 1000 = black at the top, 0 = white at the bottom) and are spaced
+    /// by `scoreGradientExponent`, with the gradient interpolating linearly in
+    /// position between adjacent anchors. We reproduce that placement exactly.
     static func color(forScore score: Double) -> Color {
-        let n = anchors.count
+        let m = Double(anchors.count - 1)
         let s = max(minScore, min(maxScore, score))
-        let pos = (s / maxScore) * Double(n - 1)
-        let lo  = Int(floor(pos))
-        let hi  = min(n - 1, lo + 1)
-        let frac = pos - Double(lo)
-        let (r1, g1, b1) = rgb(anchors[lo].color)
-        let (r2, g2, b2) = rgb(anchors[hi].color)
+        // g: 0 at the hottest end (score 1000), 1 at the coldest (score 0).
+        let g = 1 - s / maxScore
+        let rev = anchors.reversed().map { $0.color }   // black(hot) … white(cold)
+        // Anchor j sits at position pow(j/m, exponent). Find the bracketing
+        // pair for g and interpolate linearly in position (as LinearGradient).
+        let lo = max(0, min(Int(m) - 1, Int(m * pow(g, 1 / scoreGradientExponent))))
+        let locLo = pow(Double(lo) / m, scoreGradientExponent)
+        let locHi = pow(Double(lo + 1) / m, scoreGradientExponent)
+        let t = locHi > locLo ? max(0, min(1, (g - locLo) / (locHi - locLo))) : 0
+        let (r1, g1, b1) = rgb(rev[lo])
+        let (r2, g2, b2) = rgb(rev[lo + 1])
         return Color(
-            red:   r1 + (r2 - r1) * frac,
-            green: g1 + (g2 - g1) * frac,
-            blue:  b1 + (b2 - b1) * frac
+            red:   r1 + (r2 - r1) * t,
+            green: g1 + (g2 - g1) * t,
+            blue:  b1 + (b2 - b1) * t
         )
     }
 

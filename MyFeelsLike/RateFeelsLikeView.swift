@@ -329,7 +329,7 @@ struct ColorScoreColumn: View {
         let n = reversed.count
         for (i, a) in reversed.enumerated() {
             let t    = Double(i) / Double(n - 1)
-            let frac = pow(t, 0.6)
+            let frac = pow(t, ColorScale.scoreGradientExponent)
             stops.append(.init(color: a.color, location: padFrac + activeRange * frac))
         }
         // Bottom padding: hard cut from cold back to transparent.
