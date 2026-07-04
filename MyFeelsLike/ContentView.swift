@@ -716,6 +716,7 @@ struct HereTodayView: View {
             // MyFeelsLike colour now lives in its own panel below (see
             // myFeelsLikePanel), matching the 10-day screen's heatmap.
             .chartLegend(.hidden)
+            .chartBackground { proxy in perHourSkyBackground(proxy, points: series) }   // #9
             .chartYScale(domain: tempYDomain)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
@@ -797,6 +798,7 @@ struct HereTodayView: View {
                 }
             }
             .chartLegend(.hidden)
+            .chartBackground { proxy in perHourSkyBackground(proxy, points: series) }   // #9
             .chartYScale(domain: windYDomain)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
@@ -1148,6 +1150,7 @@ struct TenDayView: View {
                 tempAreas(forecastPlus)
             }
             .chartLegend(.hidden)
+            .chartBackground { proxy in perHourSkyBackground(proxy, points: historic + series) }   // #9
             .chartYScale(domain: tempYDomain)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
@@ -1212,6 +1215,7 @@ struct TenDayView: View {
                 windLines(forecastPlus, suffix: "",  windDash: nil)
             }
             .chartLegend(.hidden)
+            .chartBackground { proxy in perHourSkyBackground(proxy, points: historic + series) }   // #9
             .chartYScale(domain: windYDomain)
             .chartYAxis {
                 AxisMarks(position: .leading) { _ in

@@ -11,6 +11,7 @@
 //
 
 import SwiftUI
+import Charts
 
 /// Small deterministic RNG so the sky doesn't shimmer when the view redraws.
 struct SeededRNG {
@@ -101,6 +102,57 @@ enum SkyRenderer {
     }
 }
 
+extension SkyRenderer {
+    /// A single hour's sky as a solid column (used for the in-plot per-hour
+    /// background). Cloud blobs would look choppy in a thin column, so cloud
+    /// cover is a grey tint instead — altitude-weighted (white high, light-grey
+    /// mid, darker-grey low), with alpha tracking the total cover.
+    static func drawColumn(_ context: GraphicsContext, rect: CGRect, point p: ForecastPoint, seed: UInt64) {
+        guard rect.width > 0.4, rect.height > 0.4 else { return }
+        let day = p.isDaylight
+        let top    = day ? Color(red: 0.40, green: 0.70, blue: 0.98) : Color(red: 0.02, green: 0.03, blue: 0.12)
+        let bottom = day ? Color(red: 0.70, green: 0.86, blue: 1.00) : Color(red: 0.06, green: 0.07, blue: 0.20)
+        context.fill(Path(rect), with: .linearGradient(
+            Gradient(colors: [top, bottom]),
+            startPoint: CGPoint(x: rect.midX, y: rect.minY),
+            endPoint:   CGPoint(x: rect.midX, y: rect.maxY)))
+
+        if !day {
+            var rng = SeededRNG(seed: seed &+ 55)
+            let n = max(1, Int(rect.width * rect.height / 3000))
+            for _ in 0..<n {
+                let x = rect.minX + CGFloat(rng.unit()) * rect.width
+                let y = rect.minY + CGFloat(rng.unit()) * rect.height * 0.75
+                let s = CGFloat(0.5 + rng.unit() * 1.1)
+                context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: s, height: s)),
+                             with: .color(.white.opacity(0.8)))
+            }
+        }
+
+        let cover = min(1.0, p.cloudCover)
+        if cover > 0.02 {
+            let low = p.cloudCoverLow, mid = p.cloudCoverMedium, high = p.cloudCoverHigh
+            let tot = max(0.001, low + mid + high)
+            let grey = (high * (day ? 0.98 : 0.82) + mid * (day ? 0.78 : 0.55) + low * (day ? 0.55 : 0.36)) / tot
+            context.fill(Path(rect), with: .color(Color(white: grey).opacity(min(0.8, cover))))
+        }
+
+        let rain = min(1.0, p.precipitationMM / 3.0 + (p.precipProbability > 0.5 ? 0.25 : 0))
+        if rain > 0.03 {
+            var rng = SeededRNG(seed: seed &+ 77)
+            let n = Int(Double(max(1, Int(rect.width * rect.height / 900))) * rain)
+            for _ in 0..<n {
+                let x = rect.minX + CGFloat(rng.unit()) * rect.width
+                let y = rect.minY + CGFloat(rng.unit()) * rect.height
+                var path = Path()
+                path.move(to: CGPoint(x: x, y: y))
+                path.addLine(to: CGPoint(x: x - 2, y: y + 7))
+                context.stroke(path, with: .color(.white.opacity(0.4)), lineWidth: 1)
+            }
+        }
+    }
+}
+
 /// Full-rect sky for the current conditions (screen backdrop).
 struct WeatherSkyView: View {
     let point: ForecastPoint?
@@ -108,6 +160,30 @@ struct WeatherSkyView: View {
         Canvas { context, size in
             guard let p = point else { return }
             SkyRenderer.draw(context, rect: CGRect(origin: .zero, size: size), point: p, seed: 7)
+        }
+    }
+}
+
+/// Per-hour sky painted across a chart's plot area (#9). Each point owns the
+/// column from its x to the next point's x.
+@ViewBuilder
+func perHourSkyBackground(_ proxy: ChartProxy, points: [ForecastPoint]) -> some View {
+    GeometryReader { geo in
+        if let plotFrame = proxy.plotFrame, points.count > 1 {
+            let rect = geo[plotFrame]
+            Canvas { context, _ in
+                for (i, p) in points.enumerated() {
+                    let x0 = CGFloat(proxy.position(forX: p.date) ?? 0)
+                    let x1: CGFloat = (i + 1 < points.count)
+                        ? CGFloat(proxy.position(forX: points[i + 1].date) ?? x0)
+                        : rect.width
+                    let left = rect.minX + Swift.min(x0, x1)
+                    let width = Swift.max(0, abs(x1 - x0))
+                    SkyRenderer.drawColumn(context,
+                        rect: CGRect(x: left, y: rect.minY, width: width, height: rect.height),
+                        point: p, seed: UInt64(i + 1))
+                }
+            }
         }
     }
 }
