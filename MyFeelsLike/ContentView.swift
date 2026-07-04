@@ -587,11 +587,14 @@ struct HereTodayView: View {
                 .padding(.leading, 36)
             if hasModel {
                 Chart(series) { p in
+                    // Reliability shrinks the band vertically toward the centre
+                    // line, so uncertain hours read as a thinner stripe.
+                    let half = myFeelsLikeReliability(p) / 2
                     RectangleMark(
                         xStart: .value("t0", p.date),
                         xEnd:   .value("t1", p.date.addingTimeInterval(3600)),
-                        yStart: .value("y0", 0),
-                        yEnd:   .value("y1", 1)
+                        yStart: .value("y0", 0.5 - half),
+                        yEnd:   .value("y1", 0.5 + half)
                     )
                     .foregroundStyle(myFeelsLikeHeatColor(p))
                 }
@@ -915,9 +918,14 @@ struct TenDayView: View {
             let dayStart = cal.startOfDay(for: p.date)
             let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
             let hour = cal.component(.hour, from: p.date)
+            // Reliability shrinks the cell horizontally toward the centre of
+            // its day column, so uncertain hours read as a narrow sliver.
+            let full = dayEnd.timeIntervalSince(dayStart)
+            let mid = dayStart.addingTimeInterval(full / 2)
+            let half = full / 2 * myFeelsLikeReliability(p)
             RectangleMark(
-                xStart: .value("Day", dayStart),
-                xEnd:   .value("Day end", dayEnd),
+                xStart: .value("Day", mid.addingTimeInterval(-half)),
+                xEnd:   .value("Day end", mid.addingTimeInterval(half)),
                 yStart: .value("Hour", hour),
                 yEnd:   .value("Hour end", hour + 1)
             )
@@ -1106,44 +1114,22 @@ struct TenDayView: View {
 
 // MARK: - Personalised colour background for the temperature chart
 
-/// Maximum alpha applied to the model-prediction background in temperature
-/// charts. Keeps the chart's foreground lines readable.
-private let chartBackgroundMaxAlpha: Double = 0.55
-
-/// Build the horizontal gradient stops representing the model's predicted
-/// score at each point. Each stop is placed by its **time** position within
-/// `domain` (so it aligns with the curves even when the domain extends past
-/// the first/last point, e.g. the 24h graph's left gap); each stop's alpha is
-/// the model's own opacity (= leverage fade) capped by chartBackgroundMaxAlpha.
-///
-/// Returns an empty array when no point has a score (no model fitted).
 /// Cell colour for the MyFeelsLike panels (24h strip + 10-day heatmap): the
-/// score's colour, faded by the prediction's reliability. Grey when no score.
+/// score's colour at full opacity. Reliability is conveyed by the cell's
+/// width (see myFeelsLikeReliability), not by fading. Grey when no score.
 func myFeelsLikeHeatColor(_ p: ForecastPoint) -> Color {
     guard let s = p.myFeelsLikeScore else { return Color.gray.opacity(0.25) }
-    let alpha = max(0.25, min(1, p.myFeelsLikeOpacity))
-    return ColorScale.color(forScore: s).opacity(alpha)
+    return ColorScale.color(forScore: s)
 }
 
-private func myFeelsLikeBackgroundStops(
-    _ series: [ForecastPoint],
-    domain: ClosedRange<Date>?
-) -> [Gradient.Stop] {
-    guard series.count > 1 else { return [] }
-    guard series.contains(where: { $0.myFeelsLikeScore != nil }) else { return [] }
-    // Fall back to the series' own span when no explicit domain is given.
-    let lo = domain?.lowerBound ?? series.first!.date
-    let hi = domain?.upperBound ?? series.last!.date
-    let span = hi.timeIntervalSince(lo)
-    guard span > 0 else { return [] }
-    return series.compactMap { p -> Gradient.Stop? in
-        guard let score = p.myFeelsLikeScore else { return nil }
-        let alpha = max(0, min(1, p.myFeelsLikeOpacity)) * chartBackgroundMaxAlpha
-        let color = ColorScale.color(forScore: score).opacity(alpha)
-        let loc = max(0, min(1, p.date.timeIntervalSince(lo) / span))
-        return Gradient.Stop(color: color, location: CGFloat(loc))
-    }
+/// Prediction reliability in 0…1, used to scale a cell's width so uncertain
+/// forecasts read as a thinner band rather than a fainter colour. A small
+/// floor keeps even the least reliable cell visible as a sliver.
+func myFeelsLikeReliability(_ p: ForecastPoint) -> Double {
+    guard p.myFeelsLikeScore != nil else { return 1 }
+    return max(0.15, min(1, p.myFeelsLikeOpacity))
 }
+
 
 // MARK: - Solid-run tagging for the MyFeelsLike chart line (legacy, unused)
 
