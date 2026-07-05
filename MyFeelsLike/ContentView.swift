@@ -196,6 +196,7 @@ struct ContentView: View {
     @AppStorage(GraphKey.precip)   private var graphPrecip   = true
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
+    @AppStorage(GraphKey.sky)      private var graphSky      = true
     @Environment(\.scenePhase) private var scenePhase
 
     /// True when at least one forecast graph is enabled. When false, the 24h
@@ -204,6 +205,16 @@ struct ContentView: View {
         graphTemp || graphWetBulb || graphDewPoint || graphFeels
             || graphColour || graphPrecip || graphWind || graphGust
     }
+
+    // Whole-screen weather-sky background (current conditions), shown behind
+    // the title bar and bottom toolbar too.
+    private var skyPoint: ForecastPoint? { weather.series24h.first ?? weather.current }
+    private var skyIsDay: Bool {
+        if let sr = weather.sunrise, let ss = weather.sunset { return nowTick >= sr && nowTick < ss }
+        return skyPoint?.isDaylight ?? true
+    }
+    /// Legible ink over the sky: black by day, white by night (system otherwise).
+    private var skyInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
 
     @Query(sort: \Rating.timestamp) private var ratings: [Rating]
     @State private var regressionState: RegressionState? = RegressionStateStore.load()
@@ -262,14 +273,15 @@ struct ContentView: View {
                 Text(displayTitle)
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(graphSky ? skyInk : .primary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .padding(.horizontal)
             }
-            .background(.bar)
+            .buttonStyle(.plain)
+            .background(graphSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
 
-            Divider()
+            if !graphSky { Divider() }
 
             if !anyGraphVisible {
                 // #10: every graph disabled → only the table screen remains.
@@ -346,7 +358,15 @@ struct ContentView: View {
                     .accessibilityIdentifier("settingsButton")
                 }
             }
-            .background(.bar)
+            .tint(graphSky ? skyInk : Color.accentColor)
+            .background(graphSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+        }
+        .background {
+            // #1: current-conditions sky fills the whole screen, behind the
+            // title bar and bottom toolbar too.
+            if graphSky, let sp = skyPoint {
+                WeatherSkyView(point: sp, isDay: skyIsDay).ignoresSafeArea()
+            }
         }
         .sheet(isPresented: $showPlaces) {
             NavigationStack {
@@ -429,11 +449,11 @@ struct ContentView: View {
     private func tabLabel(_ text: String) -> some View {
         Text(text)
             .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(graphSky ? skyInk : .secondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 5)
-            .background(.bar)
-        Divider()
+            .background(graphSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+        if !graphSky { Divider() }
     }
 
     private func refitRegression() {
@@ -676,13 +696,7 @@ struct HereTodayView: View {
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
-            ZStack {
-                // #8: current-conditions sky behind the scrolling content.
-                if graphSky {
-                    WeatherSkyView(point: series.first ?? current, isDay: skyIsDay)
-                        .ignoresSafeArea()
-                }
-                ScrollView {
+            ScrollView {
                 if series.isEmpty {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
@@ -719,7 +733,6 @@ struct HereTodayView: View {
                 }
             }
             .refreshable { await onRefresh?() }
-            }
         }
     }
 
@@ -1316,13 +1329,7 @@ struct TenDayView: View {
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
-            ZStack {
-                // #8: current-conditions sky behind the scrolling content.
-                if graphSky {
-                    WeatherSkyView(point: series.first ?? current, isDay: skyIsDay)
-                        .ignoresSafeArea()
-                }
-                ScrollView {
+            ScrollView {
                 if series.isEmpty {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
@@ -1358,7 +1365,6 @@ struct TenDayView: View {
                 }
             }
             .refreshable { await onRefresh?() }
-            }
         }
     }
 

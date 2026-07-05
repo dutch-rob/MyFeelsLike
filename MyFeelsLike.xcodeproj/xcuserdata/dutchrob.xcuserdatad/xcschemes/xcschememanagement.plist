@@ -17,7 +17,35 @@
 		<key>MyFeelsLikeComplicationExtension.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>2</integer>
+			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>155ADB652FE9F0FC00339B99</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>155ADB942FE9F22100339B99</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>159E8A0E2FAFC3CA0003EBF0</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>159E8A1D2FAFC3CF0003EBF0</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>159E8A272FAFC3CF0003EBF0</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>
