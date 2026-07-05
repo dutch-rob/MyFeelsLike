@@ -884,16 +884,9 @@ struct HereTodayView: View {
                 ForEach(series) { p in
                     let gust = useFahrenheit ? p.windGustMPH : p.windGustKPH
                     let wind = useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH
-                    // Filled areas back→front: rain (solid blue) behind gust
-                    // (translucent red) behind wind (solid red), so the solid
-                    // precip and wind areas both stay visible. Ranges from the 0
-                    // baseline; the wind/gust curves sit on top.
-                    if graphPrecip {
-                        AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", base),
-                                 yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
-                            .foregroundStyle(.blue).interpolationMethod(.linear)
-                    }
+                    // Areas back→front: gust (translucent red) → wind (solid
+                    // red) → rain (solid blue). The gust and wind curves are
+                    // then drawn on top of the rain so they stay readable.
                     if graphGust {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
@@ -905,6 +898,12 @@ struct HereTodayView: View {
                                  yStart: .value("base", base),
                                  yEnd: .value("Wind", wind), series: .value("S", "windA"))
                             .foregroundStyle(.red).interpolationMethod(.linear)
+                    }
+                    if graphPrecip {
+                        AreaMark(x: .value("Time", p.date),
+                                 yStart: .value("base", base),
+                                 yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
+                            .foregroundStyle(.blue).interpolationMethod(.linear)
                     }
                     // Gust dashed + wind solid lines, on top of the areas.
                     if graphGust {
@@ -1417,19 +1416,12 @@ struct TenDayView: View {
             .padding(.leading, 36)
 
             Chart {
-                // Filled areas back→front over history + forecast: rain (solid
-                // blue) behind gust (translucent red) behind wind (solid red),
-                // so the solid precip and wind areas both stay visible. Ranges
-                // from the 0 baseline; the wind/gust curves sit on top.
+                // Areas back→front over history + forecast: gust (translucent
+                // red) → wind (solid red) → rain (solid blue). The gust and
+                // wind curves are drawn on top of the rain so they stay readable.
                 ForEach(windPts) { p in
                     let gust = useFahrenheit ? p.windGustMPH : p.windGustKPH
                     let wind = useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH
-                    if graphPrecip {
-                        AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", base),
-                                 yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
-                            .foregroundStyle(.blue).interpolationMethod(.linear)
-                    }
                     if graphGust {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
@@ -1441,6 +1433,12 @@ struct TenDayView: View {
                                  yStart: .value("base", base),
                                  yEnd: .value("Wind", wind), series: .value("S", "windA"))
                             .foregroundStyle(.red).interpolationMethod(.linear)
+                    }
+                    if graphPrecip {
+                        AreaMark(x: .value("Time", p.date),
+                                 yStart: .value("base", base),
+                                 yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
+                            .foregroundStyle(.blue).interpolationMethod(.linear)
                     }
                 }
                 // Wind/gust curves: dashed past, solid future, joined at "now".
