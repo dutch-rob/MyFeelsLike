@@ -2,12 +2,11 @@
 //  WeatherSky.swift
 //  MyFeelsLike
 //
-//  A painted "sky" that represents a weather state: clear blue by day, dark
-//  with stars by night, grey cloud patches whose coverage matches the cloud
-//  fraction (white high cloud, light-grey mid, darker-grey low), and rain
-//  streaks when it's precipitating. Used two ways:
-//    • as the screen backdrop for the current conditions (WeatherSkyView), and
-//    • per forecast hour inside a chart's plot area (see the chart backgrounds).
+//  A painted "sky" for the current conditions, seen looking up from the
+//  ground: clear blue by day, dark with stars by night, and opaque cloud
+//  patches whose coverage matches the cloud fraction at each altitude (white
+//  high cloud furthest back, light-grey mid, darker-grey low in front), plus
+//  rain streaks when precipitating. Used as the screen backdrop (WeatherSkyView).
 //
 
 import SwiftUI
@@ -24,64 +23,68 @@ struct SeededRNG {
 }
 
 enum SkyRenderer {
-    /// Paint one weather state into `rect`. `seed` keeps random elements stable.
+    /// Paint one weather state into `rect`, as seen looking up from the ground:
+    /// a flat sky (blue by day, dark + stars by night) with opaque cloud
+    /// patches. Cloud layers stack high (back) → mid → low (front), each
+    /// covering its own fraction of the sky; clear gaps show the sky through.
     static func draw(_ context: GraphicsContext, rect: CGRect, point p: ForecastPoint, seed: UInt64) {
         let day = p.isDaylight
 
-        // Base sky gradient.
-        let top    = day ? Color(red: 0.40, green: 0.70, blue: 0.98) : Color(red: 0.02, green: 0.03, blue: 0.12)
-        let bottom = day ? Color(red: 0.70, green: 0.86, blue: 1.00) : Color(red: 0.06, green: 0.07, blue: 0.20)
-        context.fill(Path(rect), with: .linearGradient(
-            Gradient(colors: [top, bottom]),
-            startPoint: CGPoint(x: rect.midX, y: rect.minY),
-            endPoint:   CGPoint(x: rect.midX, y: rect.maxY)))
+        // Flat base sky (no gradient, no altitude sectors).
+        let sky = day ? Color(red: 0.46, green: 0.73, blue: 0.98) : Color(red: 0.03, green: 0.05, blue: 0.15)
+        context.fill(Path(rect), with: .color(sky))
 
-        // Stars at night (upper portion; clouds paint over them).
+        // Stars at night, scattered across the whole sky; clouds paint over them.
         if !day {
             var rng = SeededRNG(seed: seed &+ 101)
             let n = max(6, Int(rect.width * rect.height / 2600))
             for _ in 0..<n {
                 let x = rect.minX + CGFloat(rng.unit()) * rect.width
-                let y = rect.minY + CGFloat(rng.unit()) * rect.height * 0.75
+                let y = rect.minY + CGFloat(rng.unit()) * rect.height
                 let s = CGFloat(0.5 + rng.unit() * 1.3)
                 context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: s, height: s)),
                              with: .color(.white.opacity(0.85)))
             }
         }
 
-        // Cloud layers, back→front: high (white, upper) → mid → low (dark, lower).
+        // Opaque cloud layers over the whole sky, back→front so lower cloud
+        // covers higher. High ≈ white (cirrus), mid light-grey (alto), low
+        // darker-grey (stratus/cumulus); dimmer at night.
         cloudLayer(context, rect, coverage: p.cloudCoverHigh,
-                   color: Color(white: day ? 0.98 : 0.82), yLo: 0.04, yHi: 0.46, blob: 0.11, seed: seed &+ 1)
+                   color: Color(white: day ? 0.98 : 0.52), seed: seed &+ 1)
         cloudLayer(context, rect, coverage: p.cloudCoverMedium,
-                   color: Color(white: day ? 0.80 : 0.55), yLo: 0.26, yHi: 0.68, blob: 0.13, seed: seed &+ 2)
+                   color: Color(white: day ? 0.80 : 0.40), seed: seed &+ 2)
         cloudLayer(context, rect, coverage: p.cloudCoverLow,
-                   color: Color(white: day ? 0.58 : 0.38), yLo: 0.50, yHi: 0.94, blob: 0.16, seed: seed &+ 3)
+                   color: Color(white: day ? 0.56 : 0.28), seed: seed &+ 3)
 
         // Rain streaks, intensity from mm (with a nudge from probability).
         let rain = min(1.0, p.precipitationMM / 3.0 + (p.precipProbability > 0.5 ? 0.25 : 0))
         if rain > 0.03 { rainStreaks(context, rect, intensity: rain, seed: seed &+ 9) }
     }
 
-    /// Fill roughly `coverage` of a horizontal band with soft cloud blobs.
+    /// Cover ~`coverage` of the whole sky with opaque cloud blobs. A grid cell
+    /// gets a blob with probability `coverage`; blobs are sized to overlap so
+    /// full coverage reads as solid overcast, and gaps let the sky show.
     private static func cloudLayer(_ context: GraphicsContext, _ rect: CGRect,
-                                   coverage: Double, color: Color,
-                                   yLo: Double, yHi: Double, blob: Double, seed: UInt64) {
+                                   coverage: Double, color: Color, seed: UInt64) {
         guard coverage > 0.02 else { return }
         var rng = SeededRNG(seed: seed)
-        let cols = 10, rows = 4
+        let cols = 11, rows = 7
+        let cellW = rect.width / CGFloat(cols)
+        let cellH = rect.height / CGFloat(rows)
+        let radX = cellW * 0.95
+        let radY = cellH * 0.95
         for c in 0..<cols {
             for r in 0..<rows {
                 let present = rng.unit() < coverage
-                let jx = (Double(c) + 0.5) / Double(cols) + (rng.unit() - 0.5) * 0.06
-                let jy = yLo + (Double(r) + 0.5) / Double(rows) * (yHi - yLo) + (rng.unit() - 0.5) * 0.04
-                let scale = 0.8 + rng.unit() * 0.7
+                let jx = (Double(c) + 0.5) / Double(cols) + (rng.unit() - 0.5) * 0.05
+                let jy = (Double(r) + 0.5) / Double(rows) + (rng.unit() - 0.5) * 0.05
                 guard present else { continue }
-                let rad = CGFloat(blob) * rect.width * CGFloat(scale)
                 let cx = rect.minX + CGFloat(jx) * rect.width
                 let cy = rect.minY + CGFloat(jy) * rect.height
                 context.fill(
-                    Path(ellipseIn: CGRect(x: cx - rad, y: cy - rad * 0.62, width: rad * 2, height: rad * 1.24)),
-                    with: .color(color.opacity(0.55)))
+                    Path(ellipseIn: CGRect(x: cx - radX, y: cy - radY, width: radX * 2, height: radY * 2)),
+                    with: .color(color))
             }
         }
     }
