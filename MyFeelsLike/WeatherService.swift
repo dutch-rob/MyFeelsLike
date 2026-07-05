@@ -108,6 +108,11 @@ final class WeatherService: ObservableObject {
     @Published var attribution: WeatherAttributionInfo? = nil
     @Published var isRefreshing: Bool = false
     @Published var lastFetchedAt: Date? = nil
+    /// Today's actual sunrise/sunset for this location (from WeatherKit), used
+    /// to switch the graph background day↔night at the same instant iOS's
+    /// "Automatic" appearance does. Nil until loaded (falls back to per-hour).
+    @Published var sunrise: Date? = nil
+    @Published var sunset: Date? = nil
 
     private var loadGeneration = 0
 
@@ -170,6 +175,13 @@ final class WeatherService: ObservableObject {
             current = WeatherMapping.mapCurrent(weather.currentWeather, location: location)
             isRefreshing  = false          // new data is in; hide spinner
             lastFetchedAt = Date()
+
+            // Today's precise sunrise/sunset (for the day↔night background).
+            let sunCal = Calendar.current
+            if let today = weather.dailyForecast.first(where: { sunCal.isDate($0.date, inSameDayAs: now) }) {
+                sunrise = today.sun.sunrise
+                sunset  = today.sun.sunset
+            }
 
             // Observed past — a separate query that must not break the forecast
             // if it fails. Empty result → note shown in the table only. Starts

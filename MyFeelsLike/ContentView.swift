@@ -476,6 +476,8 @@ struct ContentView: View {
                 current: weather.isRefreshing ? nil : personalised(weather.current),
                 progress: weather.loadProgress,
                 nowTick: nowTick,
+                sunrise: weather.sunrise,
+                sunset: weather.sunset,
                 errorMessage: weather.lastErrorMessage,
                 attribution: weather.attribution,
                 onRefresh: { await loadWeather(preserveData: true) },
@@ -494,6 +496,8 @@ struct ContentView: View {
                 current: weather.isRefreshing ? nil : personalised(weather.current),
                 progress: weather.loadProgress,
                 nowTick: nowTick,
+                sunrise: weather.sunrise,
+                sunset: weather.sunset,
                 errorMessage: weather.lastErrorMessage,
                 attribution: weather.attribution,
                 onRefresh: { await loadWeather(preserveData: true) },
@@ -533,6 +537,9 @@ struct HereTodayView: View {
     var current: ForecastPoint? = nil
     var progress: LoadProgress = LoadProgress()
     var nowTick: Date = .now
+    /// Today's precise sunrise/sunset (WeatherKit); drives the day↔night switch.
+    var sunrise: Date? = nil
+    var sunset: Date? = nil
     var errorMessage: String? = nil
     var attribution: WeatherAttributionInfo? = nil
     var onRefresh: (() async -> Void)? = nil
@@ -649,9 +656,13 @@ struct HereTodayView: View {
         return 0...(hi + max(1, hi * 0.08))
     }
 
-    /// Whether the current conditions are daytime — drives the sky and the
-    /// legible ink for axes/labels over it.
-    private var skyIsDay: Bool { (series.first ?? current)?.isDaylight ?? true }
+    /// Whether it's daytime *right now* — follows iOS's automatic-appearance
+    /// timing by using the actual sunrise/sunset; falls back to the current
+    /// hour's daylight flag when sun times aren't available (e.g. demo).
+    private var skyIsDay: Bool {
+        if let sr = sunrise, let ss = sunset { return nowTick >= sr && nowTick < ss }
+        return (series.first ?? current)?.isDaylight ?? true
+    }
     /// Ink for axis text/legends/titles: black by day, white by night when the
     /// sky is shown; otherwise the system colour (adapts to light/dark mode).
     private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
@@ -662,7 +673,7 @@ struct HereTodayView: View {
             ZStack {
                 // #8: current-conditions sky behind the scrolling content.
                 if graphSky {
-                    WeatherSkyView(point: series.first ?? current)
+                    WeatherSkyView(point: series.first ?? current, isDay: skyIsDay)
                         .ignoresSafeArea()
                 }
                 ScrollView {
@@ -958,6 +969,9 @@ struct TenDayView: View {
     var current: ForecastPoint? = nil
     var progress: LoadProgress = LoadProgress()
     var nowTick: Date = .now
+    /// Today's precise sunrise/sunset (WeatherKit); drives the day↔night switch.
+    var sunrise: Date? = nil
+    var sunset: Date? = nil
     var errorMessage: String? = nil
     var attribution: WeatherAttributionInfo? = nil
     var onRefresh: (() async -> Void)? = nil
@@ -1059,9 +1073,13 @@ struct TenDayView: View {
         return 0...(hi + max(1, hi * 0.08))
     }
 
-    /// Whether the current conditions are daytime — drives the sky and the
-    /// legible ink for axes/labels over it.
-    private var skyIsDay: Bool { (series.first ?? current)?.isDaylight ?? true }
+    /// Whether it's daytime *right now* — follows iOS's automatic-appearance
+    /// timing by using the actual sunrise/sunset; falls back to the current
+    /// hour's daylight flag when sun times aren't available (e.g. demo).
+    private var skyIsDay: Bool {
+        if let sr = sunrise, let ss = sunset { return nowTick >= sr && nowTick < ss }
+        return (series.first ?? current)?.isDaylight ?? true
+    }
     /// Ink for axis text/legends/titles: black by day, white by night when the
     /// sky is shown; otherwise the system colour (adapts to light/dark mode).
     private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
@@ -1290,7 +1308,7 @@ struct TenDayView: View {
             ZStack {
                 // #8: current-conditions sky behind the scrolling content.
                 if graphSky {
-                    WeatherSkyView(point: series.first ?? current)
+                    WeatherSkyView(point: series.first ?? current, isDay: skyIsDay)
                         .ignoresSafeArea()
                 }
                 ScrollView {

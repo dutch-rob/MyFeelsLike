@@ -27,9 +27,8 @@ enum SkyRenderer {
     /// a flat sky (blue by day, dark + stars by night) with opaque cloud
     /// patches. Cloud layers stack high (back) → mid → low (front), each
     /// covering its own fraction of the sky; clear gaps show the sky through.
-    static func draw(_ context: GraphicsContext, rect: CGRect, point p: ForecastPoint, seed: UInt64) {
-        let day = p.isDaylight
-
+    static func draw(_ context: GraphicsContext, rect: CGRect, point p: ForecastPoint,
+                     isDay day: Bool, seed: UInt64) {
         // Flat base sky (no gradient, no altitude sectors).
         let sky = day ? Color(red: 0.46, green: 0.73, blue: 0.98) : Color(red: 0.03, green: 0.05, blue: 0.15)
         context.fill(Path(rect), with: .color(sky))
@@ -105,13 +104,16 @@ enum SkyRenderer {
 }
 
 
-/// Full-rect sky for the current conditions (screen backdrop).
+/// Full-rect sky for the current conditions (screen backdrop). `isDay` is the
+/// caller's day/night decision (following iOS's sunset/sunrise timing).
 struct WeatherSkyView: View {
     let point: ForecastPoint?
+    let isDay: Bool
     var body: some View {
         Canvas { context, size in
             guard let p = point else { return }
-            SkyRenderer.draw(context, rect: CGRect(origin: .zero, size: size), point: p, seed: 7)
+            SkyRenderer.draw(context, rect: CGRect(origin: .zero, size: size),
+                             point: p, isDay: isDay, seed: 7)
         }
     }
 }
