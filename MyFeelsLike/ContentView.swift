@@ -1007,7 +1007,9 @@ struct TenDayView: View {
         let wW = windPanelVisible ? 0.32 : 0
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
-        let usable = h * (fitsPane ? 0.92 : 1.0)
+        // usable < 1 leaves room for the three panel labels + scenario strip +
+        // attribution so the bottom panel's x-axis isn't clipped.
+        let usable = h * (fitsPane ? 0.90 : 0.82)
         return (usable * wT / tot, usable * wC / tot, usable * wW / tot)
     }
 

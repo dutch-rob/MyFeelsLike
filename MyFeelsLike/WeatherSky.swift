@@ -61,30 +61,49 @@ enum SkyRenderer {
         if rain > 0.03 { rainStreaks(context, rect, intensity: rain, seed: seed &+ 9) }
     }
 
-    /// Cover ~`coverage` of the whole sky with opaque cloud blobs. A grid cell
-    /// gets a blob with probability `coverage`; blobs are sized to overlap so
-    /// full coverage reads as solid overcast, and gaps let the sky show.
+    /// Cover ~`coverage` of the whole sky with small opaque cumulus puffs. A
+    /// grid cell gets a cloud with probability `coverage`; clouds are sized to
+    /// touch at full coverage (solid overcast) and leave gaps otherwise.
     private static func cloudLayer(_ context: GraphicsContext, _ rect: CGRect,
                                    coverage: Double, color: Color, seed: UInt64) {
         guard coverage > 0.02 else { return }
         var rng = SeededRNG(seed: seed)
-        let cols = 11, rows = 7
-        let cellW = rect.width / CGFloat(cols)
-        let cellH = rect.height / CGFloat(rows)
-        let radX = cellW * 0.95
-        let radY = cellH * 0.95
+        let cols = 16, rows = 10
+        let cloudW = rect.width / CGFloat(cols) * 1.35
         for c in 0..<cols {
             for r in 0..<rows {
                 let present = rng.unit() < coverage
-                let jx = (Double(c) + 0.5) / Double(cols) + (rng.unit() - 0.5) * 0.05
-                let jy = (Double(r) + 0.5) / Double(rows) + (rng.unit() - 0.5) * 0.05
+                let jx = (Double(c) + 0.5) / Double(cols) + (rng.unit() - 0.5) * 0.6 / Double(cols)
+                let jy = (Double(r) + 0.5) / Double(rows) + (rng.unit() - 0.5) * 0.6 / Double(rows)
+                let sizeVar = CGFloat(0.8 + rng.unit() * 0.5)
                 guard present else { continue }
                 let cx = rect.minX + CGFloat(jx) * rect.width
                 let cy = rect.minY + CGFloat(jy) * rect.height
-                context.fill(
-                    Path(ellipseIn: CGRect(x: cx - radX, y: cy - radY, width: radX * 2, height: radY * 2)),
-                    with: .color(color))
+                drawCumulus(context, centerX: cx, baselineY: cy, width: cloudW * sizeVar,
+                            color: color, rng: &rng)
             }
+        }
+    }
+
+    /// One small cumulus: a flat-bottomed base with a few rounded bulges along
+    /// the top (centre bulge largest), wider than it is tall. Drawn as opaque
+    /// overlapping fills in a single colour so they read as one puffy cloud.
+    private static func drawCumulus(_ context: GraphicsContext, centerX cx: CGFloat,
+                                    baselineY by: CGFloat, width w: CGFloat,
+                                    color: Color, rng: inout SeededRNG) {
+        let h = w * 0.52                       // wider than tall
+        let baseH = h * 0.4
+        // Flat-bottomed base slab (small corner radius → near-flat bottom edge).
+        let baseRect = CGRect(x: cx - w * 0.42, y: by - baseH, width: w * 0.84, height: baseH)
+        context.fill(Path(roundedRect: baseRect, cornerRadius: baseH * 0.3), with: .color(color))
+        // Top bulges sitting on the base; centre puff is the largest.
+        let puffs: [(dx: CGFloat, r: CGFloat)] = [(-0.27, 0.28), (0.02, 0.42), (0.29, 0.30)]
+        for p in puffs {
+            let rr = w * p.r * CGFloat(0.9 + rng.unit() * 0.2)
+            let pcx = cx + p.dx * w
+            let pcy = by - baseH * 0.55 - rr * 0.5
+            context.fill(Path(ellipseIn: CGRect(x: pcx - rr, y: pcy - rr, width: rr * 2, height: rr * 2)),
+                         with: .color(color))
         }
     }
 
@@ -115,6 +134,8 @@ struct WeatherSkyView: View {
             SkyRenderer.draw(context, rect: CGRect(origin: .zero, size: size),
                              point: p, isDay: isDay, seed: 7)
         }
+        // Rasterise once so the many cloud fills don't re-run during swipes.
+        .drawingGroup()
     }
 }
 
