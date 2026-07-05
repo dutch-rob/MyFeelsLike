@@ -74,6 +74,9 @@ struct ForecastLoadingView: View {
 
 struct ChartLegendRow: View {
     let entries: [(color: Color, label: String, isArea: Bool)]
+    /// Text colour — follows the sky (black by day, white by night) so labels
+    /// stay legible on the weather background.
+    var ink: Color = .secondary
 
     var body: some View {
         // One line when the panel is wide enough; two lines in narrow panels
@@ -103,7 +106,7 @@ struct ChartLegendRow: View {
                     }
                     Text(e.label)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ink)
                         .lineLimit(1)
                 }
             }
@@ -573,14 +576,17 @@ struct HereTodayView: View {
         return e
     }
 
-    /// Normalised panel heights over whichever panels are enabled.
+    /// Normalised panel heights over whichever panels are enabled. The colour
+    /// band is deliberately thin; `usable` < 1 leaves room for the panel
+    /// labels + scenario strip + attribution so everything fits without
+    /// scrolling.
     private func panelHeights(_ h: CGFloat) -> (temp: CGFloat, colour: CGFloat, wind: CGFloat) {
         let wT = tempPanelVisible ? 0.50 : 0
-        let wC = colourPanelVisible ? 0.16 : 0
+        let wC = colourPanelVisible ? 0.08 : 0
         let wW = windPanelVisible ? 0.36 : 0
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
-        let usable = h * (fitsPane ? 0.92 : 1.0)
+        let usable = h * (fitsPane ? 0.90 : 0.84)
         return (usable * wT / tot, usable * wC / tot, usable * wW / tot)
     }
 
@@ -643,6 +649,13 @@ struct HereTodayView: View {
         return 0...(hi + max(1, hi * 0.08))
     }
 
+    /// Whether the current conditions are daytime — drives the sky and the
+    /// legible ink for axes/labels over it.
+    private var skyIsDay: Bool { (series.first ?? current)?.isDaylight ?? true }
+    /// Ink for axis text/legends/titles: black by day, white by night when the
+    /// sky is shown; otherwise the system colour (adapts to light/dark mode).
+    private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
+
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
@@ -700,7 +713,7 @@ struct HereTodayView: View {
     private func myFeelsLikePanel(height: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("MyFeelsLike by hour")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(axisInk)
                 .padding(.leading, 36)
             if hasModel {
                 Chart(series) { p in
@@ -716,18 +729,23 @@ struct HereTodayView: View {
                     .foregroundStyle(myFeelsLikeHeatColor(p))
                 }
                 .chartYScale(domain: 0...1)
-                .chartYAxis(.hidden)
+                // Reserve the same leading width as the temperature/wind charts
+                // (a clear 2-digit y-axis) so the band lines up with them.
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: [0]) {
+                        AxisValueLabel { Text("00").font(.caption).foregroundStyle(.clear) }
+                    }
+                }
                 .chartXAxis(.hidden)
                 .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
                 .frame(height: height)
-                .padding(.leading, 36)
             } else {
                 RoundedRectangle(cornerRadius: 6).fill(Color.gray.opacity(0.18))
                     .frame(height: height)
                     .padding(.leading, 36)
                     .overlay(
                         Text("No personalised colour yet")
-                            .font(.caption2).foregroundStyle(.secondary)
+                            .font(.caption2).foregroundStyle(axisInk)
                     )
             }
         }
@@ -740,7 +758,7 @@ struct HereTodayView: View {
         let base = dom.lowerBound
         VStack(alignment: .leading, spacing: 2) {
             // Legend without units — only for the enabled series.
-            ChartLegendRow(entries: tempLegendEntries)
+            ChartLegendRow(entries: tempLegendEntries, ink: axisInk)
             .padding(.leading, 36)   // start near the y-axis line, not the y-axis labels
 
             Chart {
@@ -813,16 +831,18 @@ struct HereTodayView: View {
             .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
-                    AxisGridLine(); AxisTick()
-                    AxisValueLabel().font(.caption)
+                    AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
+                    AxisTick().foregroundStyle(axisInk.opacity(0.6))
+                    AxisValueLabel().font(.caption).foregroundStyle(axisInk)
                 }
             }
             .chartXAxis {
                 AxisMarks(values: .stride(by: .hour, count: 2)) { value in
-                    AxisGridLine(); AxisTick()
+                    AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
+                    AxisTick().foregroundStyle(axisInk.opacity(0.6))
                     AxisValueLabel(centered: true) {
                         Text(value.as(Date.self).map { hourLabel(for: $0) } ?? "")
-                            .font(.caption)
+                            .font(.caption).foregroundStyle(axisInk)
                     }
                 }
             }
@@ -832,7 +852,7 @@ struct HereTodayView: View {
             .overlay(alignment: .topLeading) {
                 Text(useFahrenheit ? "°F" : "°C")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(axisInk)
                     .padding(.leading, 4)
                     .padding(.top, 14)
             }
@@ -846,7 +866,7 @@ struct HereTodayView: View {
         let dom = windYDomain
         let base = dom.lowerBound
         VStack(alignment: .leading, spacing: 2) {
-            ChartLegendRow(entries: windLegendEntries)
+            ChartLegendRow(entries: windLegendEntries, ink: axisInk)
             .padding(.leading, 36)
 
             Chart {
@@ -907,16 +927,18 @@ struct HereTodayView: View {
             .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
-                    AxisGridLine(); AxisTick()
-                    AxisValueLabel().font(.caption)
+                    AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
+                    AxisTick().foregroundStyle(axisInk.opacity(0.6))
+                    AxisValueLabel().font(.caption).foregroundStyle(axisInk)
                 }
             }
             .chartXAxis {
                 AxisMarks(values: .stride(by: .hour, count: 2)) { value in
-                    AxisGridLine(); AxisTick()
+                    AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
+                    AxisTick().foregroundStyle(axisInk.opacity(0.6))
                     AxisValueLabel(centered: true) {
                         Text(value.as(Date.self).map { hourLabel(for: $0) } ?? "")
-                            .font(.caption)
+                            .font(.caption).foregroundStyle(axisInk)
                     }
                 }
             }
@@ -1036,6 +1058,15 @@ struct TenDayView: View {
         let hi = vals.max() ?? 1
         return 0...(hi + max(1, hi * 0.08))
     }
+
+    /// Whether the current conditions are daytime — drives the sky and the
+    /// legible ink for axes/labels over it.
+    private var skyIsDay: Bool { (series.first ?? current)?.isDaylight ?? true }
+    /// Ink for axis text/legends/titles: black by day, white by night when the
+    /// sky is shown; otherwise the system colour (adapts to light/dark mode).
+    private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
+    /// x-position of "now", for the current-time marker line.
+    private var nowLineDate: Date? { current?.date ?? series.first?.date }
 
     private var earliestDate: Date? {
         historic.first?.date ?? current?.date ?? series.first?.date
@@ -1180,7 +1211,7 @@ struct TenDayView: View {
     private func feelsLikeHeatmap(height: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("MyFeelsLike by time of day")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(axisInk)
                 .padding(.leading, 36)
             if hasModel {
                 heatmapChart.frame(height: height - 16)
@@ -1213,14 +1244,16 @@ struct TenDayView: View {
         .chartYAxis {
             AxisMarks(position: .leading, values: [0, 6, 12, 18]) { v in
                 AxisValueLabel {
-                    Text(String(format: "%02d", v.as(Int.self) ?? 0)).font(.caption2)
+                    Text(String(format: "%02d", v.as(Int.self) ?? 0))
+                        .font(.caption2).foregroundStyle(axisInk)
                 }
             }
         }
         .chartXAxis {
             AxisMarks(values: .stride(by: .day, count: 1)) { value in
                 AxisValueLabel {
-                    Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "").font(.caption)
+                    Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "")
+                        .font(.caption).foregroundStyle(axisInk)
                 }
             }
         }
@@ -1307,7 +1340,7 @@ struct TenDayView: View {
         let dom = tempYDomain
         VStack(alignment: .leading, spacing: 2) {
             // Legend without units — only for the enabled series.
-            ChartLegendRow(entries: tempLegendEntries)
+            ChartLegendRow(entries: tempLegendEntries, ink: axisInk)
             .padding(.leading, 36)
 
             Chart {
@@ -1320,16 +1353,18 @@ struct TenDayView: View {
             .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
-                    AxisGridLine(); AxisTick()
-                    AxisValueLabel().font(.caption)
+                    AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
+                    AxisTick().foregroundStyle(axisInk.opacity(0.6))
+                    AxisValueLabel().font(.caption).foregroundStyle(axisInk)
                 }
             }
             .chartXAxis {
                 AxisMarks(values: .stride(by: .day, count: 1)) { value in
-                    AxisGridLine(); AxisTick()
+                    AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
+                    AxisTick().foregroundStyle(axisInk.opacity(0.6))
                     AxisValueLabel {
                         Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "")
-                            .font(.caption)
+                            .font(.caption).foregroundStyle(axisInk)
                     }
                 }
             }
@@ -1338,7 +1373,7 @@ struct TenDayView: View {
             .overlay(alignment: .topLeading) {
                 Text(useFahrenheit ? "°F" : "°C")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(axisInk)
                     .padding(.leading, 4)
                     .padding(.top, 14)
             }
@@ -1353,7 +1388,7 @@ struct TenDayView: View {
         let base = dom.lowerBound
         let windPts = historic + series
         VStack(alignment: .leading, spacing: 2) {
-            ChartLegendRow(entries: windLegendEntries)
+            ChartLegendRow(entries: windLegendEntries, ink: axisInk)
             .padding(.leading, 36)
 
             Chart {
@@ -1390,16 +1425,18 @@ struct TenDayView: View {
             .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading) { _ in
-                    AxisGridLine(); AxisTick()
-                    AxisValueLabel().font(.caption)
+                    AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
+                    AxisTick().foregroundStyle(axisInk.opacity(0.6))
+                    AxisValueLabel().font(.caption).foregroundStyle(axisInk)
                 }
             }
             .chartXAxis {
                 AxisMarks(values: .stride(by: .day, count: 1)) { value in
-                    AxisGridLine(); AxisTick()
+                    AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
+                    AxisTick().foregroundStyle(axisInk.opacity(0.6))
                     AxisValueLabel {
                         Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "")
-                            .font(.caption)
+                            .font(.caption).foregroundStyle(axisInk)
                     }
                 }
             }
