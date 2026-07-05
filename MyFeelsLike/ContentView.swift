@@ -568,7 +568,7 @@ struct HereTodayView: View {
 
     private var tempLegendEntries: [(color: Color, label: String, isArea: Bool)] {
         var e: [(color: Color, label: String, isArea: Bool)] = []
-        if graphFeels    { e.append((.purple, "MyFeelsLike", false)) }
+        if graphFeels    { e.append((.purple, "Feels like", false)) }
         if graphTemp     { e.append((.blue,   "Temp",        false)) }
         if graphWetBulb  { e.append((.green,  "Wet Bulb",    false)) }
         if graphDewPoint { e.append((.red,    "Dew Pt",      false)) }
@@ -777,29 +777,30 @@ struct HereTodayView: View {
                     let dry = useFahrenheit ? p.temperatureF : p.temperatureC
                     let wet = useFahrenheit ? p.wetBulbF : p.wetBulbC
                     let dew = useFahrenheit ? p.dewPointF : p.dewPointC
-                    // Filled bands as explicit ranges (so they don't stack):
-                    // red below dew point, green dew→wet bulb, blue wet bulb→dry
-                    // bulb. Since dry ≥ wet ≥ dew always, the bands nest cleanly.
+                    // Each band fills from the axis baseline up to its own curve,
+                    // drawn back→front (dry → wet → dew). Since dry ≥ wet ≥ dew,
+                    // the opaque fronts nest into clean bands — and any band still
+                    // reaches the axis when the ones below it are turned off.
+                    if graphTemp {
+                        AreaMark(x: .value("Time", p.date),
+                                 yStart: .value("base", base),
+                                 yEnd: .value("Temp", dry),
+                                 series: .value("S", "dry"))
+                            .foregroundStyle(.blue).interpolationMethod(.linear)
+                    }
+                    if graphWetBulb {
+                        AreaMark(x: .value("Time", p.date),
+                                 yStart: .value("base", base),
+                                 yEnd: .value("Wet Bulb", wet),
+                                 series: .value("S", "wet"))
+                            .foregroundStyle(.green).interpolationMethod(.linear)
+                    }
                     if graphDewPoint {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Dew Point", dew),
                                  series: .value("S", "dew"))
                             .foregroundStyle(.red).interpolationMethod(.linear)
-                    }
-                    if graphWetBulb {
-                        AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("Dew Point", dew),
-                                 yEnd: .value("Wet Bulb", wet),
-                                 series: .value("S", "wet"))
-                            .foregroundStyle(.green).interpolationMethod(.linear)
-                    }
-                    if graphTemp {
-                        AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("Wet Bulb", wet),
-                                 yEnd: .value("Temp", dry),
-                                 series: .value("S", "dry"))
-                            .foregroundStyle(.blue).interpolationMethod(.linear)
                     }
                     // Personalised feels-like (apparent) stays a line, on top.
                     if graphFeels {
@@ -1015,7 +1016,7 @@ struct TenDayView: View {
 
     private var tempLegendEntries: [(color: Color, label: String, isArea: Bool)] {
         var e: [(color: Color, label: String, isArea: Bool)] = []
-        if graphFeels    { e.append((.purple, "MyFeelsLike", false)) }
+        if graphFeels    { e.append((.purple, "Feels like", false)) }
         if graphTemp     { e.append((.blue,   "Temp",        false)) }
         if graphWetBulb  { e.append((.green,  "Wet Bulb",    false)) }
         if graphDewPoint { e.append((.red,    "Dew Pt",      false)) }
@@ -1170,23 +1171,23 @@ struct TenDayView: View {
             let dry = useFahrenheit ? p.temperatureF : p.temperatureC
             let wet = useFahrenheit ? p.wetBulbF : p.wetBulbC
             let dew = useFahrenheit ? p.dewPointF : p.dewPointC
+            if graphTemp {
+                AreaMark(x: .value("Time", p.date),
+                         yStart: .value("base", base),
+                         yEnd: .value("Temp", dry), series: .value("S", "dryA"))
+                    .foregroundStyle(.blue).interpolationMethod(.linear)
+            }
+            if graphWetBulb {
+                AreaMark(x: .value("Time", p.date),
+                         yStart: .value("base", base),
+                         yEnd: .value("Wet Bulb", wet), series: .value("S", "wetA"))
+                    .foregroundStyle(.green).interpolationMethod(.linear)
+            }
             if graphDewPoint {
                 AreaMark(x: .value("Time", p.date),
                          yStart: .value("base", base),
                          yEnd: .value("Dew Point", dew), series: .value("S", "dewA"))
                     .foregroundStyle(.red).interpolationMethod(.linear)
-            }
-            if graphWetBulb {
-                AreaMark(x: .value("Time", p.date),
-                         yStart: .value("Dew Point", dew),
-                         yEnd: .value("Wet Bulb", wet), series: .value("S", "wetA"))
-                    .foregroundStyle(.green).interpolationMethod(.linear)
-            }
-            if graphTemp {
-                AreaMark(x: .value("Time", p.date),
-                         yStart: .value("Wet Bulb", wet),
-                         yEnd: .value("Temp", dry), series: .value("S", "dryA"))
-                    .foregroundStyle(.blue).interpolationMethod(.linear)
             }
             if graphFeels {
                 LineMark(x: .value("Time", p.date),
@@ -1262,7 +1263,7 @@ struct TenDayView: View {
         }
         .chartYScale(domain: 0...24)
         .chartYAxis {
-            AxisMarks(position: .leading, values: [0, 6, 12, 18]) { v in
+            AxisMarks(position: .leading, values: [0, 6, 12, 18, 24]) { v in
                 AxisValueLabel {
                     Text(String(format: "%02d", v.as(Int.self) ?? 0))
                         .font(.caption2).foregroundStyle(axisInk)

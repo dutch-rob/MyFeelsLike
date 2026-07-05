@@ -56,7 +56,7 @@ struct SettingsView: View {
                 Toggle("Temperature", isOn: $graphTemp)
                 Toggle("Wet bulb", isOn: $graphWetBulb)
                 Toggle("Dew point", isOn: $graphDewPoint)
-                Toggle("MyFeelsLike line", isOn: $graphFeels)
+                Toggle("Feels like line", isOn: $graphFeels)
                 Toggle("MyFeelsLike colour", isOn: $graphColour)
                 Toggle("Precipitation", isOn: $graphPrecip)
                 Toggle("Wind", isOn: $graphWind)
