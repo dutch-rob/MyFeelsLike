@@ -133,6 +133,18 @@ struct WeatherAttributionLink: View {
     }
 }
 
+// MARK: - Clock format
+
+/// Compact hour-of-day label. 24-hour → "00"…"23". 12-hour → 1…12 with the
+/// noon tick spelled out ("noon") and midnight shown as "12", no am/pm suffix.
+func clockHourLabel(_ hour: Int, use12: Bool) -> String {
+    let h = ((hour % 24) + 24) % 24
+    guard use12 else { return String(format: "%02d", h) }
+    if h == 12 { return "noon" }
+    let hr = h % 12
+    return hr == 0 ? "12" : "\(hr)"
+}
+
 // MARK: - Graph visibility settings (user-toggleable in Settings)
 
 /// @AppStorage keys for which graph series the user wants to see. All default
@@ -551,6 +563,7 @@ struct HereTodayView: View {
     var fitsPane: Bool = false
 
     @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
+    @AppStorage("use12HourClock") private var use12Hour = false
     @AppStorage(GraphKey.temp)     private var graphTemp     = true
     @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
     @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
@@ -612,15 +625,8 @@ struct HereTodayView: View {
         return lo...last
     }
 
-    private static let hourFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateFormat = "HH"
-        return df
-    }()
-
     private func hourLabel(for date: Date) -> String {
-        HereTodayView.hourFormatter.string(from: date)
+        clockHourLabel(Calendar.current.component(.hour, from: date), use12: use12Hour)
     }
 
     /// Whether the forecast carries personalised feels-like scores.
@@ -987,6 +993,7 @@ struct TenDayView: View {
     var fitsPane: Bool = false
 
     @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
+    @AppStorage("use12HourClock") private var use12Hour = false
     @AppStorage(GraphKey.temp)     private var graphTemp     = true
     @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
     @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
@@ -1264,8 +1271,9 @@ struct TenDayView: View {
         .chartYScale(domain: 0...24)
         .chartYAxis {
             AxisMarks(position: .leading, values: [0, 6, 12, 18, 24]) { v in
+                let hv = v.as(Int.self) ?? 0
                 AxisValueLabel {
-                    Text(String(format: "%02d", v.as(Int.self) ?? 0))
+                    Text(hv == 24 && !use12Hour ? "24" : clockHourLabel(hv, use12: use12Hour))
                         .font(.caption2).foregroundStyle(axisInk)
                 }
             }

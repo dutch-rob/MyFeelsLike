@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @AppStorage("useFahrenheit") private var useFahrenheit: Bool = false
+    @AppStorage("use12HourClock") private var use12Hour = false
     @AppStorage("shareDataWithDevs") private var shareData: Bool = false
 
     // #10: which graph series to show. All default on.
@@ -48,6 +49,11 @@ struct SettingsView: View {
                 Picker("Temperature", selection: $useFahrenheit) {
                     Text("Celsius (°C)").tag(false)
                     Text("Fahrenheit (°F)").tag(true)
+                }
+                .pickerStyle(.segmented)
+                Picker("Time", selection: $use12Hour) {
+                    Text("24-hour").tag(false)
+                    Text("12-hour").tag(true)
                 }
                 .pickerStyle(.segmented)
             }

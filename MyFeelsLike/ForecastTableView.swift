@@ -11,13 +11,25 @@ struct ForecastTableView: View {
     /// scenario adjusters to display (matches the graph screens).
     var activeFeatures: Set<Feature>? = nil
     @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
+    @AppStorage("use12HourClock") private var use12Hour = false
 
-    private static let timeFormatter: DateFormatter = {
+    private static let timeFormatter24: DateFormatter = {
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")
         df.dateFormat = "HH:mm"
         return df
     }()
+
+    private static let timeFormatter12: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.dateFormat = "h a"   // e.g. "2 PM" (rows are hourly)
+        return df
+    }()
+
+    private func timeLabel(for date: Date) -> String {
+        (use12Hour ? Self.timeFormatter12 : Self.timeFormatter24).string(from: date)
+    }
 
     private static let dayHeaderFormatter: DateFormatter = {
         let df = DateFormatter()
@@ -207,7 +219,7 @@ struct ForecastTableView: View {
             myFeelsLikeCell(p)
                 .padding(.trailing, myFLTrailingGap)
 
-            cell(p.kind == .current ? "now" : Self.timeFormatter.string(from: p.date),
+            cell(p.kind == .current ? "now" : timeLabel(for: p.date),
                  width: wTime, align: .leading,
                  color: p.kind == .current ? Self.cMyFL : nil)
 
