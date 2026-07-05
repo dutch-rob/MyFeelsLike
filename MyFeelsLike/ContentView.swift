@@ -1344,10 +1344,14 @@ struct TenDayView: View {
             .padding(.leading, 36)
 
             Chart {
-                // Past as dashed lines (historic → now); future as filled bands
-                // (now → forecast). They share the "now" point at the boundary.
-                tempLines(historicPlus, suffix: "h", dash: [4, 3])
-                tempAreas(forecastPlus, base: dom.lowerBound)
+                // Past, current and forecast all share the same filled bands;
+                // a dashed vertical line marks "now" so the past is still clear.
+                tempAreas(allPoints, base: dom.lowerBound)
+                if let nx = nowLineDate {
+                    RuleMark(x: .value("Now", nx))
+                        .foregroundStyle(axisInk.opacity(0.55))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                }
             }
             .chartLegend(.hidden)
             .chartYScale(domain: dom)
@@ -1420,6 +1424,11 @@ struct TenDayView: View {
                 // Wind/gust curves: dashed past, solid future, joined at "now".
                 windLines(historicPlus, suffix: "h", windDash: [4, 3])
                 windLines(forecastPlus, suffix: "",  windDash: nil)
+                if let nx = nowLineDate {
+                    RuleMark(x: .value("Now", nx))
+                        .foregroundStyle(axisInk.opacity(0.55))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                }
             }
             .chartLegend(.hidden)
             .chartYScale(domain: dom)
