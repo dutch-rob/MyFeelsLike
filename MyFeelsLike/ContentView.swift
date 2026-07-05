@@ -735,6 +735,9 @@ struct HereTodayView: View {
 
     @ViewBuilder
     private func temperatureChart(height: CGFloat) -> some View {
+        // Compute the domain once (O(n)); reading it per-point would be O(n²).
+        let dom = tempYDomain
+        let base = dom.lowerBound
         VStack(alignment: .leading, spacing: 2) {
             // Legend without units — only for the enabled series.
             ChartLegendRow(entries: tempLegendEntries)
@@ -750,7 +753,7 @@ struct HereTodayView: View {
                     // bulb. Since dry ≥ wet ≥ dew always, the bands nest cleanly.
                     if graphDewPoint {
                         AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", tempYDomain.lowerBound),
+                                 yStart: .value("base", base),
                                  yEnd: .value("Dew Point", dew),
                                  series: .value("S", "dew"))
                             .foregroundStyle(.red).interpolationMethod(.linear)
@@ -807,7 +810,7 @@ struct HereTodayView: View {
             // MyFeelsLike colour now lives in its own panel below (see
             // myFeelsLikePanel), matching the 10-day screen's heatmap.
             .chartLegend(.hidden)
-            .chartYScale(domain: tempYDomain)
+            .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
                     AxisGridLine(); AxisTick()
@@ -839,6 +842,9 @@ struct HereTodayView: View {
 
     @ViewBuilder
     private func precipWindChart(height: CGFloat) -> some View {
+        // Compute the domain once (O(n)); reading it per-point would be O(n²).
+        let dom = windYDomain
+        let base = dom.lowerBound
         VStack(alignment: .leading, spacing: 2) {
             ChartLegendRow(entries: windLegendEntries)
             .padding(.leading, 36)
@@ -852,19 +858,19 @@ struct HereTodayView: View {
                     // baseline so they overlap rather than stack.
                     if graphGust {
                         AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", windYDomain.lowerBound),
+                                 yStart: .value("base", base),
                                  yEnd: .value("Gust", gust), series: .value("S", "gustA"))
                             .foregroundStyle(.red.opacity(0.12)).interpolationMethod(.linear)
                     }
                     if graphWind {
                         AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", windYDomain.lowerBound),
+                                 yStart: .value("base", base),
                                  yEnd: .value("Wind", wind), series: .value("S", "windA"))
                             .foregroundStyle(.red.opacity(0.35)).interpolationMethod(.linear)
                     }
                     if graphPrecip {
                         AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", windYDomain.lowerBound),
+                                 yStart: .value("base", base),
                                  yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
                             .foregroundStyle(.blue.opacity(0.3)).interpolationMethod(.linear)
                     }
@@ -898,7 +904,7 @@ struct HereTodayView: View {
                 }
             }
             .chartLegend(.hidden)
-            .chartYScale(domain: windYDomain)
+            .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
                     AxisGridLine(); AxisTick()
@@ -1108,14 +1114,14 @@ struct TenDayView: View {
     /// dew→wet bulb, blue wet bulb→dry bulb) with the feels-like line on top.
     /// Explicit ranges so the bands don't stack.
     @ChartContentBuilder
-    private func tempAreas(_ pts: [ForecastPoint]) -> some ChartContent {
+    private func tempAreas(_ pts: [ForecastPoint], base: Double) -> some ChartContent {
         ForEach(pts) { p in
             let dry = useFahrenheit ? p.temperatureF : p.temperatureC
             let wet = useFahrenheit ? p.wetBulbF : p.wetBulbC
             let dew = useFahrenheit ? p.dewPointF : p.dewPointC
             if graphDewPoint {
                 AreaMark(x: .value("Time", p.date),
-                         yStart: .value("base", tempYDomain.lowerBound),
+                         yStart: .value("base", base),
                          yEnd: .value("Dew Point", dew), series: .value("S", "dewA"))
                     .foregroundStyle(.red).interpolationMethod(.linear)
             }
@@ -1296,6 +1302,9 @@ struct TenDayView: View {
 
     @ViewBuilder
     private func temperatureChart(height: CGFloat) -> some View {
+        // Compute the domain once (O(n)) — reading it inside a per-point
+        // ForEach would make it O(n²) and stall scrolling/swiping.
+        let dom = tempYDomain
         VStack(alignment: .leading, spacing: 2) {
             // Legend without units — only for the enabled series.
             ChartLegendRow(entries: tempLegendEntries)
@@ -1305,10 +1314,10 @@ struct TenDayView: View {
                 // Past as dashed lines (historic → now); future as filled bands
                 // (now → forecast). They share the "now" point at the boundary.
                 tempLines(historicPlus, suffix: "h", dash: [4, 3])
-                tempAreas(forecastPlus)
+                tempAreas(forecastPlus, base: dom.lowerBound)
             }
             .chartLegend(.hidden)
-            .chartYScale(domain: tempYDomain)
+            .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
                     AxisGridLine(); AxisTick()
@@ -1339,6 +1348,10 @@ struct TenDayView: View {
 
     @ViewBuilder
     private func precipWindChart(height: CGFloat) -> some View {
+        // Compute the domain once (O(n)); reading it per-point would be O(n²).
+        let dom = windYDomain
+        let base = dom.lowerBound
+        let windPts = historic + series
         VStack(alignment: .leading, spacing: 2) {
             ChartLegendRow(entries: windLegendEntries)
             .padding(.leading, 36)
@@ -1347,24 +1360,24 @@ struct TenDayView: View {
                 // Filled areas back→front over history + forecast: gust (faint
                 // red) behind wind (red) behind rain (blue). Explicit ranges
                 // from the 0 baseline so they overlap rather than stack.
-                ForEach(historic + series) { p in
+                ForEach(windPts) { p in
                     let gust = useFahrenheit ? p.windGustMPH : p.windGustKPH
                     let wind = useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH
                     if graphGust {
                         AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", windYDomain.lowerBound),
+                                 yStart: .value("base", base),
                                  yEnd: .value("Gust", gust), series: .value("S", "gustA"))
                             .foregroundStyle(.red.opacity(0.12)).interpolationMethod(.linear)
                     }
                     if graphWind {
                         AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", windYDomain.lowerBound),
+                                 yStart: .value("base", base),
                                  yEnd: .value("Wind", wind), series: .value("S", "windA"))
                             .foregroundStyle(.red.opacity(0.35)).interpolationMethod(.linear)
                     }
                     if graphPrecip {
                         AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", windYDomain.lowerBound),
+                                 yStart: .value("base", base),
                                  yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
                             .foregroundStyle(.blue.opacity(0.3)).interpolationMethod(.linear)
                     }
@@ -1374,7 +1387,7 @@ struct TenDayView: View {
                 windLines(forecastPlus, suffix: "",  windDash: nil)
             }
             .chartLegend(.hidden)
-            .chartYScale(domain: windYDomain)
+            .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading) { _ in
                     AxisGridLine(); AxisTick()
