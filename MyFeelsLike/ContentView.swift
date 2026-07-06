@@ -281,129 +281,9 @@ struct ContentView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Line 1: fixed place name – taps open the places sheet
-            Button { showPlaces = true } label: {
-                Text(displayTitle)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(skyInk)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal)
-            }
-            .buttonStyle(.plain)
-            .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
-
-            if !showSky { Divider() }
-
-            if !anyGraphVisible {
-                // #10: every graph disabled → only the table screen remains.
-                forecastTableTab(chipFeatures: activeFeatures)
-            } else if useDashboardLayout {
-                // iPad: all three screens on one dashboard — 24h and 10-day
-                // side by side on top, table below (scrolling in its panel).
-                // A single scenario strip up here replaces the per-screen ones.
-                ScenarioStrip(activeFeatures: activeFeatures)
-                GeometryReader { geo in
-                    VStack(spacing: 0) {
-                        HStack(spacing: 0) {
-                            hereTodayTab(chipFeatures: [], fitsPane: true)
-                            Divider()
-                            tenDayTab(chipFeatures: [], fitsPane: true)
-                        }
-                        .frame(height: showTable ? geo.size.height * 0.55 : geo.size.height)
-                        if showTable {
-                            Divider()
-                            forecastTableTab(chipFeatures: [])
-                        }
-                    }
-                }
-            } else if showTable {
-                // 5-tab layout for circular (wrap-around) swiping:
-                //   0 = table phantom  →  real tab is 3
-                //   1 = 24h (real, default)
-                //   2 = 10d (real)
-                //   3 = table (real)
-                //   4 = 24h phantom  →  real tab is 1
-                // Phantoms show identical content; onChange teleports to the real
-                // tab instantly (no animation) so the user never notices the jump.
-                TabView(selection: $selectedTab) {
-                    forecastTableTab(chipFeatures: activeFeatures).tag(0)
-                    hereTodayTab(chipFeatures: activeFeatures).tag(1)
-                    tenDayTab(chipFeatures: activeFeatures).tag(2)
-                    forecastTableTab(chipFeatures: activeFeatures).tag(3)
-                    hereTodayTab(chipFeatures: activeFeatures).tag(4)
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                .onChange(of: selectedTab) { _, tab in
-                    guard tab == 0 || tab == 4 else { return }
-                    var t = Transaction()
-                    t.disablesAnimations = true
-                    withTransaction(t) { selectedTab = tab == 0 ? 3 : 1 }
-                }
-            } else {
-                // #3: table hidden → 4-tab circular wrap over just the two graph
-                // screens:
-                //   0 = 10d phantom  →  real tab is 2
-                //   1 = 24h (real, default)
-                //   2 = 10d (real)
-                //   3 = 24h phantom  →  real tab is 1
-                TabView(selection: $selectedTab) {
-                    tenDayTab(chipFeatures: activeFeatures).tag(0)
-                    hereTodayTab(chipFeatures: activeFeatures).tag(1)
-                    tenDayTab(chipFeatures: activeFeatures).tag(2)
-                    hereTodayTab(chipFeatures: activeFeatures).tag(3)
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                .onChange(of: selectedTab) { _, tab in
-                    guard tab == 0 || tab == 3 else { return }
-                    var t = Transaction()
-                    t.disablesAnimations = true
-                    withTransaction(t) { selectedTab = tab == 0 ? 2 : 1 }
-                }
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            ZStack {
-                // Center area: Places + Rate Feels Like, side by side
-                HStack(spacing: 24) {
-                    Button { showPlaces = true } label: {
-                        Label("Places", systemImage: "mappin.and.ellipse")
-                            .padding(.vertical, 10)
-                    }
-                    .accessibilityIdentifier("placesButton")
-                    Button { showRate = true } label: {
-                        Label("Rate Feels Like", systemImage: "thermometer.medium")
-                            .padding(.vertical, 10)
-                    }
-                    .disabled(weather.series24h.isEmpty)
-                    .accessibilityIdentifier("rateButton")
-                }
-
-                HStack {
-                    Spacer()
-
-                    // Settings cog – bottom-right corner
-                    Button { showSettings = true } label: {
-                        Image(systemName: "gearshape")
-                            .font(.title3)
-                            .padding(.horizontal)
-                            .padding(.vertical, 10)
-                    }
-                    .accessibilityIdentifier("settingsButton")
-                }
-            }
-            .tint(showSky ? skyInk : Color.accentColor)
-            .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
-        }
-        .background {
-            // #1: current-conditions sky fills the whole screen, behind the
-            // title bar and bottom toolbar too.
-            if showSky, let sp = skyPoint {
-                WeatherSkyView(point: sp, isDay: skyIsDay).ignoresSafeArea()
-            }
-        }
+        mainContent
+        .safeAreaInset(edge: .bottom) { bottomBar }
+        .background { skyBackground }
         .sheet(isPresented: $showPlaces) {
             NavigationStack {
                 PlacesListView(
@@ -480,6 +360,145 @@ struct ContentView: View {
         .onChange(of: scenarioSun) { _, _ in pushToWatch() }
         .onChange(of: places.places) { _, _ in pushToWatch() }
         .onReceive(progressTimer) { nowTick = $0 }
+    }
+
+    // MARK: Body sub-views (kept small so the type-checker doesn't choke)
+
+    /// Title bar on top + the active forecast layout below it.
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            titleButton
+            if !showSky { Divider() }
+
+            if !anyGraphVisible {
+                // #10: every graph disabled → only the table screen remains.
+                forecastTableTab(chipFeatures: activeFeatures)
+            } else if useDashboardLayout {
+                dashboardLayout
+            } else if showTable {
+                tabPagerWithTable
+            } else {
+                tabPagerNoTable
+            }
+        }
+    }
+
+    /// Fixed place name – taps open the places sheet.
+    private var titleButton: some View {
+        Button { showPlaces = true } label: {
+            Text(displayTitle)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundStyle(skyInk)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .padding(.horizontal)
+        }
+        .buttonStyle(.plain)
+        .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+    }
+
+    /// iPad dashboard: 24h + 10-day side by side, table below (scrolling in its
+    /// panel). A single scenario strip up here replaces the per-screen ones.
+    @ViewBuilder
+    private var dashboardLayout: some View {
+        ScenarioStrip(activeFeatures: activeFeatures)
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    hereTodayTab(chipFeatures: [], fitsPane: true)
+                    Divider()
+                    tenDayTab(chipFeatures: [], fitsPane: true)
+                }
+                .frame(height: showTable ? geo.size.height * 0.55 : geo.size.height)
+                if showTable {
+                    Divider()
+                    forecastTableTab(chipFeatures: [])
+                }
+            }
+        }
+    }
+
+    /// iPhone pager including the table (5-tab circular wrap):
+    ///   0 = table phantom → real 3, 1 = 24h (default), 2 = 10d, 3 = table,
+    ///   4 = 24h phantom → real 1. Phantoms show identical content; onChange
+    ///   teleports to the real tab with no animation so the jump is invisible.
+    private var tabPagerWithTable: some View {
+        TabView(selection: $selectedTab) {
+            forecastTableTab(chipFeatures: activeFeatures).tag(0)
+            hereTodayTab(chipFeatures: activeFeatures).tag(1)
+            tenDayTab(chipFeatures: activeFeatures).tag(2)
+            forecastTableTab(chipFeatures: activeFeatures).tag(3)
+            hereTodayTab(chipFeatures: activeFeatures).tag(4)
+        }
+        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        .onChange(of: selectedTab) { _, tab in
+            guard tab == 0 || tab == 4 else { return }
+            var t = Transaction()
+            t.disablesAnimations = true
+            withTransaction(t) { selectedTab = tab == 0 ? 3 : 1 }
+        }
+    }
+
+    /// iPhone pager with the table hidden (#3): 4-tab circular wrap over the two
+    /// graph screens — 0 = 10d phantom → real 2, 1 = 24h (default), 2 = 10d,
+    /// 3 = 24h phantom → real 1.
+    private var tabPagerNoTable: some View {
+        TabView(selection: $selectedTab) {
+            tenDayTab(chipFeatures: activeFeatures).tag(0)
+            hereTodayTab(chipFeatures: activeFeatures).tag(1)
+            tenDayTab(chipFeatures: activeFeatures).tag(2)
+            hereTodayTab(chipFeatures: activeFeatures).tag(3)
+        }
+        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        .onChange(of: selectedTab) { _, tab in
+            guard tab == 0 || tab == 3 else { return }
+            var t = Transaction()
+            t.disablesAnimations = true
+            withTransaction(t) { selectedTab = tab == 0 ? 2 : 1 }
+        }
+    }
+
+    /// Bottom toolbar: Places + Rate Feels Like centred, Settings cog at right.
+    private var bottomBar: some View {
+        ZStack {
+            HStack(spacing: 24) {
+                Button { showPlaces = true } label: {
+                    Label("Places", systemImage: "mappin.and.ellipse")
+                        .padding(.vertical, 10)
+                }
+                .accessibilityIdentifier("placesButton")
+                Button { showRate = true } label: {
+                    Label("Rate Feels Like", systemImage: "thermometer.medium")
+                        .padding(.vertical, 10)
+                }
+                .disabled(weather.series24h.isEmpty)
+                .accessibilityIdentifier("rateButton")
+            }
+
+            HStack {
+                Spacer()
+                Button { showSettings = true } label: {
+                    Image(systemName: "gearshape")
+                        .font(.title3)
+                        .padding(.horizontal)
+                        .padding(.vertical, 10)
+                }
+                .accessibilityIdentifier("settingsButton")
+            }
+        }
+        .tint(showSky ? skyInk : Color.accentColor)
+        .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+    }
+
+    /// #1: current-conditions sky filling the whole screen, behind the title
+    /// bar and bottom toolbar too. Empty when the sky is disabled/unavailable.
+    @ViewBuilder
+    private var skyBackground: some View {
+        if showSky, let sp = skyPoint {
+            WeatherSkyView(point: sp, isDay: skyIsDay).ignoresSafeArea()
+        }
     }
 
     @ViewBuilder
