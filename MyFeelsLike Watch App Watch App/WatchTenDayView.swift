@@ -80,11 +80,11 @@ struct WatchTenDayView: View {
             LineMark(x: .value("t", p.date),
                      y: .value("temp", useF ? p.temperatureF : p.temperatureC),
                      series: .value("s", "temp"))
-                .foregroundStyle(.blue)
+                .foregroundStyle(.green)
             LineMark(x: .value("t", p.date),
                      y: .value("wet", useF ? p.wetBulbF : p.wetBulbC),
                      series: .value("s", "wet"))
-                .foregroundStyle(.green)
+                .foregroundStyle(.blue)
             LineMark(x: .value("t", p.date),
                      y: .value("dew", useF ? p.dewPointF : p.dewPointC),
                      series: .value("s", "dew"))
@@ -125,7 +125,7 @@ struct WatchTenDayView: View {
         }
         .chartYScale(domain: 0...24)
         .chartYAxis {
-            AxisMarks(position: .leading, values: [0, 6, 12, 18]) { v in
+            AxisMarks(position: .leading, values: [0, 6, 12, 18, 24]) { v in
                 AxisValueLabel {
                     Text(String(format: "%02d", v.as(Int.self) ?? 0))
                         .font(.system(size: 13))
