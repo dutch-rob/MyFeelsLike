@@ -150,6 +150,10 @@ struct ScenarioStrip: View {
             .background(.regularMaterial, in: Capsule())
             .overlay(Capsule().strokeBorder(.secondary.opacity(0.3), lineWidth: 0.5))
         }
+        // Menu tints its label with the app accent by default; force primary so
+        // the chip text is plain black/white (the explicit .secondary parts stay
+        // grey) instead of accent-blue.
+        .tint(.primary)
     }
 
     /// Suffix the option label with an "(n rated)" hint when the level is
