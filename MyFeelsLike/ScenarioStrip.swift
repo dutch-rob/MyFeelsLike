@@ -101,6 +101,10 @@ struct ScenarioStrip: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
             }
+            // A horizontal ScrollView reports no intrinsic height, so inside a
+            // vertical stack it can be squeezed to nothing (the chips vanish).
+            // Pin it to its content's natural height so the row always shows.
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -141,7 +145,10 @@ struct ScenarioStrip: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(.bar, in: Capsule())
+            // Frosted, near-opaque capsule with a hairline edge so the chip
+            // reads clearly over the (sometimes busy) cloud background.
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(.secondary.opacity(0.3), lineWidth: 0.5))
         }
     }
 
