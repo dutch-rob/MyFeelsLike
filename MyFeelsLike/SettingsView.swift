@@ -23,6 +23,7 @@ struct SettingsView: View {
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
+    @AppStorage("showTable")       private var showTable     = true
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -72,6 +73,12 @@ struct SettingsView: View {
                 Text("Graphs")
             } footer: {
                 Text("Choose which series to show. Emptying a panel hides it; turning everything off leaves just the table.")
+            }
+
+            Section {
+                Toggle("Table screen", isOn: $showTable)
+            } footer: {
+                Text("When off, swiping only switches between the 24-hour and 10-day graph screens.")
             }
 
             Section {

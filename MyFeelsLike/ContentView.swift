@@ -197,6 +197,9 @@ struct ContentView: View {
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
+    /// #3: when off, the table screen is dropped from the pager so swiping only
+    /// cycles between the two graph screens.
+    @AppStorage("showTable")       private var showTable     = true
     @Environment(\.scenePhase) private var scenePhase
 
     /// True when at least one forecast graph is enabled. When false, the 24h
@@ -206,15 +209,26 @@ struct ContentView: View {
             || graphColour || graphPrecip || graphWind || graphGust
     }
 
+    /// True when the table screen is the one currently on-screen in the pager
+    /// (or the only screen). The weather-sky background is suppressed there so
+    /// the table stays readable (#2).
+    private var onTableScreen: Bool {
+        if !anyGraphVisible { return true }          // table is the only screen
+        guard showTable else { return false }        // no table tab exists
+        return selectedTab == 0 || selectedTab == 3  // table phantom / real
+    }
+
     // Whole-screen weather-sky background (current conditions), shown behind
-    // the title bar and bottom toolbar too.
+    // the title bar and bottom toolbar too — but not on the table screen.
     private var skyPoint: ForecastPoint? { weather.series24h.first ?? weather.current }
     private var skyIsDay: Bool {
         if let sr = weather.sunrise, let ss = weather.sunset { return nowTick >= sr && nowTick < ss }
         return skyPoint?.isDaylight ?? true
     }
+    /// Whether the sky background is actually shown right now.
+    private var showSky: Bool { graphSky && !onTableScreen }
     /// Legible ink over the sky: black by day, white by night (system otherwise).
-    private var skyInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
+    private var skyInk: Color { showSky ? (skyIsDay ? .black : .white) : .primary }
 
     @Query(sort: \Rating.timestamp) private var ratings: [Rating]
     @State private var regressionState: RegressionState? = RegressionStateStore.load()
@@ -273,15 +287,15 @@ struct ContentView: View {
                 Text(displayTitle)
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundStyle(graphSky ? skyInk : .primary)
+                    .foregroundStyle(skyInk)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .padding(.horizontal)
             }
             .buttonStyle(.plain)
-            .background(graphSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+            .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
 
-            if !graphSky { Divider() }
+            if !showSky { Divider() }
 
             if !anyGraphVisible {
                 // #10: every graph disabled → only the table screen remains.
@@ -298,12 +312,14 @@ struct ContentView: View {
                             Divider()
                             tenDayTab(chipFeatures: [], fitsPane: true)
                         }
-                        .frame(height: geo.size.height * 0.55)
-                        Divider()
-                        forecastTableTab(chipFeatures: [])
+                        .frame(height: showTable ? geo.size.height * 0.55 : geo.size.height)
+                        if showTable {
+                            Divider()
+                            forecastTableTab(chipFeatures: [])
+                        }
                     }
                 }
-            } else {
+            } else if showTable {
                 // 5-tab layout for circular (wrap-around) swiping:
                 //   0 = table phantom  →  real tab is 3
                 //   1 = 24h (real, default)
@@ -325,6 +341,26 @@ struct ContentView: View {
                     var t = Transaction()
                     t.disablesAnimations = true
                     withTransaction(t) { selectedTab = tab == 0 ? 3 : 1 }
+                }
+            } else {
+                // #3: table hidden → 4-tab circular wrap over just the two graph
+                // screens:
+                //   0 = 10d phantom  →  real tab is 2
+                //   1 = 24h (real, default)
+                //   2 = 10d (real)
+                //   3 = 24h phantom  →  real tab is 1
+                TabView(selection: $selectedTab) {
+                    tenDayTab(chipFeatures: activeFeatures).tag(0)
+                    hereTodayTab(chipFeatures: activeFeatures).tag(1)
+                    tenDayTab(chipFeatures: activeFeatures).tag(2)
+                    hereTodayTab(chipFeatures: activeFeatures).tag(3)
+                }
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                .onChange(of: selectedTab) { _, tab in
+                    guard tab == 0 || tab == 3 else { return }
+                    var t = Transaction()
+                    t.disablesAnimations = true
+                    withTransaction(t) { selectedTab = tab == 0 ? 2 : 1 }
                 }
             }
         }
@@ -358,13 +394,13 @@ struct ContentView: View {
                     .accessibilityIdentifier("settingsButton")
                 }
             }
-            .tint(graphSky ? skyInk : Color.accentColor)
-            .background(graphSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+            .tint(showSky ? skyInk : Color.accentColor)
+            .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
         }
         .background {
             // #1: current-conditions sky fills the whole screen, behind the
             // title bar and bottom toolbar too.
-            if graphSky, let sp = skyPoint {
+            if showSky, let sp = skyPoint {
                 WeatherSkyView(point: sp, isDay: skyIsDay).ignoresSafeArea()
             }
         }
@@ -437,6 +473,7 @@ struct ContentView: View {
             }
             refitRegression()
         }
+        .onChange(of: showTable) { _, _ in selectedTab = 1 }   // avoid a now-invalid tab tag
         .onChange(of: useFahrenheit) { _, _ in pushToWatch() }
         .onChange(of: scenarioActivity) { _, _ in pushToWatch() }
         .onChange(of: scenarioDress) { _, _ in pushToWatch() }
@@ -449,11 +486,11 @@ struct ContentView: View {
     private func tabLabel(_ text: String) -> some View {
         Text(text)
             .font(.subheadline)
-            .foregroundStyle(graphSky ? skyInk : .secondary)
+            .foregroundStyle(showSky ? skyInk : .secondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 5)
-            .background(graphSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
-        if !graphSky { Divider() }
+            .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+        if !showSky { Divider() }
     }
 
     private func refitRegression() {
@@ -602,8 +639,8 @@ struct HereTodayView: View {
     private var tempLegendEntries: [(color: Color, label: String, isArea: Bool)] {
         var e: [(color: Color, label: String, isArea: Bool)] = []
         if graphFeels    { e.append((.purple, "Feels like", false)) }
-        if graphTemp     { e.append((.blue,   "Temp",        false)) }
-        if graphWetBulb  { e.append((.green,  "Wet Bulb",    false)) }
+        if graphTemp     { e.append((.green,  "Temp",        false)) }
+        if graphWetBulb  { e.append((.blue,   "Wet Bulb",    false)) }
         if graphDewPoint { e.append((.red,    "Dew Pt",      false)) }
         return e
     }
@@ -750,9 +787,12 @@ struct HereTodayView: View {
                     // Reliability shrinks the band vertically toward the centre
                     // line, so uncertain hours read as a thinner stripe.
                     let half = myFeelsLikeReliability(p) / 2
+                    // Cell spans the hour *ending* at p.date (shifted ~1h left of
+                    // the hour-starting convention) so the band lines up with how
+                    // the temperature curve reads against the x-axis ticks.
                     RectangleMark(
-                        xStart: .value("t0", p.date),
-                        xEnd:   .value("t1", p.date.addingTimeInterval(3600)),
+                        xStart: .value("t0", p.date.addingTimeInterval(-3600)),
+                        xEnd:   .value("t1", p.date),
                         yStart: .value("y0", 0.5 - half),
                         yEnd:   .value("y1", 0.5 + half)
                     )
@@ -805,14 +845,14 @@ struct HereTodayView: View {
                                  yStart: .value("base", base),
                                  yEnd: .value("Temp", dry),
                                  series: .value("S", "dry"))
-                            .foregroundStyle(.blue).interpolationMethod(.linear)
+                            .foregroundStyle(.green).interpolationMethod(.linear)
                     }
                     if graphWetBulb {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Wet Bulb", wet),
                                  series: .value("S", "wet"))
-                            .foregroundStyle(.green).interpolationMethod(.linear)
+                            .foregroundStyle(.blue).interpolationMethod(.linear)
                     }
                     if graphDewPoint {
                         AreaMark(x: .value("Time", p.date),
@@ -836,12 +876,12 @@ struct HereTodayView: View {
                     if graphTemp {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Temp", useFahrenheit ? c.temperatureF : c.temperatureC))
-                            .foregroundStyle(.blue).symbolSize(110)
+                            .foregroundStyle(.green).symbolSize(110)
                     }
                     if graphWetBulb {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Wet Bulb", useFahrenheit ? c.wetBulbF : c.wetBulbC))
-                            .foregroundStyle(.green).symbolSize(110)
+                            .foregroundStyle(.blue).symbolSize(110)
                     }
                     if graphDewPoint {
                         PointMark(x: .value("Time", c.date),
@@ -1037,8 +1077,8 @@ struct TenDayView: View {
     private var tempLegendEntries: [(color: Color, label: String, isArea: Bool)] {
         var e: [(color: Color, label: String, isArea: Bool)] = []
         if graphFeels    { e.append((.purple, "Feels like", false)) }
-        if graphTemp     { e.append((.blue,   "Temp",        false)) }
-        if graphWetBulb  { e.append((.green,  "Wet Bulb",    false)) }
+        if graphTemp     { e.append((.green,  "Temp",        false)) }
+        if graphWetBulb  { e.append((.blue,   "Wet Bulb",    false)) }
         if graphDewPoint { e.append((.red,    "Dew Pt",      false)) }
         return e
     }
@@ -1154,14 +1194,14 @@ struct TenDayView: View {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Temp", useFahrenheit ? p.temperatureF : p.temperatureC),
                          series: .value("S", "A" + suffix))
-                    .foregroundStyle(.blue).interpolationMethod(.linear)
+                    .foregroundStyle(.green).interpolationMethod(.linear)
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: dash ?? []))
             }
             if graphWetBulb {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Wet Bulb", useFahrenheit ? p.wetBulbF : p.wetBulbC),
                          series: .value("S", "B" + suffix))
-                    .foregroundStyle(.green).interpolationMethod(.linear)
+                    .foregroundStyle(.blue).interpolationMethod(.linear)
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: dash ?? []))
             }
             if graphDewPoint {
@@ -1182,9 +1222,9 @@ struct TenDayView: View {
         }
     }
 
-    /// Forecast temperature as filled bands (red below dew point, green
-    /// dew→wet bulb, blue wet bulb→dry bulb) with the feels-like line on top.
-    /// Explicit ranges so the bands don't stack.
+    /// Forecast temperature as filled bands from the axis baseline up to each
+    /// curve (green = dry bulb, blue = wet bulb, red = dew point), drawn
+    /// back→front with the feels-like line on top.
     @ChartContentBuilder
     private func tempAreas(_ pts: [ForecastPoint], base: Double) -> some ChartContent {
         ForEach(pts) { p in
@@ -1195,13 +1235,13 @@ struct TenDayView: View {
                 AreaMark(x: .value("Time", p.date),
                          yStart: .value("base", base),
                          yEnd: .value("Temp", dry), series: .value("S", "dryA"))
-                    .foregroundStyle(.blue).interpolationMethod(.linear)
+                    .foregroundStyle(.green).interpolationMethod(.linear)
             }
             if graphWetBulb {
                 AreaMark(x: .value("Time", p.date),
                          yStart: .value("base", base),
                          yEnd: .value("Wet Bulb", wet), series: .value("S", "wetA"))
-                    .foregroundStyle(.green).interpolationMethod(.linear)
+                    .foregroundStyle(.blue).interpolationMethod(.linear)
             }
             if graphDewPoint {
                 AreaMark(x: .value("Time", p.date),

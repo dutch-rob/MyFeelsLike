@@ -106,8 +106,8 @@ struct ForecastTableView: View {
 
     // MARK: - 25%-darker variants of the graph colours, used for data text
 
-    private static let cTemp:   Color = .blue.mix(   with: .black, by: 0.25)
-    private static let cWet:    Color = .green.mix(  with: .black, by: 0.25)
+    private static let cTemp:   Color = .green.mix(  with: .black, by: 0.25)
+    private static let cWet:    Color = .blue.mix(   with: .black, by: 0.25)
     private static let cDew:    Color = .red.mix(    with: .black, by: 0.25)
     private static let cWind:   Color = .red.mix(    with: .black, by: 0.25)
     private static let cPrecip: Color = .blue.mix(   with: .black, by: 0.25)
