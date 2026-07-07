@@ -91,12 +91,20 @@ struct CompareBandRow: View {
 // MARK: - Compare screen
 
 struct CompareView: View {
-    /// The phone user's own personalised 24h series (for their colour band).
+    @ObservedObject var nearby: NearbyCompareManager
+    /// The phone user's own personalised 24h series (their colour band).
     let ownSeries: [ForecastPoint]
+    /// Builds a colour-band series by applying a peer's model to *our* local
+    /// forecast, so every band compares the same weather.
+    let bandSeries: (RegressionState?) -> [ForecastPoint]
     /// Legible text colour over the weather-sky background.
     var ink: Color = .primary
 
     @State private var showComingSoon = false
+
+    private static let clock: DateFormatter = {
+        let f = DateFormatter(); f.timeStyle = .short; f.dateStyle = .none; return f
+    }()
 
     var body: some View {
         ScrollView {
@@ -104,12 +112,15 @@ struct CompareView: View {
                 Text("Compare with:")
                     .font(.headline).foregroundStyle(ink)
 
-                // Two entry points (wired up in later phases).
                 HStack(spacing: 12) {
-                    Button { showComingSoon = true } label: {
-                        Label("Connect Nearby", systemImage: "dot.radiowaves.left.and.right")
+                    Button {
+                        nearby.isDiscovering ? nearby.stopDiscovery() : nearby.startDiscovery()
+                    } label: {
+                        Label(nearby.isDiscovering ? "Searching…" : "Connect Nearby",
+                              systemImage: "dot.radiowaves.left.and.right")
                             .frame(maxWidth: .infinity)
                     }
+                    .disabled(nearby.atCapacity && !nearby.isDiscovering)
                     Button { showComingSoon = true } label: {
                         Label("Invite via Text", systemImage: "message")
                             .frame(maxWidth: .infinity)
@@ -118,21 +129,88 @@ struct CompareView: View {
                 .buttonStyle(.bordered)
                 .font(.footnote)
 
+                if nearby.isDiscovering { discoverySection }
+
                 Divider()
 
-                // Phase 1: only the user's own band. Peers' bands join here once
-                // linking is implemented.
+                // Own band first, then each connected peer's.
                 CompareBandRow(name: "You", series: ownSeries, ink: ink)
+                ForEach(nearby.peers) { peer in
+                    HStack(alignment: .bottom, spacing: 8) {
+                        CompareBandRow(name: peerLabel(peer), series: bandSeries(peer.model), ink: ink)
+                        Button { nearby.cancel(peer) } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("End link with \(peer.name)")
+                    }
+                }
+
+                if !nearby.peers.isEmpty {
+                    Button(role: .destructive) { nearby.cancelAll() } label: {
+                        Label("End all links", systemImage: "xmark.circle")
+                    }
+                    .font(.footnote)
+                    .padding(.top, 4)
+                }
 
                 Spacer(minLength: 0)
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        // Incoming invitation: accept for 1 hour / until cancel, or decline.
+        .confirmationDialog("Compare with \(nearby.pendingInvite?.name ?? "")?",
+                            isPresented: pendingInviteBinding,
+                            titleVisibility: .visible,
+                            presenting: nearby.pendingInvite) { invite in
+            Button("Accept · for 1 hour") { nearby.accept(invite, lifetime: .oneHour) }
+            Button("Accept · until one of us cancels") { nearby.accept(invite, lifetime: .untilCancel) }
+            Button("Decline", role: .cancel) { nearby.decline(invite) }
+        }
         .alert("Coming soon", isPresented: $showComingSoon) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("Linking with other users is being built. This screen is the first step.")
+            Text("Inviting by text is being built. For now, use Connect Nearby.")
         }
+        .onDisappear { nearby.stopDiscovery() }   // keep live links, stop searching
+    }
+
+    // MARK: Discovery list
+
+    @ViewBuilder
+    private var discoverySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if nearby.discovered.isEmpty {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Searching for nearby users…")
+                        .font(.footnote).foregroundStyle(ink)
+                }
+            } else {
+                ForEach(nearby.discovered) { d in
+                    Button { nearby.invite(d) } label: {
+                        Label(d.name, systemImage: "plus.circle")
+                    }
+                    .buttonStyle(.bordered)
+                    .font(.footnote)
+                    .disabled(nearby.atCapacity)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var pendingInviteBinding: Binding<Bool> {
+        Binding(get: { nearby.pendingInvite != nil },
+                set: { if !$0, let inv = nearby.pendingInvite { nearby.decline(inv) } })
+    }
+
+    private func peerLabel(_ peer: NearbyCompareManager.Peer) -> String {
+        if let d = peer.deadline {
+            return "\(peer.name) · ends \(Self.clock.string(from: d))"
+        }
+        return "\(peer.name) · until cancel"
     }
 }

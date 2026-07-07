@@ -175,6 +175,7 @@ struct ContentView: View {
     @StateObject private var locationProvider = LocationProvider()
     @StateObject private var weather = WeatherService()
     @StateObject private var places = PlacesViewModel()
+    @StateObject private var nearby = NearbyCompareManager()
     @State private var selectedPlace: Place? = nil
     @State private var nowTick: Date = .now
     private let progressTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -378,11 +379,21 @@ struct ContentView: View {
     @ViewBuilder
     private var mainContent: some View {
         if showingCompare {
-            CompareView(ownSeries: weather.isRefreshing ? [] : personalised(weather.series24h),
+            CompareView(nearby: nearby,
+                        ownSeries: weather.isRefreshing ? [] : bandSeries(regressionState),
+                        bandSeries: bandSeries,
                         ink: skyInk)
         } else {
             forecastContent
         }
+    }
+
+    /// A colour-band series: a given model applied to *our* local 24h forecast
+    /// (with the current scenario), so every compared band is for the same
+    /// weather and differs only by the personal model. Used for "You" and peers.
+    private func bandSeries(_ model: RegressionState?) -> [ForecastPoint] {
+        let sc = scenario
+        return weather.series24h.map { var p = $0; p.applyPrediction(state: model, scenario: sc); return p }
     }
 
     @ViewBuilder
@@ -557,6 +568,7 @@ struct ContentView: View {
         regressionState = new
         RegressionStateStore.save(new)
         pushToWatch()
+        nearby.updateLocalModel(new)   // live-update any compare peers
     }
 
     /// Seed canned sample ratings + places for demo/screenshot runs (in-memory).
