@@ -25,18 +25,20 @@ struct FeelsEntry: TimelineEntry {
     let frame: ComplicationFrame?
     let useFahrenheit: Bool
     let hasModel: Bool
+    let sunSplit: Bool
 }
 
 struct FeelsProvider: TimelineProvider {
     func placeholder(in context: Context) -> FeelsEntry {
-        FeelsEntry(date: .now, frame: nil, useFahrenheit: false, hasModel: false)
+        FeelsEntry(date: .now, frame: nil, useFahrenheit: false, hasModel: false, sunSplit: false)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (FeelsEntry) -> Void) {
         let snap = ComplicationSnapshot.load()
         completion(FeelsEntry(date: .now, frame: snap?.frames.first,
                               useFahrenheit: snap?.useFahrenheit ?? false,
-                              hasModel: snap?.hasModel ?? false))
+                              hasModel: snap?.hasModel ?? false,
+                              sunSplit: snap?.sunSplit ?? false))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<FeelsEntry>) -> Void) {
@@ -49,13 +51,15 @@ struct FeelsProvider: TimelineProvider {
         let now = Date()
         var entries = snap.frames.map { f in
             FeelsEntry(date: f.date, frame: f,
-                       useFahrenheit: snap.useFahrenheit, hasModel: snap.hasModel)
+                       useFahrenheit: snap.useFahrenheit, hasModel: snap.hasModel,
+                       sunSplit: snap.sunSplit ?? false)
         }
         // Make sure something is valid right now (first frame may be future).
         if let first = entries.first, first.date > now {
             entries.insert(FeelsEntry(date: now, frame: snap.frames.first,
                                       useFahrenheit: snap.useFahrenheit,
-                                      hasModel: snap.hasModel), at: 0)
+                                      hasModel: snap.hasModel,
+                                      sunSplit: snap.sunSplit ?? false), at: 0)
         }
         // .atEnd asks for a fresh timeline once the hourly entries run out.
         completion(Timeline(entries: entries, policy: .atEnd))
@@ -69,6 +73,7 @@ struct FeelsGauge {
     let frame: ComplicationFrame?
     let useFahrenheit: Bool
     let hasModel: Bool
+    let sunSplit: Bool
 
     var tempLabel: String {
         guard let f = frame else { return "--°" }
@@ -112,6 +117,17 @@ struct FeelsGauge {
         return ColorScale.color(forScore: f.feelsCurrent)
     }
 
+    /// Split-centre colours (in-sun on top, in-shade below) when the model
+    /// learned a sun effect and this frame carries both. Nil ⇒ single centre.
+    var centerSunColor: Color? {
+        guard hasModel, sunSplit, let s = frame?.feelsSun else { return nil }
+        return ColorScale.color(forScore: s)
+    }
+    var centerShadeColor: Color? {
+        guard hasModel, sunSplit, let s = frame?.feelsShade else { return nil }
+        return ColorScale.color(forScore: s)
+    }
+
     /// Black or white, whichever reads better on `centerColor`.
     var centerTextColor: Color? {
         guard let f = frame, hasModel else { return nil }
@@ -122,6 +138,7 @@ struct FeelsGauge {
         self.frame = entry.frame
         self.useFahrenheit = entry.useFahrenheit
         self.hasModel = entry.hasModel
+        self.sunSplit = entry.sunSplit
     }
 }
 
@@ -155,9 +172,17 @@ struct FeelsCircularView: View {
         .tint(g.gradient)
         // Fill the centre disc with the current MyFeelsLike colour, inset so
         // the range ring stays visible around it. The temperature sits on top
-        // in a contrasting colour.
+        // in a contrasting colour. When the model knows a sun effect the disc
+        // splits: in-sun on top, in-shade below.
         .background {
-            if let c = g.centerColor {
+            if let sun = g.centerSunColor, let shade = g.centerShadeColor {
+                VStack(spacing: 0) {
+                    Rectangle().fill(sun)
+                    Rectangle().fill(shade)
+                }
+                .clipShape(Circle())
+                .padding(5)
+            } else if let c = g.centerColor {
                 Circle().fill(c).padding(5)
             }
         }
@@ -199,7 +224,8 @@ struct MyFeelsLikeCircularComplication: Widget {
         date: .now,
         frame: ComplicationFrame(date: .now, currentTempC: 24, feelsCurrent: 640,
                                  feelsMin: 300, feelsMax: 820,
-                                 todayTempMinC: 15, todayTempMaxC: 30),
-        useFahrenheit: false, hasModel: true)
-    FeelsEntry(date: .now, frame: nil, useFahrenheit: false, hasModel: false)
+                                 todayTempMinC: 15, todayTempMaxC: 30,
+                                 feelsSun: 780, feelsShade: 480),
+        useFahrenheit: false, hasModel: true, sunSplit: true)
+    FeelsEntry(date: .now, frame: nil, useFahrenheit: false, hasModel: false, sunSplit: false)
 }

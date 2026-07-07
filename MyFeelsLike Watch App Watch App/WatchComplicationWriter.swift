@@ -13,9 +13,10 @@ import WidgetKit
 enum WatchComplicationWriter {
 
     static func write(current: ForecastPoint?, series10d: [ForecastPoint],
-                      hasModel: Bool, useFahrenheit: Bool) {
+                      hasModel: Bool, useFahrenheit: Bool, sunSplit: Bool) {
         guard let snap = build(current: current, series10d: series10d,
-                               hasModel: hasModel, useFahrenheit: useFahrenheit) else { return }
+                               hasModel: hasModel, useFahrenheit: useFahrenheit,
+                               sunSplit: sunSplit) else { return }
         snap.save()
         WidgetCenter.shared.reloadAllTimelines()   // corner + circular
     }
@@ -23,7 +24,7 @@ enum WatchComplicationWriter {
     /// "now" + forecast hours up to +48 h, each tagged with its day's range.
     /// `now` is injectable so tests are deterministic.
     static func build(current: ForecastPoint?, series10d: [ForecastPoint],
-                      hasModel: Bool, useFahrenheit: Bool,
+                      hasModel: Bool, useFahrenheit: Bool, sunSplit: Bool = false,
                       now: Date = Date()) -> ComplicationSnapshot? {
         let cal = Calendar.current
         func dayKey(_ d: Date) -> Date { cal.startOfDay(for: d) }
@@ -57,11 +58,13 @@ enum WatchComplicationWriter {
                 currentTempC: p.temperatureC,
                 feelsCurrent: p.myFeelsLikeScore ?? (fMin + fMax) / 2,
                 feelsMin: fMin, feelsMax: fMax,
-                todayTempMinC: tMin, todayTempMaxC: tMax)
+                todayTempMinC: tMin, todayTempMaxC: tMax,
+                feelsSun: sunSplit ? p.myFeelsLikeSunScore : nil,
+                feelsShade: sunSplit ? p.myFeelsLikeShadeScore : nil)
         }
         guard !frames.isEmpty else { return nil }
 
         return ComplicationSnapshot(updated: Date(), useFahrenheit: useFahrenheit,
-                                    hasModel: hasModel, frames: frames)
+                                    hasModel: hasModel, sunSplit: sunSplit, frames: frames)
     }
 }

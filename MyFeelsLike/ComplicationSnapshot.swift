@@ -21,12 +21,20 @@ struct ComplicationFrame: Codable {
     /// This hour's day temperature range (used for the cold-start gauge).
     var todayTempMinC: Double
     var todayTempMaxC: Double
+    /// In-sun / in-shade feels-like scores at this hour — set only when the
+    /// model learned a sun effect. Used to split the circular complication's
+    /// centre disc; nil ⇒ single-colour centre.
+    var feelsSun: Double?
+    var feelsShade: Double?
 }
 
 struct ComplicationSnapshot: Codable {
     var updated: Date
     var useFahrenheit: Bool
     var hasModel: Bool
+    /// Whether the model learned a sun effect (⇒ split the circular centre into
+    /// sun/shade). Optional so older snapshots still decode.
+    var sunSplit: Bool?
     /// Hourly frames, oldest → newest (first ≈ now).
     var frames: [ComplicationFrame]
 

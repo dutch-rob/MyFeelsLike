@@ -46,15 +46,21 @@ enum BackgroundWeatherRefresh {
             let scenario = payload?.scenario ?? Scenario()
             let useF = payload?.useFahrenheit ?? false
 
+            let sunSplit = state?.selectedFeatures.contains(.sun) ?? false
             let s10 = WeatherMapping.mapPoints(from: hours, start: now,
                                                end: now.addingTimeInterval(240 * 3600),
                                                location: loc)
-                .map { var p = $0; p.applyPrediction(state: state, scenario: scenario); return p }
+                .map { var p = $0
+                    p.applyPrediction(state: state, scenario: scenario)
+                    if sunSplit { p.applySunShadePrediction(state: state, scenario: scenario) }
+                    return p }
             var cur = WeatherMapping.mapCurrent(weather.currentWeather, location: loc)
             cur.applyPrediction(state: state, scenario: scenario)
+            if sunSplit { cur.applySunShadePrediction(state: state, scenario: scenario) }
 
             WatchComplicationWriter.write(current: cur, series10d: s10,
-                                          hasModel: state != nil, useFahrenheit: useF)
+                                          hasModel: state != nil, useFahrenheit: useF,
+                                          sunSplit: sunSplit)
         } catch {
             // Leave the previous snapshot in place; try again next cycle.
         }

@@ -101,29 +101,33 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
     func applyModel() {
         let state = WatchSyncReceiver.shared.payload?.regressionState
         let scenario = WatchSyncReceiver.shared.payload?.scenario ?? Scenario()
+        // When the model learned a sun effect, also compute the in-sun/in-shade
+        // scores — used by the 24h band and the split complication centre.
+        let sunSplit = state?.selectedFeatures.contains(.sun) ?? false
         func predicted(_ pts: [ForecastPoint]) -> [ForecastPoint] {
-            pts.map { var p = $0; p.applyPrediction(state: state, scenario: scenario); return p }
-        }
-        // The 24h colour band also shows in-sun vs in-shade side by side.
-        func predicted24h(_ pts: [ForecastPoint]) -> [ForecastPoint] {
             pts.map { var p = $0
                 p.applyPrediction(state: state, scenario: scenario)
-                p.applySunShadePrediction(state: state, scenario: scenario)
+                if sunSplit { p.applySunShadePrediction(state: state, scenario: scenario) }
                 return p }
         }
-        series24h = predicted24h(series24h)
+        series24h = predicted(series24h)
         series10d = predicted(series10d)
-        if var c = current { c.applyPrediction(state: state, scenario: scenario); current = c }
-        writeSnapshot()
+        if var c = current {
+            c.applyPrediction(state: state, scenario: scenario)
+            if sunSplit { c.applySunShadePrediction(state: state, scenario: scenario) }
+            current = c
+        }
+        writeSnapshot(sunSplit: sunSplit)
     }
 
     // MARK: Complication snapshot
 
-    private func writeSnapshot() {
+    private func writeSnapshot(sunSplit: Bool) {
         WatchComplicationWriter.write(
             current: current,
             series10d: series10d,
             hasModel: WatchSyncReceiver.shared.payload?.regressionState != nil,
-            useFahrenheit: WatchSyncReceiver.shared.payload?.useFahrenheit ?? false)
+            useFahrenheit: WatchSyncReceiver.shared.payload?.useFahrenheit ?? false,
+            sunSplit: sunSplit)
     }
 }
