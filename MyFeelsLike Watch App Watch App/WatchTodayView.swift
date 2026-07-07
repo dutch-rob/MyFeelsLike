@@ -21,6 +21,11 @@ struct WatchTodayView: View {
         return f...l
     }
 
+    /// Whether the forecast carries personalised feels-like scores yet.
+    private var hasModel: Bool {
+        model.series24h.contains { $0.myFeelsLikeScore != nil }
+    }
+
     /// Tight y-range covering the four temperature curves (+ small padding).
     private var tempYDomain: ClosedRange<Double> {
         let vals = model.series24h.flatMap { p -> [Double] in
@@ -40,7 +45,11 @@ struct WatchTodayView: View {
                         placeholder
                     } else {
                         label("24-hour")
-                        tempChart.frame(height: 140)
+                        tempChart.frame(height: 130)
+                        if hasModel {
+                            label("MyFeelsLike")
+                            colourBand.frame(height: 26)
+                        }
                         label("Wind / precip")
                         windChart.frame(height: 150)
                     }
@@ -88,41 +97,91 @@ struct WatchTodayView: View {
         .frame(maxWidth: .infinity, minHeight: 150)
     }
 
+    // Temperature as filled bands from the axis baseline up to each curve
+    // (green = dry bulb, blue = wet bulb, red = dew point), drawn back→front,
+    // with the feels-like line on top — matching the phone. The MyFeelsLike
+    // colour now lives in its own band below, not behind this chart.
     private var tempChart: some View {
-        Chart(model.series24h) { p in
-            LineMark(x: .value("t", p.date),
-                     y: .value("temp", useF ? p.temperatureF : p.temperatureC),
-                     series: .value("s", "temp"))
-                .foregroundStyle(.green)
-            LineMark(x: .value("t", p.date),
-                     y: .value("wet", useF ? p.wetBulbF : p.wetBulbC),
+        let base = tempYDomain.lowerBound
+        return Chart(model.series24h) { p in
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", base),
+                     yEnd: .value("temp", useF ? p.temperatureF : p.temperatureC),
+                     series: .value("s", "dry"))
+                .foregroundStyle(.green).interpolationMethod(.linear)
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", base),
+                     yEnd: .value("wet", useF ? p.wetBulbF : p.wetBulbC),
                      series: .value("s", "wet"))
-                .foregroundStyle(.blue)
-            LineMark(x: .value("t", p.date),
-                     y: .value("dew", useF ? p.dewPointF : p.dewPointC),
+                .foregroundStyle(.blue).interpolationMethod(.linear)
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", base),
+                     yEnd: .value("dew", useF ? p.dewPointF : p.dewPointC),
                      series: .value("s", "dew"))
-                .foregroundStyle(.red)
+                .foregroundStyle(.red).interpolationMethod(.linear)
             LineMark(x: .value("t", p.date),
                      y: .value("app", useF ? p.apparentTemperatureF : p.apparentTemperatureC),
                      series: .value("s", "app"))
-                .foregroundStyle(.purple)
-        }
-        .chartBackground { proxy in
-            watchFeelsChartBackground(proxy, series: model.series24h, domain: domain)
+                .foregroundStyle(.purple).interpolationMethod(.linear)
         }
         .chartYScale(domain: tempYDomain)
         .chartYAxis { tempYAxis(useF: useF) }
         .chartXAxis { hourlyXAxis() }
     }
 
+    /// Thin MyFeelsLike colour band, one cell per hour, time-aligned with the
+    /// temperature chart above (own clear y-axis reserves the same leading gap).
+    private var colourBand: some View {
+        Chart(model.series24h) { p in
+            // Cell spans the hour ending at p.date (shifted ~1h left, as on the
+            // phone) so it lines up with the temperature curve above.
+            RectangleMark(
+                xStart: .value("t0", p.date.addingTimeInterval(-3600)),
+                xEnd:   .value("t1", p.date),
+                yStart: .value("y0", 0),
+                yEnd:   .value("y1", 1)
+            )
+            .foregroundStyle(watchHeatColor(p))
+        }
+        .chartYScale(domain: 0...1)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0]) {
+                AxisValueLabel { Text("00").font(.system(size: 13)).foregroundStyle(.clear) }
+            }
+        }
+        .chartXAxis(.hidden)
+        .chartXScale(domain: domain ?? Date()...Date())
+    }
+
+    // Wind/precip matching the phone: areas back→front — gust (translucent red),
+    // wind (solid red), precip chance (solid blue) — with a dashed gust line and
+    // a solid wind line on top so both stay readable over the precip block.
     private var windChart: some View {
         Chart(model.series24h) { p in
-            AreaMark(x: .value("t", p.date), y: .value("precip", p.precipProbability * 100))
-                .foregroundStyle(.blue.opacity(0.3))
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", 0),
+                     yEnd: .value("gust", useF ? p.windGustMPH : p.windGustKPH),
+                     series: .value("s", "gustA"))
+                .foregroundStyle(.red.opacity(0.35)).interpolationMethod(.linear)
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", 0),
+                     yEnd: .value("wind", useF ? p.windSpeedMPH : p.windSpeedKPH),
+                     series: .value("s", "windA"))
+                .foregroundStyle(.red).interpolationMethod(.linear)
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", 0),
+                     yEnd: .value("precip", p.precipProbability * 100),
+                     series: .value("s", "rainA"))
+                .foregroundStyle(.blue).interpolationMethod(.linear)
+            LineMark(x: .value("t", p.date),
+                     y: .value("gust", useF ? p.windGustMPH : p.windGustKPH),
+                     series: .value("s", "gustL"))
+                .foregroundStyle(.red.opacity(0.7)).interpolationMethod(.linear)
+                .lineStyle(StrokeStyle(lineWidth: 1.6, dash: [3, 2]))
             LineMark(x: .value("t", p.date),
                      y: .value("wind", useF ? p.windSpeedMPH : p.windSpeedKPH),
-                     series: .value("s", "wind"))
-                .foregroundStyle(.red)
+                     series: .value("s", "windL"))
+                .foregroundStyle(.red).interpolationMethod(.linear)
         }
         .chartYAxis { plainYAxis() }
         .chartXAxis { hourlyXAxis() }

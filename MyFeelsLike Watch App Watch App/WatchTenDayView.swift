@@ -76,23 +76,27 @@ struct WatchTenDayView: View {
     // MARK: Temperature curves (no feels-like background — see heatmap below)
 
     private var tempChart: some View {
-        Chart(model.series10d) { p in
-            LineMark(x: .value("t", p.date),
-                     y: .value("temp", useF ? p.temperatureF : p.temperatureC),
-                     series: .value("s", "temp"))
-                .foregroundStyle(.green)
-            LineMark(x: .value("t", p.date),
-                     y: .value("wet", useF ? p.wetBulbF : p.wetBulbC),
+        let base = tempYDomain.lowerBound
+        return Chart(model.series10d) { p in
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", base),
+                     yEnd: .value("temp", useF ? p.temperatureF : p.temperatureC),
+                     series: .value("s", "dry"))
+                .foregroundStyle(.green).interpolationMethod(.linear)
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", base),
+                     yEnd: .value("wet", useF ? p.wetBulbF : p.wetBulbC),
                      series: .value("s", "wet"))
-                .foregroundStyle(.blue)
-            LineMark(x: .value("t", p.date),
-                     y: .value("dew", useF ? p.dewPointF : p.dewPointC),
+                .foregroundStyle(.blue).interpolationMethod(.linear)
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", base),
+                     yEnd: .value("dew", useF ? p.dewPointF : p.dewPointC),
                      series: .value("s", "dew"))
-                .foregroundStyle(.red)
+                .foregroundStyle(.red).interpolationMethod(.linear)
             LineMark(x: .value("t", p.date),
                      y: .value("app", useF ? p.apparentTemperatureF : p.apparentTemperatureC),
                      series: .value("s", "app"))
-                .foregroundStyle(.purple)
+                .foregroundStyle(.purple).interpolationMethod(.linear)
         }
         .chartYScale(domain: tempYDomain)
         .chartYAxis { tempYAxis(useF: useF) }
@@ -156,14 +160,35 @@ struct WatchTenDayView: View {
 
     // MARK: Wind / precip
 
+    // Wind/precip matching the phone: areas back→front — gust (translucent red),
+    // wind (solid red), precip chance (solid blue) — with a dashed gust line and
+    // a solid wind line on top.
     private var windChart: some View {
         Chart(model.series10d) { p in
-            AreaMark(x: .value("t", p.date), y: .value("precip", p.precipProbability * 100))
-                .foregroundStyle(.blue.opacity(0.3))
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", 0),
+                     yEnd: .value("gust", useF ? p.windGustMPH : p.windGustKPH),
+                     series: .value("s", "gustA"))
+                .foregroundStyle(.red.opacity(0.35)).interpolationMethod(.linear)
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", 0),
+                     yEnd: .value("wind", useF ? p.windSpeedMPH : p.windSpeedKPH),
+                     series: .value("s", "windA"))
+                .foregroundStyle(.red).interpolationMethod(.linear)
+            AreaMark(x: .value("t", p.date),
+                     yStart: .value("base", 0),
+                     yEnd: .value("precip", p.precipProbability * 100),
+                     series: .value("s", "rainA"))
+                .foregroundStyle(.blue).interpolationMethod(.linear)
+            LineMark(x: .value("t", p.date),
+                     y: .value("gust", useF ? p.windGustMPH : p.windGustKPH),
+                     series: .value("s", "gustL"))
+                .foregroundStyle(.red.opacity(0.7)).interpolationMethod(.linear)
+                .lineStyle(StrokeStyle(lineWidth: 1.6, dash: [3, 2]))
             LineMark(x: .value("t", p.date),
                      y: .value("wind", useF ? p.windSpeedMPH : p.windSpeedKPH),
-                     series: .value("s", "wind"))
-                .foregroundStyle(.red)
+                     series: .value("s", "windL"))
+                .foregroundStyle(.red).interpolationMethod(.linear)
         }
         .chartYAxis { plainYAxis() }
         .chartXAxis { dailyXAxis() }
