@@ -181,6 +181,9 @@ struct ContentView: View {
     @State private var showPlaces   = false
     @State private var showRate     = false
     @State private var showSettings = false
+    /// When true, the Compare screen replaces the forecast content (the bottom
+    /// bar swaps its compare button for a back button).
+    @State private var showingCompare = false
     // Tab indices: 0 = table phantom, 1 = 24h (real), 2 = 10d (real),
     //              3 = table (real), 4 = 24h phantom  — for circular wrap.
     @State private var selectedTab = 1
@@ -370,9 +373,20 @@ struct ContentView: View {
 
     // MARK: Body sub-views (kept small so the type-checker doesn't choke)
 
-    /// Title bar on top + the active forecast layout below it.
+    /// Title bar on top + the active forecast layout below it (or the Compare
+    /// screen when it's showing).
     @ViewBuilder
     private var mainContent: some View {
+        if showingCompare {
+            CompareView(ownSeries: weather.isRefreshing ? [] : personalised(weather.series24h),
+                        ink: skyInk)
+        } else {
+            forecastContent
+        }
+    }
+
+    @ViewBuilder
+    private var forecastContent: some View {
         VStack(spacing: 0) {
             titleButton
             if !showSky { Divider() }
@@ -481,6 +495,7 @@ struct ContentView: View {
                 }
                 .disabled(weather.series24h.isEmpty)
                 .accessibilityIdentifier("rateButton")
+                compareButton
             }
 
             HStack {
@@ -496,6 +511,25 @@ struct ContentView: View {
         }
         .tint(showSky ? skyInk : Color.accentColor)
         .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+    }
+
+    /// Opens the Compare screen; becomes a back button while it's showing.
+    @ViewBuilder
+    private var compareButton: some View {
+        if showingCompare {
+            Button { showingCompare = false } label: {
+                Image(systemName: "chevron.backward")
+                    .font(.title3)
+                    .padding(.vertical, 10)
+            }
+            .accessibilityIdentifier("compareBackButton")
+        } else {
+            Button { showingCompare = true } label: {
+                CompareIcon()
+                    .padding(.vertical, 4)
+            }
+            .accessibilityIdentifier("compareButton")
+        }
     }
 
     /// #1: current-conditions sky filling the whole screen, behind the title
