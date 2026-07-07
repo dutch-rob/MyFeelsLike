@@ -40,15 +40,17 @@ struct WatchTodayView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 6) {
+                VStack(spacing: 4) {
                     if model.series24h.isEmpty {
                         placeholder
                     } else {
-                        label("24-hour")
-                        tempChart.frame(height: 130)
+                        // No "24-hour" title: keeping the temp chart compact and
+                        // the spacing tight lets the MyFeelsLike colour band show
+                        // without scrolling when the screen first opens.
+                        tempChart.frame(height: 108)
                         if hasModel {
                             label("MyFeelsLike")
-                            colourBand.frame(height: 26)
+                            colourBand.frame(height: 24)
                         }
                         label("Wind / precip")
                         windChart.frame(height: 150)
