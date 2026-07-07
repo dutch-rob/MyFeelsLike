@@ -26,6 +26,12 @@ struct WatchTodayView: View {
         model.series24h.contains { $0.myFeelsLikeScore != nil }
     }
 
+    /// Whether the model learned a sun effect — the colour band splits into an
+    /// in-sun (top) and in-shade (bottom) half only when it did.
+    private var sunFeatureActive: Bool {
+        WatchSyncReceiver.shared.payload?.regressionState?.selectedFeatures.contains(.sun) ?? false
+    }
+
     /// Tight y-range covering the four temperature curves (+ small padding).
     private var tempYDomain: ClosedRange<Double> {
         let vals = model.series24h.flatMap { p -> [Double] in
@@ -49,8 +55,9 @@ struct WatchTodayView: View {
                         // without scrolling when the screen first opens.
                         tempChart.frame(height: 108)
                         if hasModel {
-                            label("MyFeelsLike")
-                            colourBand.frame(height: 24)
+                            label(sunFeatureActive ? "MyFeelsLike — sun / shade" : "MyFeelsLike")
+                            if sunFeatureActive { splitColourBand.frame(height: 30) }
+                            else { colourBand.frame(height: 24) }
                         }
                         label("Wind / precip")
                         windChart.frame(height: 150)
@@ -149,6 +156,37 @@ struct WatchTodayView: View {
         .chartYAxis {
             AxisMarks(position: .leading, values: [0]) {
                 AxisValueLabel { Text("00").font(.system(size: 13)).foregroundStyle(.clear) }
+            }
+        }
+        .chartXAxis(.hidden)
+        .chartXScale(domain: domain ?? Date()...Date())
+    }
+
+    /// Split colour band: top half = in full sun, bottom half = in shade, with
+    /// tiny sun/shade markers in the leading gutter and a hairline divider.
+    private var splitColourBand: some View {
+        Chart {
+            ForEach(model.series24h) { p in
+                let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date
+                RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
+                              yStart: .value("y0", 0.5), yEnd: .value("y1", 1.0))
+                    .foregroundStyle(watchScoreColor(p.myFeelsLikeSunScore, opacity: p.myFeelsLikeSunOpacity))
+                RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
+                              yStart: .value("y0", 0.0), yEnd: .value("y1", 0.5))
+                    .foregroundStyle(watchScoreColor(p.myFeelsLikeShadeScore, opacity: p.myFeelsLikeShadeOpacity))
+            }
+            RuleMark(y: .value("mid", 0.5))
+                .foregroundStyle(.white.opacity(0.5))
+                .lineStyle(StrokeStyle(lineWidth: 0.5))
+        }
+        .chartYScale(domain: 0...1)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0.25, 0.75]) { v in
+                AxisValueLabel {
+                    Image(systemName: (v.as(Double.self) ?? 0) > 0.5 ? "sun.max.fill" : "cloud.fill")
+                        .font(.system(size: 10))
+                        .frame(width: 18, alignment: .leading)
+                }
             }
         }
         .chartXAxis(.hidden)

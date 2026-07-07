@@ -17,6 +17,12 @@ func watchHeatColor(_ p: ForecastPoint) -> Color {
     return ColorScale.color(forScore: s).opacity(alpha)
 }
 
+/// Colour for a split sun/shade band cell from an explicit score + reliability.
+func watchScoreColor(_ score: Double?, opacity: Double) -> Color {
+    guard let s = score else { return Color.gray.opacity(0.25) }
+    return ColorScale.color(forScore: s).opacity(max(0.2, min(1, opacity)))
+}
+
 // MARK: - Shared axis styling
 //
 // Prominent gridlines, drawn at a finer interval than the labels (e.g. labels

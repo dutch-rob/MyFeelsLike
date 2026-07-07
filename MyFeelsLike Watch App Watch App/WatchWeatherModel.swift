@@ -104,7 +104,14 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
         func predicted(_ pts: [ForecastPoint]) -> [ForecastPoint] {
             pts.map { var p = $0; p.applyPrediction(state: state, scenario: scenario); return p }
         }
-        series24h = predicted(series24h)
+        // The 24h colour band also shows in-sun vs in-shade side by side.
+        func predicted24h(_ pts: [ForecastPoint]) -> [ForecastPoint] {
+            pts.map { var p = $0
+                p.applyPrediction(state: state, scenario: scenario)
+                p.applySunShadePrediction(state: state, scenario: scenario)
+                return p }
+        }
+        series24h = predicted24h(series24h)
         series10d = predicted(series10d)
         if var c = current { c.applyPrediction(state: state, scenario: scenario); current = c }
         writeSnapshot()

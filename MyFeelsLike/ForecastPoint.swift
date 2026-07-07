@@ -52,6 +52,15 @@ struct ForecastPoint: Identifiable, Codable {
     /// where the model becomes unreliable.
     var myFeelsLikeOpacity: Double = 0.0
 
+    /// Sun/shade split of the personalised score (for the 24h colour band): the
+    /// same prediction evaluated with sun forced to full-sun (+1) and to shade
+    /// (−1), holding the rest of the scenario fixed. Populated only where the
+    /// band needs it (the 24h series); nil when there's no model.
+    var myFeelsLikeSunScore: Double?
+    var myFeelsLikeSunOpacity: Double = 0.0
+    var myFeelsLikeShadeScore: Double?
+    var myFeelsLikeShadeOpacity: Double = 0.0
+
     mutating func applyPrediction(state: RegressionState?, scenario: Scenario) {
         guard let state else {
             myFeelsLikeScore = nil
@@ -61,5 +70,24 @@ struct ForecastPoint: Identifiable, Codable {
         let src = ForecastFeatureSource(p: self, scenario: scenario)
         myFeelsLikeScore   = state.predict(src)
         myFeelsLikeOpacity = state.predictionOpacity(src)
+    }
+
+    /// Compute the in-sun and in-shade variants of the score, for the split
+    /// 24h colour band. Only worth showing when the model actually learned a
+    /// sun effect (`.sun` ∈ selectedFeatures); otherwise both come out equal.
+    mutating func applySunShadePrediction(state: RegressionState?, scenario: Scenario) {
+        guard let state else {
+            myFeelsLikeSunScore = nil;   myFeelsLikeSunOpacity = 0
+            myFeelsLikeShadeScore = nil; myFeelsLikeShadeOpacity = 0
+            return
+        }
+        var sunScenario = scenario;   sunScenario.sun = 1
+        var shadeScenario = scenario; shadeScenario.sun = -1
+        let sunSrc = ForecastFeatureSource(p: self, scenario: sunScenario)
+        let shadeSrc = ForecastFeatureSource(p: self, scenario: shadeScenario)
+        myFeelsLikeSunScore     = state.predict(sunSrc)
+        myFeelsLikeSunOpacity   = state.predictionOpacity(sunSrc)
+        myFeelsLikeShadeScore   = state.predict(shadeSrc)
+        myFeelsLikeShadeOpacity = state.predictionOpacity(shadeSrc)
     }
 }

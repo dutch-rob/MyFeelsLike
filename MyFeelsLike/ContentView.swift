@@ -259,16 +259,22 @@ struct ContentView: View {
         Set(regressionState?.selectedFeatures ?? [])
     }
 
-    private func personalised(_ series: [ForecastPoint]) -> [ForecastPoint] {
+    private func personalised(_ series: [ForecastPoint], splitSun: Bool = false) -> [ForecastPoint] {
         guard regressionState != nil else { return series }
         let s = regressionState
         let sc = scenario
         return series.map { p in
             var copy = p
             copy.applyPrediction(state: s, scenario: sc)
+            // The 24h colour band shows in-sun vs in-shade side by side.
+            if splitSun { copy.applySunShadePrediction(state: s, scenario: sc) }
             return copy
         }
     }
+
+    /// Whether the model actually learned a sun effect — the 24h colour band
+    /// only splits into sun/shade when it did (otherwise the halves are equal).
+    private var sunFeatureActive: Bool { activeFeatures.contains(.sun) }
 
     private func personalised(_ point: ForecastPoint?) -> ForecastPoint? {
         guard let point else { return nil }
@@ -560,7 +566,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             tabLabel("24 hour forecast")
             HereTodayView(
-                series: weather.isRefreshing ? [] : personalised(weather.series24h),
+                series: weather.isRefreshing ? [] : personalised(weather.series24h, splitSun: true),
                 current: weather.isRefreshing ? nil : personalised(weather.current),
                 progress: weather.loadProgress,
                 nowTick: nowTick,
@@ -570,6 +576,7 @@ struct ContentView: View {
                 attribution: weather.attribution,
                 onRefresh: { await loadWeather(preserveData: true) },
                 activeFeatures: chipFeatures,
+                sunFeatureActive: sunFeatureActive,
                 fitsPane: fitsPane
             )
         }
@@ -634,6 +641,9 @@ struct HereTodayView: View {
     /// Features currently in the regression model. Used to decide which
     /// scenario adjusters to show. Empty = no model, no chips shown.
     var activeFeatures: Set<Feature> = []
+    /// When true (the model learned a sun effect), the MyFeelsLike colour band
+    /// splits into an in-sun (top) and in-shade (bottom) half.
+    var sunFeatureActive: Bool = false
     /// True when embedded in a fixed-height dashboard pane (iPad): panel
     /// fractions shrink so everything fits without scrolling.
     var fitsPane: Bool = false
@@ -795,39 +805,17 @@ struct HereTodayView: View {
     /// A thin horizontal MyFeelsLike colour band across the 24 hours — the 24h
     /// analogue of the 10-day heatmap, but a single row (narrower). Aligned in
     /// time with the temperature chart's plot area via the leading padding.
+    /// When the model has learned a sun effect it splits into two half-height
+    /// rows: in-sun on top, in-shade below.
     @ViewBuilder
     private func myFeelsLikePanel(height: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("MyFeelsLike by hour")
+            Text(sunFeatureActive && hasModel ? "MyFeelsLike — sun / shade" : "MyFeelsLike by hour")
                 .font(.caption2).foregroundStyle(axisInk)
                 .padding(.leading, 36)
             if hasModel {
-                Chart(series) { p in
-                    // Reliability shrinks the band vertically toward the centre
-                    // line, so uncertain hours read as a thinner stripe.
-                    let half = myFeelsLikeReliability(p) / 2
-                    // Cell spans the hour *ending* at p.date (shifted ~1h left of
-                    // the hour-starting convention) so the band lines up with how
-                    // the temperature curve reads against the x-axis ticks.
-                    RectangleMark(
-                        xStart: .value("t0", p.date.addingTimeInterval(-3600)),
-                        xEnd:   .value("t1", p.date),
-                        yStart: .value("y0", 0.5 - half),
-                        yEnd:   .value("y1", 0.5 + half)
-                    )
-                    .foregroundStyle(myFeelsLikeHeatColor(p))
-                }
-                .chartYScale(domain: 0...1)
-                // Reserve the same leading width as the temperature/wind charts
-                // (a clear 2-digit y-axis) so the band lines up with them.
-                .chartYAxis {
-                    AxisMarks(position: .leading, values: [0]) {
-                        AxisValueLabel { Text("00").font(.caption).foregroundStyle(.clear) }
-                    }
-                }
-                .chartXAxis(.hidden)
-                .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
-                .frame(height: height)
+                if sunFeatureActive { splitColourBand(height: height) }
+                else { singleColourBand(height: height) }
             } else {
                 RoundedRectangle(cornerRadius: 6).fill(Color.gray.opacity(0.18))
                     .frame(height: height)
@@ -838,6 +826,79 @@ struct HereTodayView: View {
                     )
             }
         }
+    }
+
+    /// Single-row colour band (current scenario), reliability as thickness.
+    private func singleColourBand(height: CGFloat) -> some View {
+        Chart(series) { p in
+            // Reliability shrinks the band vertically toward the centre line, so
+            // uncertain hours read as a thinner stripe.
+            let half = myFeelsLikeReliability(p) / 2
+            // Cell spans the hour *ending* at p.date (shifted ~1h left of the
+            // hour-starting convention) so the band lines up with how the
+            // temperature curve reads against the x-axis ticks.
+            RectangleMark(
+                xStart: .value("t0", p.date.addingTimeInterval(-3600)),
+                xEnd:   .value("t1", p.date),
+                yStart: .value("y0", 0.5 - half),
+                yEnd:   .value("y1", 0.5 + half)
+            )
+            .foregroundStyle(myFeelsLikeHeatColor(p))
+        }
+        .chartYScale(domain: 0...1)
+        // Reserve the same leading width as the temperature/wind charts (a clear
+        // 2-digit y-axis) so the band lines up with them.
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0]) {
+                AxisValueLabel { Text("00").font(.caption).foregroundStyle(.clear) }
+            }
+        }
+        .chartXAxis(.hidden)
+        .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .frame(height: height)
+    }
+
+    /// Split band: top half = in full sun, bottom half = in shade, each full
+    /// height (reliability shown as opacity), with a hairline divider between.
+    private func splitColourBand(height: CGFloat) -> some View {
+        Chart {
+            ForEach(series) { p in
+                let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date
+                RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
+                              yStart: .value("y0", 0.5), yEnd: .value("y1", 1.0))
+                    .foregroundStyle(bandColour(p.myFeelsLikeSunScore, opacity: p.myFeelsLikeSunOpacity))
+                RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
+                              yStart: .value("y0", 0.0), yEnd: .value("y1", 0.5))
+                    .foregroundStyle(bandColour(p.myFeelsLikeShadeScore, opacity: p.myFeelsLikeShadeOpacity))
+            }
+            RuleMark(y: .value("mid", 0.5))
+                .foregroundStyle(axisInk.opacity(0.5))
+                .lineStyle(StrokeStyle(lineWidth: 0.5))
+        }
+        .chartYScale(domain: 0...1)
+        // Tiny sun/shade markers in the leading gutter, aligned to each half —
+        // they also reserve the leading width so the band lines up with the
+        // temperature chart above.
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0.25, 0.75]) { v in
+                AxisValueLabel {
+                    Image(systemName: (v.as(Double.self) ?? 0) > 0.5 ? "sun.max.fill" : "cloud.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(axisInk)
+                        .frame(width: 16, alignment: .leading)
+                }
+            }
+        }
+        .chartXAxis(.hidden)
+        .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .frame(height: height)
+    }
+
+    /// Colour for a split-band cell: the score's colour, opacity carrying
+    /// prediction reliability. Grey when there's no score.
+    private func bandColour(_ score: Double?, opacity: Double) -> Color {
+        guard let s = score else { return Color.gray.opacity(0.25) }
+        return ColorScale.color(forScore: s).opacity(max(0.2, min(1, opacity)))
     }
 
     @ViewBuilder
