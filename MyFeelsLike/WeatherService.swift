@@ -2,6 +2,9 @@ import Foundation
 import Combine
 import CoreLocation
 import WeatherKit
+import OSLog
+
+private let log = Logger(subsystem: "robotex.MyFeelsLike", category: "Weather")
 
 // Value-type copy of WeatherAttribution so views don't need to import WeatherKit.
 struct WeatherAttributionInfo {
@@ -84,7 +87,7 @@ final class LocationProvider: NSObject, ObservableObject, CLLocationManagerDeleg
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location error: \(error)")
+        log.error("Location error: \(error.localizedDescription, privacy: .public)")
     }
 }
 
@@ -247,7 +250,7 @@ final class WeatherService: ObservableObject {
                 fail(.weather, error: error)
             }
             lastErrorMessage = error.localizedDescription
-            print("Weather load failed: \(error.localizedDescription)")
+            log.error("Weather load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

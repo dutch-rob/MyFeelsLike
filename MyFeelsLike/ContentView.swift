@@ -178,7 +178,11 @@ struct ContentView: View {
     @StateObject private var nearby = NearbyCompareManager()
     @State private var selectedPlace: Place? = nil
     @State private var nowTick: Date = .now
-    private let progressTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
+    /// Drives "now"-dependent UI (the loading "(working…)" hints and the
+    /// day/night sky switch). Fires every second, but `nowTick` is only
+    /// refreshed once a minute when idle (see the onReceive below) so the whole
+    /// view tree isn't re-evaluated twice a second for nothing.
+    private let progressTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var showPlaces   = false
     @State private var showRate     = false
     @State private var showSettings = false
@@ -188,11 +192,11 @@ struct ContentView: View {
     // Tab indices: 0 = table phantom, 1 = 24h (real), 2 = 10d (real),
     //              3 = table (real), 4 = 24h phantom  — for circular wrap.
     @State private var selectedTab = 1
-    @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
+    @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
     @AppStorage(DeveloperDataSync.consentKey) private var shareData: Bool = false
-    @AppStorage("scenarioActivity") private var scenarioActivity: Int = 1
-    @AppStorage("scenarioDress")    private var scenarioDress:    Int = 0
-    @AppStorage("scenarioSun")      private var scenarioSun:      Int = 0
+    @AppStorage(SettingsKey.scenarioActivity) private var scenarioActivity: Int = 1
+    @AppStorage(SettingsKey.scenarioDress)    private var scenarioDress:    Int = 0
+    @AppStorage(SettingsKey.scenarioSun)      private var scenarioSun:      Int = 0
     @AppStorage(GraphKey.temp)     private var graphTemp     = true
     @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
     @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
@@ -204,7 +208,7 @@ struct ContentView: View {
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     /// #3: when off, the table screen is dropped from the pager so swiping only
     /// cycles between the two graph screens.
-    @AppStorage("showTable")       private var showTable     = true
+    @AppStorage(SettingsKey.showTable)       private var showTable     = true
     @Environment(\.scenePhase) private var scenePhase
 
     /// True when at least one forecast graph is enabled. When false, the 24h
@@ -242,7 +246,7 @@ struct ContentView: View {
     /// system, all previously-collected ratings (and the stored regression
     /// state, which was trained against feelsLikeC) are discarded so the
     /// fresh score-based model can be built from new data.
-    @AppStorage("didWipeForScoreV1") private var didWipeForScoreV1: Bool = false
+    @AppStorage(SettingsKey.didWipeForScoreV1) private var didWipeForScoreV1: Bool = false
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -371,7 +375,12 @@ struct ContentView: View {
         .onChange(of: scenarioDress) { _, _ in pushToWatch() }
         .onChange(of: scenarioSun) { _, _ in pushToWatch() }
         .onChange(of: places.places) { _, _ in pushToWatch() }
-        .onReceive(progressTimer) { nowTick = $0 }
+        .onReceive(progressTimer) { t in
+            // Fast updates only while loading (for the progress hints); once a
+            // minute otherwise — enough for the day/night sky to switch on time.
+            let loading = weather.isRefreshing || weather.series24h.isEmpty
+            if loading || t.timeIntervalSince(nowTick) >= 60 { nowTick = t }
+        }
     }
 
     // MARK: Body sub-views (kept small so the type-checker doesn't choke)
@@ -704,8 +713,8 @@ struct HereTodayView: View {
     /// fractions shrink so everything fits without scrolling.
     var fitsPane: Bool = false
 
-    @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
-    @AppStorage("use12HourClock") private var use12Hour = false
+    @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
+    @AppStorage(SettingsKey.use12HourClock) private var use12Hour = false
     @AppStorage(GraphKey.temp)     private var graphTemp     = true
     @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
     @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
@@ -1181,8 +1190,8 @@ struct TenDayView: View {
     /// fractions shrink so everything fits without scrolling.
     var fitsPane: Bool = false
 
-    @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
-    @AppStorage("use12HourClock") private var use12Hour = false
+    @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
+    @AppStorage(SettingsKey.use12HourClock) private var use12Hour = false
     @AppStorage(GraphKey.temp)     private var graphTemp     = true
     @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
     @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
@@ -1684,84 +1693,6 @@ func myFeelsLikeReliability(_ p: ForecastPoint) -> Double {
     return max(0.15, min(1, p.myFeelsLikeOpacity))
 }
 
-
-// MARK: - Solid-run tagging for the MyFeelsLike chart line (legacy, unused)
-
-#if false
-private struct TaggedPoint: Identifiable {
-    var id: UUID { base.id }
-    let base: ForecastPoint
-    let solidRunID: Int?
-}
-
-/// Assigns each contiguous run of w==0 points a unique integer run ID.
-private func tagSolidRuns(_ pts: [ForecastPoint]) -> [TaggedPoint] {
-    var out: [TaggedPoint] = []
-    var runID = 0
-    var prevWasBlended = true
-    for p in pts {
-        if p.myFeelsLikeApparentWeight == 0 {
-            if prevWasBlended { runID += 1 }   // new run starts
-            out.append(TaggedPoint(base: p, solidRunID: runID))
-            prevWasBlended = false
-        } else {
-            out.append(TaggedPoint(base: p, solidRunID: nil))
-            prevWasBlended = true
-        }
-    }
-    return out
-}
-#endif
-
-// MARK: - Indoor (evaporative cooler) controls — currently disabled
-
-#if false
-struct IndoorControlsView: View {
-    @Binding var insulation: Double
-    @AppStorage("fanEnabled") private var fanEnabled: Bool = false
-    @AppStorage("fanWindKPH") private var fanWindKPH: Double = 10
-    @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text("House insulation").font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Text("\(Int(insulation.rounded()))%")
-                        .font(.callout.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-                Slider(value: $insulation, in: 0...100, step: 1)
-                Text("0 = indoor ≈ outdoor air   ·   100 = cools to wet-bulb")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            Toggle(isOn: $fanEnabled) {
-                Text("Fan").font(.subheadline.weight(.semibold))
-            }
-
-            if fanEnabled {
-                let unit  = useFahrenheit ? "mph" : "kph"
-                let shown = useFahrenheit ? fanWindKPH / 1.609344 : fanWindKPH
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text("Fan air speed").font(.caption)
-                        Spacer()
-                        Text(String(format: "%.0f %@", shown, unit))
-                            .font(.callout.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(value: $fanWindKPH, in: 0...40, step: 1)
-                }
-            }
-        }
-        .padding(.horizontal, 4)
-        .padding(.top, 4)
-    }
-}
-#endif
 
 // MARK: - View extension
 

@@ -111,7 +111,7 @@
 				ComplicationSnapshot.swift,
 				FeelsLikeInference.swift,
 				ForecastPoint.swift,
-				psychropy.swift,
+				Psychrometrics.swift,
 				WatchSyncPayload.swift,
 				WeatherMapping.swift,
 			);

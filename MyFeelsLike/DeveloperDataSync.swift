@@ -16,10 +16,13 @@
 
 import Foundation
 import CloudKit
+import OSLog
+
+private let log = Logger(subsystem: "robotex.MyFeelsLike", category: "DataSync")
 
 enum DeveloperDataSync {
 
-    static let consentKey = "shareDataWithDevs"
+    static let consentKey = SettingsKey.shareDataWithDevs
     private static let installIDKey = "developerShareInstallID"
     private static let uploadedKey  = "developerShareUploadedRatingIDs"
 
@@ -64,7 +67,7 @@ enum DeveloperDataSync {
             UserDefaults.standard.set(Array(uploaded), forKey: uploadedKey)
         } catch {
             // Best effort — pending stays pending and is retried next time.
-            print("DeveloperDataSync upload failed: \(error.localizedDescription)")
+            log.error("Upload failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -80,7 +83,7 @@ enum DeveloperDataSync {
             _ = try await database.modifyRecords(saving: [], deleting: ids, atomically: false)
             UserDefaults.standard.removeObject(forKey: uploadedKey)
         } catch {
-            print("DeveloperDataSync withdraw failed: \(error.localizedDescription)")
+            log.error("Withdraw failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

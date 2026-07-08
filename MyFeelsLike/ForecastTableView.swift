@@ -10,8 +10,8 @@ struct ForecastTableView: View {
     /// Features currently in the regression model. Used to decide which
     /// scenario adjusters to display (matches the graph screens).
     var activeFeatures: Set<Feature>? = nil
-    @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
-    @AppStorage("use12HourClock") private var use12Hour = false
+    @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
+    @AppStorage(SettingsKey.use12HourClock) private var use12Hour = false
 
     private static let timeFormatter24: DateFormatter = {
         let df = DateFormatter()

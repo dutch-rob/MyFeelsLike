@@ -112,7 +112,7 @@ struct PlaceRowView: View {
     let altitude: Double?
     let snapshot: PlaceWeatherSnapshot?
 
-    @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
+    @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {

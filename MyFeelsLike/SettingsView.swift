@@ -9,9 +9,9 @@ import UIKit
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
-    @AppStorage("useFahrenheit") private var useFahrenheit: Bool = false
-    @AppStorage("use12HourClock") private var use12Hour = false
-    @AppStorage("shareDataWithDevs") private var shareData: Bool = false
+    @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = false
+    @AppStorage(SettingsKey.use12HourClock) private var use12Hour = false
+    @AppStorage(SettingsKey.shareDataWithDevs) private var shareData: Bool = false
 
     // #10: which graph series to show. All default on.
     @AppStorage(GraphKey.temp)     private var graphTemp     = true
@@ -23,7 +23,7 @@ struct SettingsView: View {
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
-    @AppStorage("showTable")       private var showTable     = true
+    @AppStorage(SettingsKey.showTable)       private var showTable     = true
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss

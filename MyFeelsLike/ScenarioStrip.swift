@@ -33,9 +33,9 @@ struct ScenarioStrip: View {
 
     @Query private var ratings: [Rating]
 
-    @AppStorage("scenarioActivity") private var activity: Int = 1
-    @AppStorage("scenarioDress")    private var dress:    Int = 0
-    @AppStorage("scenarioSun")      private var sun:      Int = 0
+    @AppStorage(SettingsKey.scenarioActivity) private var activity: Int = 1
+    @AppStorage(SettingsKey.scenarioDress)    private var dress:    Int = 0
+    @AppStorage(SettingsKey.scenarioSun)      private var sun:      Int = 0
 
     private var anyChipVisible: Bool {
         Self.shows(.activity, activeFeatures: activeFeatures)

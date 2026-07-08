@@ -13,6 +13,9 @@ import Foundation
 import CoreLocation
 import WeatherKit
 import WatchKit
+import OSLog
+
+private let log = Logger(subsystem: "robotex.MyFeelsLike.watchkitapp", category: "BackgroundRefresh")
 
 enum BackgroundWeatherRefresh {
     private static let group = "group.robotex.MyFeelsLike"
@@ -24,7 +27,7 @@ enum BackgroundWeatherRefresh {
             withPreferredDate: Date().addingTimeInterval(seconds),
             userInfo: nil
         ) { error in
-            if let error { print("BG schedule error: \(error.localizedDescription)") }
+            if let error { log.error("BG schedule error: \(error.localizedDescription, privacy: .public)") }
         }
     }
 

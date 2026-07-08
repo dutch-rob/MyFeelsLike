@@ -1,10 +1,18 @@
-import Foundation
-import SwiftUI
+//
+//  Psychrometrics.swift
+//  MyFeelsLike
+//
+//  Wet-bulb temperature from station pressure, dry-bulb temperature and
+//  relative humidity — translated from the reference `psychropy.py`
+//  (ASHRAE Fundamentals, 2005, SI edition). Pure Foundation math, used by
+//  WeatherMapping to derive wet-bulb for each forecast point.
+//
 
-/// Translated from `psychropy.py`.
-/// Computes wet-bulb temperature in Fahrenheit from:
+import Foundation
+
+/// Computes wet-bulb temperature from:
 /// - pressure in pascals
-/// - dry-bulb temperature in Fahrenheit
+/// - dry-bulb temperature (°F or °C variants)
 /// - relative humidity as a fraction (`0.55`) or percent (`55`)
 enum PsychrometryCalculator {
     /// Saturation vapor pressure in kPa.
@@ -165,60 +173,3 @@ enum PsychrometryCalculator {
         value > 1.0 ? value / 100.0 : value
     }
 }
-
-struct PsychropyView: View {
-    @State private var pressurePaText = "101420"
-    @State private var dryBulbFahrenheitText = "64"
-    @State private var relativeHumidityText = "0.55"
-    @State private var resultText = "Wet-bulb temperature will appear here."
-    @State private var errorText: String?
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Inputs") {
-                    TextField("Pressure (Pa)", text: $pressurePaText)
-                    TextField("Dry Bulb Temperature (degF)", text: $dryBulbFahrenheitText)
-                    TextField("Relative Humidity (fraction or %)", text: $relativeHumidityText)
-                }
-
-                Section("Result") {
-                    Text(resultText)
-
-                    if let errorText {
-                        Text(errorText)
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                Button("Calculate Wet Bulb", action: calculate)
-            }
-            .navigationTitle("Psychropy")
-        }
-    }
-
-    private func calculate() {
-        guard let pressurePa = Double(pressurePaText),
-              let dryBulbFahrenheit = Double(dryBulbFahrenheitText),
-              let relativeHumidity = Double(relativeHumidityText) else {
-            errorText = "Enter numeric values for pressure, dry-bulb temperature, and relative humidity."
-            return
-        }
-
-        let wetBulbFahrenheit = PsychrometryCalculator.psychF(
-            pressurePa: pressurePa,
-            dryBulbFahrenheit: dryBulbFahrenheit,
-            relativeHumidity: relativeHumidity
-        )
-
-        resultText = String(format: "Wet-bulb temperature: %.3f degF", wetBulbFahrenheit)
-        errorText = nil
-    }
-}
-
-struct PsychropyView_Previews: PreviewProvider {
-    static var previews: some View {
-        PsychropyView()
-    }
-}
-

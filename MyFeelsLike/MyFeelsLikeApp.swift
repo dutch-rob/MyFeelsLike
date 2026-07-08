@@ -23,11 +23,11 @@ struct MyFeelsLikeApp: App {
         // Same regions get 12-hour (am/pm) time by default.
         let region = Locale.current.region?.identifier ?? ""
         let usImperial = fahrenheitRegions.contains(region)
-        if UserDefaults.standard.object(forKey: "useFahrenheit") == nil {
-            UserDefaults.standard.set(usImperial, forKey: "useFahrenheit")
+        if UserDefaults.standard.object(forKey: SettingsKey.useFahrenheit) == nil {
+            UserDefaults.standard.set(usImperial, forKey: SettingsKey.useFahrenheit)
         }
-        if UserDefaults.standard.object(forKey: "use12HourClock") == nil {
-            UserDefaults.standard.set(usImperial, forKey: "use12HourClock")
+        if UserDefaults.standard.object(forKey: SettingsKey.use12HourClock) == nil {
+            UserDefaults.standard.set(usImperial, forKey: SettingsKey.use12HourClock)
         }
     }
 

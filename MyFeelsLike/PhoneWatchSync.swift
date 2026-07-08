@@ -10,6 +10,9 @@
 
 import Foundation
 import WatchConnectivity
+import OSLog
+
+private let log = Logger(subsystem: "robotex.MyFeelsLike", category: "WatchSync")
 
 final class PhoneWatchSync: NSObject, WCSessionDelegate {
     static let shared = PhoneWatchSync()
@@ -45,7 +48,7 @@ final class PhoneWatchSync: NSObject, WCSessionDelegate {
         do {
             try session.updateApplicationContext(context)
         } catch {
-            print("Watch sync (context) failed: \(error.localizedDescription)")
+            log.error("Watch sync (context) failed: \(error.localizedDescription, privacy: .public)")
         }
         // Channel 2: a queued user-info transfer as a reliability backup.
         session.transferUserInfo(context)
