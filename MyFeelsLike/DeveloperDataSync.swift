@@ -58,16 +58,63 @@ enum DeveloperDataSync {
         let pending = ratings.filter { !uploaded.contains($0.id) }
         var records: [CKRecord] = pending.map { $0.record(install: id) }
         if let model { records.append(modelRecord(model, install: id)) }
-        guard !records.isEmpty else { return }
+        guard !records.isEmpty else {
+            log.notice("Nothing to upload: \(ratings.count, privacy: .public) ratings, all already sent; model \(model == nil ? "absent" : "present", privacy: .public).")
+            return
+        }
+        await logAccountStatus()
 
         do {
-            _ = try await database.modifyRecords(saving: records, deleting: [],
-                                                 savePolicy: .allKeys, atomically: false)
-            uploaded.formUnion(pending.map { $0.id })
+            // atomically:false does NOT throw on per-record failures — inspect
+            // each result so we only mark the records that actually saved and
+            // surface any that didn't (schema/permission/auth issues).
+            let result = try await database.modifyRecords(saving: records, deleting: [],
+                                                          savePolicy: .allKeys, atomically: false)
+            var saved = 0, failed = 0
+            for (recordID, res) in result.saveResults {
+                switch res {
+                case .success:
+                    saved += 1
+                    if let ratingID = ratingID(fromRecordName: recordID.recordName, install: id) {
+                        uploaded.insert(ratingID)
+                    }
+                case .failure(let error):
+                    failed += 1
+                    log.error("Record \(recordID.recordName, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                }
+            }
             UserDefaults.standard.set(Array(uploaded), forKey: uploadedKey)
+            log.notice("Upload finished: \(saved, privacy: .public) saved, \(failed, privacy: .public) failed.")
         } catch {
-            // Best effort — pending stays pending and is retried next time.
+            // Operation-level failure (network, account) — pending stays pending.
             log.error("Upload failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Map a saved record name ("rating-<install>-<uuid>") back to the rating id,
+    /// or nil for the model record (which isn't delta-tracked).
+    private static func ratingID(fromRecordName name: String, install: String) -> String? {
+        let prefix = "rating-\(install)-"
+        return name.hasPrefix(prefix) ? String(name.dropFirst(prefix.count)) : nil
+    }
+
+    /// Log the CloudKit account status so a "not signed into iCloud" problem is
+    /// obvious in the console rather than a silent no-op.
+    private static func logAccountStatus() async {
+        do {
+            let status = try await CKContainer.default().accountStatus()
+            let name: String
+            switch status {
+            case .available:        name = "available"
+            case .noAccount:        name = "noAccount (not signed into iCloud)"
+            case .restricted:       name = "restricted"
+            case .couldNotDetermine: name = "couldNotDetermine"
+            case .temporarilyUnavailable: name = "temporarilyUnavailable"
+            @unknown default:       name = "unknown(\(status.rawValue))"
+            }
+            log.notice("iCloud account status: \(name, privacy: .public)")
+        } catch {
+            log.error("Account status check failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
