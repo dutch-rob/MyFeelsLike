@@ -230,7 +230,10 @@ enum FeelsLikeRegression {
         // Guard rss=0 (perfect fit): use a tiny floor so log is finite.
         let rssSafe = max(rss, 1e-12)
         let aic = nD * log(rssSafe / nD) + 2.0 * pD
-        let aicCorr = (nD - pD - 1 > 0) ? 2.0 * pD * (pD + 1) / (nD - pD - 1) : .infinity
+        // A finite penalty (not .infinity) so an over-parameterised fit is still
+        // rejected by comparison, but the stored aicc stays JSON-encodable for
+        // the CloudKit upload.
+        let aicCorr = (nD - pD - 1 > 0) ? 2.0 * pD * (pD + 1) / (nD - pD - 1) : 1e12
         let aicc = aic + aicCorr
 
         return RegressionState(

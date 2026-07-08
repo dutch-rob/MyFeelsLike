@@ -68,9 +68,15 @@ struct ForecastPoint: Identifiable, Codable {
             return
         }
         let src = ForecastFeatureSource(p: self, scenario: scenario)
-        myFeelsLikeScore   = state.predict(src)
-        myFeelsLikeOpacity = state.predictionOpacity(src)
+        myFeelsLikeScore   = Self.finiteScore(state.predict(src))
+        myFeelsLikeOpacity = Self.finiteOpacity(state.predictionOpacity(src))
     }
+
+    /// A finite score, or nil — a degenerate fit must never emit NaN/Inf into
+    /// chart geometry, colours, or the CloudKit upload.
+    private static func finiteScore(_ v: Double) -> Double? { v.isFinite ? v : nil }
+    /// A finite opacity clamped to 0…1 (0 when non-finite).
+    private static func finiteOpacity(_ v: Double) -> Double { v.isFinite ? min(max(v, 0), 1) : 0 }
 
     /// Compute the in-sun and in-shade variants of the score, for the split
     /// 24h colour band. Only worth showing when the model actually learned a
@@ -85,9 +91,9 @@ struct ForecastPoint: Identifiable, Codable {
         var shadeScenario = scenario; shadeScenario.sun = -1
         let sunSrc = ForecastFeatureSource(p: self, scenario: sunScenario)
         let shadeSrc = ForecastFeatureSource(p: self, scenario: shadeScenario)
-        myFeelsLikeSunScore     = state.predict(sunSrc)
-        myFeelsLikeSunOpacity   = state.predictionOpacity(sunSrc)
-        myFeelsLikeShadeScore   = state.predict(shadeSrc)
-        myFeelsLikeShadeOpacity = state.predictionOpacity(shadeSrc)
+        myFeelsLikeSunScore     = Self.finiteScore(state.predict(sunSrc))
+        myFeelsLikeSunOpacity   = Self.finiteOpacity(state.predictionOpacity(sunSrc))
+        myFeelsLikeShadeScore   = Self.finiteScore(state.predict(shadeSrc))
+        myFeelsLikeShadeOpacity = Self.finiteOpacity(state.predictionOpacity(shadeSrc))
     }
 }

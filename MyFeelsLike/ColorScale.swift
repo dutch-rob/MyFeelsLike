@@ -105,7 +105,9 @@ enum ColorScale {
     /// position between adjacent anchors. We reproduce that placement exactly.
     static func color(forScore score: Double) -> Color {
         let m = Double(anchors.count - 1)
-        let s = max(minScore, min(maxScore, score))
+        // A non-finite score (from a degenerate fit) would otherwise propagate
+        // NaN into the returned Color and on into CoreGraphics.
+        let s = score.isFinite ? max(minScore, min(maxScore, score)) : minScore
         // g: 0 at the hottest end (score 1000), 1 at the coldest (score 0).
         let g = 1 - s / maxScore
         let rev = anchors.reversed().map { $0.color }   // black(hot) … white(cold)
@@ -136,8 +138,9 @@ enum ColorScale {
     /// neutral grey when there's no score. The single source for the colour
     /// used by every MyFeelsLike band, heatmap and complication centre.
     static func feelsColor(score: Double?, opacity: Double = 1, floor: Double = 0.25) -> Color {
-        guard let score else { return Color.gray.opacity(0.25) }
-        return color(forScore: score).opacity(max(floor, min(1, opacity)))
+        guard let score, score.isFinite else { return Color.gray.opacity(0.25) }
+        let a = opacity.isFinite ? opacity : 1          // guard NaN → CoreGraphics
+        return color(forScore: score).opacity(max(floor, min(1, a)))
     }
 }
 
