@@ -101,6 +101,9 @@ enum DeveloperDataSync {
     /// Log the CloudKit account status so a "not signed into iCloud" problem is
     /// obvious in the console rather than a silent no-op.
     private static func logAccountStatus() async {
+        // Which container/DB the records actually go to — so a wrong (e.g.
+        // double-dotted) container is obvious rather than a silent mismatch.
+        log.notice("Writing to container: \(CKContainer.default().containerIdentifier ?? "nil", privacy: .public), public database.")
         do {
             let status = try await CKContainer.default().accountStatus()
             let name: String
