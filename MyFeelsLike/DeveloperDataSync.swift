@@ -80,14 +80,14 @@ enum DeveloperDataSync {
                     }
                 case .failure(let error):
                     failed += 1
-                    log.error("Record \(recordID.recordName, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                    log.error("Save failed \(recordID.recordName, privacy: .public): \(describe(error), privacy: .public)")
                 }
             }
             UserDefaults.standard.set(Array(uploaded), forKey: uploadedKey)
             log.notice("Upload finished: \(saved, privacy: .public) saved, \(failed, privacy: .public) failed.")
         } catch {
             // Operation-level failure (network, account) — pending stays pending.
-            log.error("Upload failed: \(error.localizedDescription, privacy: .public)")
+            log.error("Upload failed: \(describe(error), privacy: .public)")
         }
     }
 
@@ -142,16 +142,51 @@ enum DeveloperDataSync {
     private static func modelRecord(_ m: RegressionState, install: String) -> CKRecord {
         let rec = CKRecord(recordType: "SharedModel",
                            recordID: CKRecord.ID(recordName: "model-\(install)"))
+        let features = m.selectedFeatures.map { $0.rawValue }
         rec["install"]     = install
         rec["ts"]          = m.lastFitAt
-        rec["rSquared"]    = m.rSquared
+        rec["rSquared"]    = m.rSquared.isFinite ? m.rSquared : 0
         rec["ratingCount"] = m.ratingCount
-        rec["features"]    = m.selectedFeatures.map { $0.rawValue }
-        if let json = try? JSONEncoder().encode(m), let s = String(data: json, encoding: .utf8) {
+        // Comma-joined scalar String, not a CloudKit list — lists complicate
+        // the schema and can't be indexed like scalars in the Console.
+        rec["features"]    = features.joined(separator: ",")
+        // Compact, finite-sanitised model summary (no invXtX/aicc, which are
+        // large or can be non-finite and would make the record unencodable).
+        let lean = SharedModelJSON(features: features,
+                                   coefficients: sanitize(m.coefficients),
+                                   means: sanitize(m.means),
+                                   stds: sanitize(m.stds),
+                                   rSquared: m.rSquared.isFinite ? m.rSquared : 0,
+                                   ratingCount: m.ratingCount)
+        if let data = try? JSONEncoder().encode(lean), let s = String(data: data, encoding: .utf8) {
             rec["json"] = s
         }
         return rec
     }
+
+    private static func sanitize(_ a: [Double]) -> [Double] { a.map { $0.isFinite ? $0 : 0 } }
+
+    /// Human-readable CloudKit error, including the CKError code and any
+    /// per-item partial errors, so failures aren't just "CAS failed".
+    private static func describe(_ error: Error) -> String {
+        guard let ck = error as? CKError else { return error.localizedDescription }
+        var parts = ["CKError \(ck.errorCode) (\(ck.localizedDescription))"]
+        for (item, e) in (ck.partialErrorsByItemID ?? [:]) {
+            let code = (e as? CKError).map { "\($0.errorCode)" } ?? "?"
+            parts.append("[\(item): code \(code) \(e.localizedDescription)]")
+        }
+        return parts.joined(separator: " ")
+    }
+}
+
+/// Compact, finite model summary uploaded as the SharedModel `json` field.
+private struct SharedModelJSON: Codable {
+    let features: [String]
+    let coefficients: [Double]
+    let means: [Double]
+    let stds: [Double]
+    let rSquared: Double
+    let ratingCount: Int
 }
 
 /// A value-type copy of the fields we upload — taken on the main actor so the
