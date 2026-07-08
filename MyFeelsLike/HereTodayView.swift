@@ -283,8 +283,7 @@ struct HereTodayView: View {
     /// Colour for a split-band cell: the score's colour, opacity carrying
     /// prediction reliability. Grey when there's no score.
     private func bandColour(_ score: Double?, opacity: Double) -> Color {
-        guard let s = score else { return Color.gray.opacity(0.25) }
-        return ColorScale.color(forScore: s).opacity(max(0.2, min(1, opacity)))
+        ColorScale.feelsColor(score: score, opacity: opacity, floor: 0.2)
     }
 
     @ViewBuilder

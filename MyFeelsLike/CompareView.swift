@@ -69,8 +69,7 @@ struct FeelsBand: View {
     }
 
     private func colour(_ p: ForecastPoint) -> Color {
-        guard let s = p.myFeelsLikeScore else { return Color.gray.opacity(0.25) }
-        return ColorScale.color(forScore: s).opacity(max(0.25, min(1, p.myFeelsLikeOpacity)))
+        ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity)
     }
 }
 

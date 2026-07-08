@@ -179,8 +179,7 @@ enum GraphKey {
 /// score's colour at full opacity. Reliability is conveyed by the cell's
 /// width (see myFeelsLikeReliability), not by fading. Grey when no score.
 func myFeelsLikeHeatColor(_ p: ForecastPoint) -> Color {
-    guard let s = p.myFeelsLikeScore else { return Color.gray.opacity(0.25) }
-    return ColorScale.color(forScore: s)
+    ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: 1)
 }
 
 /// Prediction reliability in 0…1, used to scale a cell's width so uncertain

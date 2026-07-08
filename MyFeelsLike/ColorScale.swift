@@ -130,6 +130,15 @@ enum ColorScale {
         let luminance = 0.299 * r + 0.587 * g + 0.114 * b
         return luminance > 0.55 ? .black : .white
     }
+
+    /// A MyFeelsLike cell/band colour: the score's colour, its `opacity`
+    /// carrying prediction reliability (clamped to at least `floor`), or a
+    /// neutral grey when there's no score. The single source for the colour
+    /// used by every MyFeelsLike band, heatmap and complication centre.
+    static func feelsColor(score: Double?, opacity: Double = 1, floor: Double = 0.25) -> Color {
+        guard let score else { return Color.gray.opacity(0.25) }
+        return color(forScore: score).opacity(max(floor, min(1, opacity)))
+    }
 }
 
 // Convenience temperature conversions.

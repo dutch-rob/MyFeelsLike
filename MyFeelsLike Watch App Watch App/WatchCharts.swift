@@ -12,15 +12,12 @@ import Charts
 /// Cell colour for the MyFeelsLike colour band / heatmap: the score's colour,
 /// its opacity carrying prediction reliability. Grey when there's no score.
 func watchHeatColor(_ p: ForecastPoint) -> Color {
-    guard let s = p.myFeelsLikeScore else { return Color.gray.opacity(0.25) }
-    let alpha = max(0.25, min(1, p.myFeelsLikeOpacity))
-    return ColorScale.color(forScore: s).opacity(alpha)
+    ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity)
 }
 
 /// Colour for a split sun/shade band cell from an explicit score + reliability.
 func watchScoreColor(_ score: Double?, opacity: Double) -> Color {
-    guard let s = score else { return Color.gray.opacity(0.25) }
-    return ColorScale.color(forScore: s).opacity(max(0.2, min(1, opacity)))
+    ColorScale.feelsColor(score: score, opacity: opacity, floor: 0.2)
 }
 
 // MARK: - Shared axis styling
