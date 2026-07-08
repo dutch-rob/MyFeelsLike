@@ -189,6 +189,7 @@ struct ContentView: View {
     //              3 = table (real), 4 = 24h phantom  — for circular wrap.
     @State private var selectedTab = 1
     @AppStorage("useFahrenheit") private var useFahrenheit: Bool = true
+    @AppStorage(DeveloperDataSync.consentKey) private var shareData: Bool = false
     @AppStorage("scenarioActivity") private var scenarioActivity: Int = 1
     @AppStorage("scenarioDress")    private var scenarioDress:    Int = 0
     @AppStorage("scenarioSun")      private var scenarioSun:      Int = 0
@@ -364,6 +365,7 @@ struct ContentView: View {
             refitRegression()
         }
         .onChange(of: showTable) { _, _ in selectedTab = 1 }   // avoid a now-invalid tab tag
+        .onChange(of: shareData) { _, _ in syncDeveloperData() }   // opt in → upload, opt out → delete
         .onChange(of: useFahrenheit) { _, _ in pushToWatch() }
         .onChange(of: scenarioActivity) { _, _ in pushToWatch() }
         .onChange(of: scenarioDress) { _, _ in pushToWatch() }
@@ -569,6 +571,14 @@ struct ContentView: View {
         RegressionStateStore.save(new)
         pushToWatch()
         nearby.updateLocalModel(new)   // live-update any compare peers
+        syncDeveloperData()            // upload new rating + model if opted in
+    }
+
+    /// Upload anonymised ratings + model to CloudKit when the user has opted in
+    /// (or delete them when they opt out). Never runs for demo/screenshot data.
+    private func syncDeveloperData() {
+        guard !DemoMode.isActive else { return }
+        DeveloperDataSync.sync(consent: shareData, ratings: ratings, model: regressionState)
     }
 
     /// Seed canned sample ratings + places for demo/screenshot runs (in-memory).

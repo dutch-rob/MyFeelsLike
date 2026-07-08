@@ -83,7 +83,13 @@ struct SettingsView: View {
 
             Section {
                 Toggle("Share data with developers", isOn: $shareData)
-                Text("If enabled, your ratings and the matching weather snapshots will be shared anonymously to help improve MyFeelsLike. Sharing is currently disabled — feature coming in a future update.")
+                Text("""
+                If enabled, your ratings (your feels-like score, activity/dress/sun, \
+                and the weather at that moment) and your model's coefficients are \
+                uploaded anonymously to help improve MyFeelsLike. No name, location, \
+                or place is included — only a random ID for this install. Turning \
+                this off deletes what this install has shared.
+                """)
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
