@@ -64,20 +64,43 @@ final class NearbyCompareManager: NSObject, ObservableObject {
     var localModel: RegressionState?
 
     // MARK: MultipeerConnectivity
-    private let myPeerID: MCPeerID
-    private lazy var advertiser = MCNearbyServiceAdvertiser(
-        peer: myPeerID, discoveryInfo: nil, serviceType: Self.serviceType)
-    private lazy var browser = MCNearbyServiceBrowser(peer: myPeerID, serviceType: Self.serviceType)
+    private var myPeerID: MCPeerID
+    private var advertiser: MCNearbyServiceAdvertiser
+    private var browser: MCNearbyServiceBrowser
     private var sessions: [MCPeerID: MCSession] = [:]
     /// Deadline the local user picked when *accepting* a given peer's invite.
     private var acceptedDeadline: [MCPeerID: Date] = [:]
     private var pruneTimer: Timer?
 
+    /// The name shown to peers: the user's "compare name" setting, else the
+    /// device name (so people aren't all just "iPhone").
+    private static func resolvedName() -> String {
+        let stored = (UserDefaults.standard.string(forKey: SettingsKey.compareName) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let base = stored.isEmpty ? UIDevice.current.name : stored
+        return base.isEmpty ? "MyFeelsLike user" : String(base.prefix(63))
+    }
+
     override init() {
-        let raw = UIDevice.current.name
-        let name = raw.isEmpty ? "MyFeelsLike user" : String(raw.prefix(63))
-        self.myPeerID = MCPeerID(displayName: name)
+        myPeerID = MCPeerID(displayName: Self.resolvedName())
+        advertiser = MCNearbyServiceAdvertiser(peer: myPeerID, discoveryInfo: nil, serviceType: Self.serviceType)
+        browser = MCNearbyServiceBrowser(peer: myPeerID, serviceType: Self.serviceType)
         super.init()
+        advertiser.delegate = self
+        browser.delegate = self
+    }
+
+    /// Re-create the peer identity if the compare name changed since we last
+    /// advertised (takes effect the next time discovery starts). Skipped while
+    /// links are live so their identity stays stable.
+    private func rebuildIdentityIfNameChanged() {
+        let name = Self.resolvedName()
+        guard name != myPeerID.displayName, peers.isEmpty else { return }
+        advertiser.stopAdvertisingPeer()
+        browser.stopBrowsingForPeers()
+        myPeerID = MCPeerID(displayName: name)
+        advertiser = MCNearbyServiceAdvertiser(peer: myPeerID, discoveryInfo: nil, serviceType: Self.serviceType)
+        browser = MCNearbyServiceBrowser(peer: myPeerID, serviceType: Self.serviceType)
         advertiser.delegate = self
         browser.delegate = self
     }
@@ -88,6 +111,7 @@ final class NearbyCompareManager: NSObject, ObservableObject {
 
     func startDiscovery() {
         guard !isDiscovering else { return }
+        rebuildIdentityIfNameChanged()
         isDiscovering = true
         advertiser.startAdvertisingPeer()
         browser.startBrowsingForPeers()

@@ -24,6 +24,7 @@ struct SettingsView: View {
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.showTable)       private var showTable     = true
+    @AppStorage(SettingsKey.compareName)     private var compareName   = ""
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -43,6 +44,12 @@ struct SettingsView: View {
 
     @State private var showImportPicker = false
     @State private var importMessage: String? = nil
+
+    /// Placeholder shown in the compare-name field (the device name).
+    private var defaultCompareName: String {
+        let n = UIDevice.current.name
+        return n.isEmpty ? "MyFeelsLike user" : n
+    }
 
     var body: some View {
         Form {
@@ -82,17 +89,24 @@ struct SettingsView: View {
             }
 
             Section {
-                Toggle("Share data with developers", isOn: $shareData)
-                Text("""
-                If enabled, your ratings (your feels-like score, activity/dress/sun, \
-                and the weather at that moment) and your model's coefficients are \
-                uploaded anonymously to help improve MyFeelsLike. No name, location, \
-                or place is included — only a random ID for this install. Turning \
-                this off deletes what this install has shared.
-                """)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                TextField("Your name", text: $compareName, prompt: Text(defaultCompareName))
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.done)
+            } header: {
+                Text("Compare")
+            } footer: {
+                Text("Shown to others when you compare nearby. Leave blank to use your device name.")
+            }
 
+            Section {
+                Toggle("Share data with developers", isOn: $shareData)
+            } header: {
+                Text("Sharing")
+            } footer: {
+                Text("Uploads your ratings (feels-like score, activity/dress/sun, and the weather at that moment) and your model coefficients anonymously — only a random per-install ID, no name, location, or place. Turning it off deletes what this install shared.")
+            }
+
+            Section {
                 Button {
                     exportRatings()
                 } label: {

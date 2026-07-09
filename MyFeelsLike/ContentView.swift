@@ -379,14 +379,18 @@ struct ContentView: View {
             Button { showingCompare = false } label: {
                 Image(systemName: "chevron.backward")
                     .font(.title3)
-                    .padding(.vertical, 10)
+                    .frame(minWidth: 44, minHeight: 44)   // HIG minimum tap target
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Back")
             .accessibilityIdentifier("compareBackButton")
         } else {
             Button { showingCompare = true } label: {
                 CompareIcon()
-                    .padding(.vertical, 4)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Compare with others")
             .accessibilityIdentifier("compareButton")
         }
     }

@@ -132,6 +132,11 @@ struct CompareView: View {
 
                 Divider()
 
+                // Every band is your local weather run through that person's
+                // model, so they compare like-for-like.
+                Text("Same weather, each person's model")
+                    .font(.caption).foregroundStyle(ink.opacity(0.75))
+
                 // Own band first, then each connected peer's.
                 CompareBandRow(name: "You", series: ownSeries, ink: ink)
                 ForEach(nearby.peers) { peer in

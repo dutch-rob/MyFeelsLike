@@ -16,6 +16,8 @@ enum SettingsKey {
     static let use12HourClock    = "use12HourClock"
     /// Whether the swipe pager includes the table screen.
     static let showTable         = "showTable"
+    /// The name shown to others when comparing nearby (else the device name).
+    static let compareName       = "compareName"
 
     // Scenario the prediction is made for.
     static let scenarioActivity  = "scenarioActivity"
