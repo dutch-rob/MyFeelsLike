@@ -127,11 +127,15 @@ enum ColorScale {
         )
     }
 
+    /// True when `color(forScore:)` is light enough to prefer black text on it.
+    static func isLight(forScore score: Double) -> Bool {
+        let (r, g, b) = rgb(color(forScore: score))
+        return 0.299 * r + 0.587 * g + 0.114 * b > 0.55
+    }
+
     /// Black or white, whichever contrasts better with `color(forScore:)`.
     static func contrastingText(forScore score: Double) -> Color {
-        let (r, g, b) = rgb(color(forScore: score))
-        let luminance = 0.299 * r + 0.587 * g + 0.114 * b
-        return luminance > 0.55 ? .black : .white
+        isLight(forScore: score) ? .black : .white
     }
 
     /// A MyFeelsLike cell/band color: the score's color, its `opacity`

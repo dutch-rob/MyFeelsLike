@@ -132,7 +132,14 @@ struct FeelsGauge {
     /// Black or white, whichever reads better on `centerColor`.
     var centerTextColor: Color? {
         guard let f = frame, hasModel else { return nil }
-        return ColorScale.contrastingText(forScore: f.feelsCurrent)
+        return ColorScale.isLight(forScore: f.feelsCurrent) ? .black : .white
+    }
+
+    /// The opposite of `centerTextColor`, used as a thin outline so the number
+    /// stays legible over either half of a split sun/shade disc.
+    var centerOutlineColor: Color? {
+        guard let f = frame, hasModel else { return nil }
+        return ColorScale.isLight(forScore: f.feelsCurrent) ? .white : .black
     }
 
     init(_ entry: FeelsEntry) {
@@ -144,6 +151,28 @@ struct FeelsGauge {
 }
 
 // MARK: - Views
+
+/// Text with a thin contrasting outline, so the number stays readable over a
+/// two-tone (sun/shade) disc where a single fill color can't contrast with both
+/// halves. Draws the outline color in eight directions behind the fill.
+private struct OutlinedText: View {
+    let text: String
+    let fill: Color
+    let outline: Color
+    var width: CGFloat = 0.7
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<8, id: \.self) { i in
+                let angle = Double(i) / 8.0 * 2.0 * .pi
+                Text(text)
+                    .foregroundStyle(outline)
+                    .offset(x: width * CGFloat(cos(angle)), y: width * CGFloat(sin(angle)))
+            }
+            Text(text).foregroundStyle(fill)
+        }
+    }
+}
 
 struct FeelsCornerView: View {
     let entry: FeelsEntry
@@ -166,8 +195,11 @@ struct FeelsCircularView: View {
         Gauge(value: g.value, in: g.range) {
             EmptyView()
         } currentValueLabel: {
-            Text(g.tempLabel)
-                .foregroundStyle(g.centerTextColor ?? .primary)
+            if let fill = g.centerTextColor, let outline = g.centerOutlineColor {
+                OutlinedText(text: g.tempLabel, fill: fill, outline: outline)
+            } else {
+                Text(g.tempLabel).foregroundStyle(.primary)
+            }
         }
         .gaugeStyle(.accessoryCircular)
         .tint(g.gradient)
