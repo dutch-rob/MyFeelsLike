@@ -89,10 +89,10 @@ enum ColorScale {
     static let minScore: Double = 0
     static let maxScore: Double = 1000
 
-    /// Power-curve exponent that spaces the colour anchors on the Rate Feels
+    /// Power-curve exponent that spaces the color anchors on the Rate Feels
     /// Like column (RateFeelsLikeView.paddedScoreGradient), giving the dark
     /// black→purple end more room. `color(forScore:)` applies the identical
-    /// warp so the colour shown for a forecast score is exactly the colour the
+    /// warp so the color shown for a forecast score is exactly the color the
     /// user saw under the indicator when they recorded that score. Shared here
     /// so the two mappings can't drift apart.
     static let scoreGradientExponent: Double = 0.6
@@ -133,10 +133,10 @@ enum ColorScale {
         return luminance > 0.55 ? .black : .white
     }
 
-    /// A MyFeelsLike cell/band colour: the score's colour, its `opacity`
+    /// A MyFeelsLike cell/band color: the score's color, its `opacity`
     /// carrying prediction reliability (clamped to at least `floor`), or a
-    /// neutral grey when there's no score. The single source for the colour
-    /// used by every MyFeelsLike band, heatmap and complication centre.
+    /// neutral gray when there's no score. The single source for the color
+    /// used by every MyFeelsLike band, heatmap and complication center.
     static func feelsColor(score: Double?, opacity: Double = 1, floor: Double = 0.25) -> Color {
         guard let score, score.isFinite else { return Color.gray.opacity(0.25) }
         let a = opacity.isFinite ? opacity : 1          // guard NaN → CoreGraphics

@@ -2,7 +2,7 @@
 //  FeelsLikeRegression.swift
 //  MyFeelsLike
 //
-//  Personalised "feels like" model. Trained on the user's own ratings, used
+//  Personalized "feels like" model. Trained on the user's own ratings, used
 //  to predict the purple curve / table column from forecast points.
 //
 //  Algorithm overview
@@ -73,7 +73,7 @@ extension Rating: FeatureSource {
 enum FeelsLikeRegression {
 
     /// Minimum spread (out of 1000) of user-reported feels-like scores needed
-    /// before a model is fit. Relaxed from 80 → 50 (5% of the colour scale) so
+    /// before a model is fit. Relaxed from 80 → 50 (5% of the color scale) so
     /// a model triggers with fewer varied ratings.
     static let minScoreSpread: Double = 50.0
 
@@ -94,19 +94,19 @@ enum FeelsLikeRegression {
         return max(0, min(raw, stabilityCap))
     }
 
-    /// Plain-language reasons a personalised model can't be fit yet (empty when
-    /// one can). Used by the UI to explain the absence of personalised colour.
+    /// Plain-language reasons a personalized model can't be fit yet (empty when
+    /// one can). Used by the UI to explain the absence of personalized color.
     static func readinessReasons(ratings: [Rating]) -> [String] {
         let n = ratings.count
         if n < 5 {
-            return ["You have \(n) of the 5 ratings needed to start a personalised model — keep rating how the weather feels."]
+            return ["You have \(n) of the 5 ratings needed to start a personalized model — keep rating how the weather feels."]
         }
         let ys = ratings.map { $0.feelsLikeScore }
         let spread = (ys.max() ?? 0) - (ys.min() ?? 0)
         if spread < minScoreSpread {
             let pct = max(1, Int((spread / 10).rounded()))
             let needPct = Int((minScoreSpread / 10).rounded())
-            return ["Your \(n) ratings cover only about \(pct)% of the feels-like colour range; at least ~\(needPct)% is needed. Rate some conditions that feel clearly cooler or warmer than the ones you've rated so far."]
+            return ["Your \(n) ratings cover only about \(pct)% of the feels-like color range; at least ~\(needPct)% is needed. Rate some conditions that feel clearly cooler or warmer than the ones you've rated so far."]
         }
         if fit(ratings: ratings) == nil {
             return ["A model couldn't be fit from these \(n) ratings yet — rating across more varied weather should help."]

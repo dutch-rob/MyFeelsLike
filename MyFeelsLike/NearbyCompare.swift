@@ -6,7 +6,7 @@
 //  phones discover each other, one invites, the other accepts for 1 hour or
 //  until one of them cancels. On connect they exchange their regression models
 //  (and re-send whenever a model changes), so each can show the other's
-//  MyFeelsLike colours applied to its own local forecast.
+//  MyFeelsLike colors applied to its own local forecast.
 //
 //  One MCSession per peer, so every link has an independent lifetime and can be
 //  ended on its own. All mutable state is touched on the main queue only.

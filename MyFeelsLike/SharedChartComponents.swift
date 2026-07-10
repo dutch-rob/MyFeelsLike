@@ -5,7 +5,7 @@
 //  Pieces shared by the forecast screens (HereTodayView, TenDayView) and the
 //  Compare screen: the loading view, the chart legend row, the WeatherKit
 //  attribution link, the compact clock-hour formatter, the GraphKey settings
-//  keys, the MyFeelsLike cell-colour helpers, and a small View convenience.
+//  keys, the MyFeelsLike cell-color helpers, and a small View convenience.
 //
 
 import SwiftUI
@@ -78,7 +78,7 @@ struct ForecastLoadingView: View {
 
 struct ChartLegendRow: View {
     let entries: [(color: Color, label: String, isArea: Bool)]
-    /// Text colour — follows the sky (black by day, white by night) so labels
+    /// Text color — follows the sky (black by day, white by night) so labels
     /// stay legible on the weather background.
     var ink: Color = .secondary
 
@@ -158,7 +158,7 @@ enum GraphKey {
     static let wetBulb  = "graphWetBulb"
     static let dewPoint = "graphDewPoint"
     static let feels    = "graphFeels"
-    static let colour   = "graphColour"
+    static let color   = "graphColor"
     static let precip   = "graphPrecip"
     static let wind     = "graphWind"
     static let gust     = "graphGust"
@@ -167,23 +167,23 @@ enum GraphKey {
     /// True when at least one graph series is enabled (any forecast panel would
     /// show). When false, the 24h/10-day screens are hidden entirely.
     static func anyGraphEnabled(_ d: UserDefaults = .standard) -> Bool {
-        let all = [temp, wetBulb, dewPoint, feels, colour, precip, wind, gust]
+        let all = [temp, wetBulb, dewPoint, feels, color, precip, wind, gust]
         // Missing key defaults to true (on).
         return all.contains { d.object(forKey: $0) == nil || d.bool(forKey: $0) }
     }
 }
 
-// MARK: - Personalised colour background for the temperature chart
+// MARK: - Personalized color background for the temperature chart
 
-/// Cell colour for the MyFeelsLike panels (24h strip + 10-day heatmap): the
-/// score's colour at full opacity. Reliability is conveyed by the cell's
-/// width (see myFeelsLikeReliability), not by fading. Grey when no score.
+/// Cell color for the MyFeelsLike panels (24h strip + 10-day heatmap): the
+/// score's color at full opacity. Reliability is conveyed by the cell's
+/// width (see myFeelsLikeReliability), not by fading. Gray when no score.
 func myFeelsLikeHeatColor(_ p: ForecastPoint) -> Color {
     ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: 1)
 }
 
 /// Prediction reliability in 0…1, used to scale a cell's width so uncertain
-/// forecasts read as a thinner band rather than a fainter colour. A small
+/// forecasts read as a thinner band rather than a fainter color. A small
 /// floor keeps even the least reliable cell visible as a sliver.
 func myFeelsLikeReliability(_ p: ForecastPoint) -> Double {
     guard p.myFeelsLikeScore != nil else { return 1 }

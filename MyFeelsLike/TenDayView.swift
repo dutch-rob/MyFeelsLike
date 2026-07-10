@@ -28,8 +28,8 @@ struct TenDayView: View {
     /// Features currently in the regression model. Used to decide which
     /// scenario adjusters to show. Empty = no model, no chips shown.
     var activeFeatures: Set<Feature> = []
-    /// Plain-language reasons there's no personalised model yet (empty when one
-    /// exists). Shown on the grey heatmap panel.
+    /// Plain-language reasons there's no personalized model yet (empty when one
+    /// exists). Shown on the gray heatmap panel.
     var modelReasons: [String] = []
     /// True when embedded in a fixed-height dashboard pane (iPad): panel
     /// fractions shrink so everything fits without scrolling.
@@ -41,7 +41,7 @@ struct TenDayView: View {
     @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
     @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
     @AppStorage(GraphKey.feels)    private var graphFeels    = true
-    @AppStorage(GraphKey.colour)   private var graphColour   = true
+    @AppStorage(GraphKey.color)   private var graphColor   = true
     @AppStorage(GraphKey.precip)   private var graphPrecip   = true
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
@@ -49,12 +49,12 @@ struct TenDayView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var tempPanelVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
-    private var colourPanelVisible: Bool { graphColour }
+    private var colorPanelVisible: Bool { graphColor }
     private var windPanelVisible: Bool { graphPrecip || graphWind || graphGust }
 
-    private func panelHeights(_ h: CGFloat) -> (temp: CGFloat, colour: CGFloat, wind: CGFloat) {
+    private func panelHeights(_ h: CGFloat) -> (temp: CGFloat, color: CGFloat, wind: CGFloat) {
         let wT = tempPanelVisible ? 0.42 : 0
-        let wC = colourPanelVisible ? 0.30 : 0
+        let wC = colorPanelVisible ? 0.30 : 0
         let wW = windPanelVisible ? 0.32 : 0
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
@@ -81,7 +81,7 @@ struct TenDayView: View {
         return e
     }
 
-    /// Whether the forecast carries personalised feels-like scores.
+    /// Whether the forecast carries personalized feels-like scores.
     private var hasModel: Bool {
         allPoints.contains { $0.myFeelsLikeScore != nil }
     }
@@ -94,7 +94,7 @@ struct TenDayView: View {
     private var forecastPlus: [ForecastPoint] {
         (current.map { [$0] } ?? []) + series
     }
-    /// All plotted points oldest→newest, for the MyFeelsLike colour background.
+    /// All plotted points oldest→newest, for the MyFeelsLike color background.
     private var allPoints: [ForecastPoint] {
         historic + (current.map { [$0] } ?? []) + series
     }
@@ -134,7 +134,7 @@ struct TenDayView: View {
         return (series.first ?? current)?.isDaylight ?? true
     }
     /// Ink for axis text/legends/titles: black by day, white by night when the
-    /// sky is shown; otherwise the system colour (adapts to light/dark mode).
+    /// sky is shown; otherwise the system color (adapts to light/dark mode).
     private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
     /// x-position of "now", for the current-time marker line.
     private var nowLineDate: Date? { current?.date ?? series.first?.date }
@@ -275,7 +275,7 @@ struct TenDayView: View {
     }
 
     /// Feels-like heatmap: one column per day, hour-of-day on the y-axis, cell
-    /// colour = personalised feels-like. Separated from the temperature curves
+    /// color = personalized feels-like. Separated from the temperature curves
     /// so day-to-day and time-of-day patterns are legible (the curves' x-axis
     /// is time; this grid's y-axis is hour-of-day).
     @ViewBuilder
@@ -298,7 +298,7 @@ struct TenDayView: View {
             let dayStart = cal.startOfDay(for: p.date)
             let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
             let hour = cal.component(.hour, from: p.date)
-            // Reliability shrinks the cell horizontally toward the centre of
+            // Reliability shrinks the cell horizontally toward the center of
             // its day column, so uncertain hours read as a narrow sliver.
             let full = dayEnd.timeIntervalSince(dayStart)
             let mid = dayStart.addingTimeInterval(full / 2)
@@ -331,13 +331,13 @@ struct TenDayView: View {
         }
     }
 
-    /// Grey panel shown in place of the heatmap until a personalised model
+    /// Gray panel shown in place of the heatmap until a personalized model
     /// exists, explaining why (with quantities where possible).
     private var noModelPanel: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.18))
             VStack(alignment: .leading, spacing: 6) {
-                Text("No personalised feels-like colour yet")
+                Text("No personalized feels-like color yet")
                     .font(.caption.weight(.semibold))
                 if modelReasons.isEmpty {
                     Text("Building your model…")
@@ -370,7 +370,7 @@ struct TenDayView: View {
                         ScenarioStrip(activeFeatures: activeFeatures)
                         HStack(spacing: 12) {
                             if tempPanelVisible { temperatureChart(height: h * 0.9) }
-                            if colourPanelVisible { feelsLikeHeatmap(height: h * 0.9) }
+                            if colorPanelVisible { feelsLikeHeatmap(height: h * 0.9) }
                             if windPanelVisible { precipWindChart(height: h * 0.9) }
                         }
                         if let attribution {
@@ -384,7 +384,7 @@ struct TenDayView: View {
                     VStack(spacing: 8) {
                         ScenarioStrip(activeFeatures: activeFeatures)
                         if tempPanelVisible { temperatureChart(height: hh.temp) }
-                        if colourPanelVisible { feelsLikeHeatmap(height: hh.colour) }
+                        if colorPanelVisible { feelsLikeHeatmap(height: hh.color) }
                         if windPanelVisible { precipWindChart(height: hh.wind) }
                         if let attribution {
                             WeatherAttributionLink(info: attribution)

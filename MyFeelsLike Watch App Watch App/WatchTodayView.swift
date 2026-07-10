@@ -3,7 +3,7 @@
 //  MyFeelsLike Watch App
 //
 //  Start screen: the 24-hour temperature graph, with the wind/precip graph
-//  below it (scroll up to reach it). Both carry the MyFeelsLike colour
+//  below it (scroll up to reach it). Both carry the MyFeelsLike color
 //  background where the model is confident.
 //
 
@@ -21,12 +21,12 @@ struct WatchTodayView: View {
         return f...l
     }
 
-    /// Whether the forecast carries personalised feels-like scores yet.
+    /// Whether the forecast carries personalized feels-like scores yet.
     private var hasModel: Bool {
         model.series24h.contains { $0.myFeelsLikeScore != nil }
     }
 
-    /// Whether the model learned a sun effect — the colour band splits into an
+    /// Whether the model learned a sun effect — the color band splits into an
     /// in-sun (top) and in-shade (bottom) half only when it did.
     private var sunFeatureActive: Bool {
         WatchSyncReceiver.shared.payload?.regressionState?.selectedFeatures.contains(.sun) ?? false
@@ -51,13 +51,13 @@ struct WatchTodayView: View {
                         placeholder
                     } else {
                         // No "24-hour" title: keeping the temp chart compact and
-                        // the spacing tight lets the MyFeelsLike colour band show
+                        // the spacing tight lets the MyFeelsLike color band show
                         // without scrolling when the screen first opens.
                         tempChart.frame(height: 108)
                         if hasModel {
                             label(sunFeatureActive ? "MyFeelsLike — sun / shade" : "MyFeelsLike")
-                            if sunFeatureActive { splitColourBand.frame(height: 30) }
-                            else { colourBand.frame(height: 24) }
+                            if sunFeatureActive { splitColorBand.frame(height: 30) }
+                            else { colorBand.frame(height: 24) }
                         }
                         label("Wind / precip")
                         windChart.frame(height: 150)
@@ -75,8 +75,8 @@ struct WatchTodayView: View {
                             Text(model.placeName).lineLimit(1)
                         }
                         // watchOS controls the top-bar title font size, so a
-                        // .font(...) here is ignored — only colour applies.
-                        // (Change colour here; size isn't adjustable in this slot.)
+                        // .font(...) here is ignored — only color applies.
+                        // (Change color here; size isn't adjustable in this slot.)
                         .foregroundStyle(.cyan)
                     }
                     .buttonStyle(.plain)
@@ -109,7 +109,7 @@ struct WatchTodayView: View {
     // Temperature as filled bands from the axis baseline up to each curve
     // (green = dry bulb, blue = wet bulb, red = dew point), drawn back→front,
     // with the feels-like line on top — matching the phone. The MyFeelsLike
-    // colour now lives in its own band below, not behind this chart.
+    // color now lives in its own band below, not behind this chart.
     private var tempChart: some View {
         let base = tempYDomain.lowerBound
         return Chart(model.series24h) { p in
@@ -138,9 +138,9 @@ struct WatchTodayView: View {
         .chartXAxis { hourlyXAxis() }
     }
 
-    /// Thin MyFeelsLike colour band, one cell per hour, time-aligned with the
+    /// Thin MyFeelsLike color band, one cell per hour, time-aligned with the
     /// temperature chart above (own clear y-axis reserves the same leading gap).
-    private var colourBand: some View {
+    private var colorBand: some View {
         Chart(model.series24h) { p in
             // Cell spans the hour ending at p.date (shifted ~1h left, as on the
             // phone) so it lines up with the temperature curve above.
@@ -162,9 +162,9 @@ struct WatchTodayView: View {
         .chartXScale(domain: domain ?? Date()...Date())
     }
 
-    /// Split colour band: top half = in full sun, bottom half = in shade, with
+    /// Split color band: top half = in full sun, bottom half = in shade, with
     /// tiny sun/shade markers in the leading gutter and a hairline divider.
-    private var splitColourBand: some View {
+    private var splitColorBand: some View {
         Chart {
             ForEach(model.series24h) { p in
                 let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date

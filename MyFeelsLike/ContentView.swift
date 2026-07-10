@@ -38,7 +38,7 @@ struct ContentView: View {
     @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
     @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
     @AppStorage(GraphKey.feels)    private var graphFeels    = true
-    @AppStorage(GraphKey.colour)   private var graphColour   = true
+    @AppStorage(GraphKey.color)   private var graphColor   = true
     @AppStorage(GraphKey.precip)   private var graphPrecip   = true
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
@@ -52,7 +52,7 @@ struct ContentView: View {
     /// and 10-day screens are hidden and only the table remains.
     private var anyGraphVisible: Bool {
         graphTemp || graphWetBulb || graphDewPoint || graphFeels
-            || graphColour || graphPrecip || graphWind || graphGust
+            || graphColor || graphPrecip || graphWind || graphGust
     }
 
     /// True when the table screen is the one currently on-screen in the pager
@@ -79,7 +79,7 @@ struct ContentView: View {
     @Query(sort: \Rating.timestamp) private var ratings: [Rating]
     @State private var regressionState: RegressionState? = RegressionStateStore.load()
     @Environment(\.modelContext) private var modelContext
-    /// One-shot wipe flag: when transitioning to the 0–1000 colour-score
+    /// One-shot wipe flag: when transitioning to the 0–1000 color-score
     /// system, all previously-collected ratings (and the stored regression
     /// state, which was trained against feelsLikeC) are discarded so the
     /// fresh score-based model can be built from new data.
@@ -105,26 +105,26 @@ struct ContentView: View {
         Set(regressionState?.selectedFeatures ?? [])
     }
 
-    private func personalised(_ series: [ForecastPoint], splitSun: Bool = false) -> [ForecastPoint] {
+    private func personalized(_ series: [ForecastPoint], splitSun: Bool = false) -> [ForecastPoint] {
         guard regressionState != nil else { return series }
         let s = regressionState
         let sc = scenario
         return series.map { p in
             var copy = p
             copy.applyPrediction(state: s, scenario: sc)
-            // The 24h colour band shows in-sun vs in-shade side by side.
+            // The 24h color band shows in-sun vs in-shade side by side.
             if splitSun { copy.applySunShadePrediction(state: s, scenario: sc) }
             return copy
         }
     }
 
-    /// Whether the model actually learned a sun effect — the 24h colour band
+    /// Whether the model actually learned a sun effect — the 24h color band
     /// only splits into sun/shade when it did (otherwise the halves are equal).
     private var sunFeatureActive: Bool { activeFeatures.contains(.sun) }
 
-    private func personalised(_ point: ForecastPoint?) -> ForecastPoint? {
+    private func personalized(_ point: ForecastPoint?) -> ForecastPoint? {
         guard let point else { return nil }
-        return personalised([point]).first
+        return personalized([point]).first
     }
 
     private var displayTitle: String {
@@ -236,7 +236,7 @@ struct ContentView: View {
         }
     }
 
-    /// A colour-band series: a given model applied to *our* local 24h forecast
+    /// A color-band series: a given model applied to *our* local 24h forecast
     /// (with the current scenario), so every compared band is for the same
     /// weather and differs only by the personal model. Used for "You" and peers.
     private func bandSeries(_ model: RegressionState?) -> [ForecastPoint] {
@@ -339,7 +339,7 @@ struct ContentView: View {
         }
     }
 
-    /// Bottom toolbar: Places + Rate Feels Like centred, Settings cog at right.
+    /// Bottom toolbar: Places + Rate Feels Like centered, Settings cog at right.
     private var bottomBar: some View {
         ZStack {
             HStack(spacing: 24) {
@@ -472,8 +472,8 @@ struct ContentView: View {
         VStack(spacing: 0) {
             tabLabel("24 hour forecast")
             HereTodayView(
-                series: weather.isRefreshing ? [] : personalised(weather.series24h, splitSun: true),
-                current: weather.isRefreshing ? nil : personalised(weather.current),
+                series: weather.isRefreshing ? [] : personalized(weather.series24h, splitSun: true),
+                current: weather.isRefreshing ? nil : personalized(weather.current),
                 progress: weather.loadProgress,
                 nowTick: nowTick,
                 sunrise: weather.sunrise,
@@ -492,9 +492,9 @@ struct ContentView: View {
         VStack(spacing: 0) {
             tabLabel("10 day forecast")
             TenDayView(
-                series: weather.isRefreshing ? [] : personalised(weather.series10d),
-                historic: weather.isRefreshing ? [] : personalised(weather.historic),
-                current: weather.isRefreshing ? nil : personalised(weather.current),
+                series: weather.isRefreshing ? [] : personalized(weather.series10d),
+                historic: weather.isRefreshing ? [] : personalized(weather.historic),
+                current: weather.isRefreshing ? nil : personalized(weather.current),
                 progress: weather.loadProgress,
                 nowTick: nowTick,
                 sunrise: weather.sunrise,
@@ -509,8 +509,8 @@ struct ContentView: View {
         }
     }
 
-    /// Why no personalised model yet (empty once one exists). Shown on the
-    /// 10-day heatmap panel while it's grey.
+    /// Why no personalized model yet (empty once one exists). Shown on the
+    /// 10-day heatmap panel while it's gray.
     private var modelReasons: [String] {
         regressionState == nil ? FeelsLikeRegression.readinessReasons(ratings: ratings) : []
     }
@@ -522,7 +522,7 @@ struct ContentView: View {
                 weatherService: weather,
                 nowTick: nowTick,
                 onRefresh: { await loadWeather(preserveData: true) },
-                personalise: { self.personalised($0) },
+                personalize: { self.personalized($0) },
                 activeFeatures: chipFeatures
             )
         }

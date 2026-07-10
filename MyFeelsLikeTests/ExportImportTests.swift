@@ -17,7 +17,7 @@ import Foundation
 
 struct ExportImportTests {
 
-    /// Every relevant field gets a distinct, recognisable value so a bug
+    /// Every relevant field gets a distinct, recognizable value so a bug
     /// that swaps or drops a field is caught by exact comparison rather
     /// than hidden behind coincidentally-matching defaults.
     private func mkDistinctForecastPoint() -> ForecastPoint {

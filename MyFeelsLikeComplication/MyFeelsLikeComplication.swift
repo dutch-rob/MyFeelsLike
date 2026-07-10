@@ -8,11 +8,11 @@
 //  and the complication advances automatically every hour from already-
 //  downloaded forecast data — no new fetch needed between updates.
 //
-//    • Corner (.accessoryCorner): number = temperature; colour band on the
+//    • Corner (.accessoryCorner): number = temperature; color band on the
 //      inner arc = the day's feels-like range with the hour's value marked.
-//    • Circular (.accessoryCircular): ring gauge, temperature large in centre.
+//    • Circular (.accessoryCircular): ring gauge, temperature large in center.
 //
-//  Colour is the MyFeelsLike gradient once a model exists, else neutral grey.
+//  Color is the MyFeelsLike gradient once a model exists, else neutral gray.
 //
 
 import WidgetKit
@@ -68,7 +68,7 @@ struct FeelsProvider: TimelineProvider {
 
 // MARK: - Shared gauge values
 
-/// Derives the gauge's number, value, range and colour from one frame.
+/// Derives the gauge's number, value, range and color from one frame.
 struct FeelsGauge {
     let frame: ComplicationFrame?
     let useFahrenheit: Bool
@@ -110,15 +110,15 @@ struct FeelsGauge {
         }
     }
 
-    /// Fill for the centre disc of the circular complication: the current
-    /// MyFeelsLike colour. Nil until a model exists (leave the centre empty).
+    /// Fill for the center disc of the circular complication: the current
+    /// MyFeelsLike color. Nil until a model exists (leave the center empty).
     var centerColor: Color? {
         guard let f = frame, hasModel else { return nil }
         return ColorScale.color(forScore: f.feelsCurrent)
     }
 
-    /// Split-centre colours (in-sun on top, in-shade below) when the model
-    /// learned a sun effect and this frame carries both. Nil ⇒ single centre.
+    /// Split-center colors (in-sun on top, in-shade below) when the model
+    /// learned a sun effect and this frame carries both. Nil ⇒ single center.
     var centerSunColor: Color? {
         guard hasModel, sunSplit, let s = frame?.feelsSun else { return nil }
         return ColorScale.color(forScore: s)
@@ -170,9 +170,9 @@ struct FeelsCircularView: View {
         }
         .gaugeStyle(.accessoryCircular)
         .tint(g.gradient)
-        // Fill the centre disc with the current MyFeelsLike colour, inset so
+        // Fill the center disc with the current MyFeelsLike color, inset so
         // the range ring stays visible around it. The temperature sits on top
-        // in a contrasting colour. When the model knows a sun effect the disc
+        // in a contrasting color. When the model knows a sun effect the disc
         // splits: in-sun on top, in-shade below.
         .background {
             if let sun = g.centerSunColor, let shade = g.centerShadeColor {

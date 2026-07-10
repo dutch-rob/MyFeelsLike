@@ -3,15 +3,15 @@
 //  MyFeelsLike
 //
 //  Sheet for the user to record one "feels like" rating, expressed purely as
-//  a position on a colour scale — no temperature units are shown.
+//  a position on a color scale — no temperature units are shown.
 //
 //  Layout
 //  ──────
-//    LEFT  — A wide colour column that is taller than the visible viewport
+//    LEFT  — A wide color column that is taller than the visible viewport
 //            (at most half of it fits on screen). The user scrolls the
 //            column up/down; a fixed horizontal indicator sits across the
 //            middle of the visible area, with small triangles overhanging
-//            the left and right edges and pointing inward. The colour
+//            the left and right edges and pointing inward. The color
 //            under the indicator is the rating.
 //    RIGHT — The "How does it feel right now?" prompt and the categorical
 //            questions (Activity / Dressed / Sun, where sun is hidden
@@ -19,7 +19,7 @@
 //
 //  The rating is stored as a Double in [0, 1000] (feelsLikeScore on Rating).
 //  This score is the regression model's target variable and has no
-//  temperature units — colour is interpreted directly by the user.
+//  temperature units — color is interpreted directly by the user.
 //
 
 import SwiftUI
@@ -58,7 +58,7 @@ struct RateFeelsLikeView: View {
     var body: some View {
         NavigationStack {
             HStack(alignment: .top, spacing: 0) {
-                // ── LEFT: scrollable colour column ────────────────────────
+                // ── LEFT: scrollable color column ────────────────────────
                 ColorScoreColumn(score: $feelsLikeScore)
                     .frame(width: 150)
                     .padding(.leading, 16)
@@ -95,7 +95,7 @@ struct RateFeelsLikeView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("How does it feel right now?")
                 .font(.headline)
-            Text("Scroll the colour column until the strip across the middle shows the colour that matches how this weather feels to you.")
+            Text("Scroll the color column until the strip across the middle shows the color that matches how this weather feels to you.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -220,15 +220,15 @@ private struct HintID: Hashable {
 
 // MARK: - ColorScoreColumn
 //
-// A vertically scrollable colour column. The column's content is twice as
+// A vertically scrollable color column. The column's content is twice as
 // tall as the visible viewport (so at most half fits on screen at once).
-// A fixed horizontal indicator sits at the vertical centre of the viewport
-// — as the user scrolls, the colour passing under the indicator becomes
+// A fixed horizontal indicator sits at the vertical center of the viewport
+// — as the user scrolls, the color passing under the indicator becomes
 // the selected score.
 //
-// The colour gradient is constructed so the indicator can sweep the full
+// The color gradient is constructed so the indicator can sweep the full
 // 0…1000 score range from one scroll extreme to the other: the middle half
-// of the content height carries the anchor colours evenly distributed,
+// of the content height carries the anchor colors evenly distributed,
 // padded with solid "hot" above and solid "cold" below.
 
 struct ColorScoreColumn: View {
@@ -308,10 +308,10 @@ struct ColorScoreColumn: View {
     ///
     /// padFrac = (h/2) / (3h) = 1/6: the top and bottom 1/6 of the content
     /// are non-selectable (indicator cannot reach there) and are rendered
-    /// fully transparent. The middle 2/3 carries the active colour range.
-    /// Hard cut at each boundary (epsilon step) avoids a colour bleed.
+    /// fully transparent. The middle 2/3 carries the active color range.
+    /// Hard cut at each boundary (epsilon step) avoids a color bleed.
     ///
-    /// A power curve (exponent 0.6) is applied so that dark colour transitions
+    /// A power curve (exponent 0.6) is applied so that dark color transitions
     /// (black → purple near the top) get proportionally more visible space.
     static func paddedScoreGradient() -> Gradient {
         let reversed = Array(ColorScale.anchors.reversed())
@@ -325,7 +325,7 @@ struct ColorScoreColumn: View {
             .init(color: .clear, location: 0.0),
             .init(color: .clear, location: padFrac - eps)
         ]
-        // Active colour range — first anchor (hot) at padFrac, last (cold) at 1-padFrac.
+        // Active color range — first anchor (hot) at padFrac, last (cold) at 1-padFrac.
         let n = reversed.count
         for (i, a) in reversed.enumerated() {
             let t    = Double(i) / Double(n - 1)

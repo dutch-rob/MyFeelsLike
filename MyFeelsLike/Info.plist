@@ -7,7 +7,7 @@
 		<string>remote-notification</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Find nearby MyFeelsLike users so you can compare your feels-like colours.</string>
+	<string>Find nearby MyFeelsLike users so you can compare your feels-like colors.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_mfl-compare._tcp</string>

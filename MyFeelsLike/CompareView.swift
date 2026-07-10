@@ -4,7 +4,7 @@
 //
 //  Phase 1 scaffold of the "Compare with:" screen: the entry points for
 //  linking with other users (nearby / via text) plus the user's own
-//  MyFeelsLike colour band. The networking (live nearby link, text invite,
+//  MyFeelsLike color band. The networking (live nearby link, text invite,
 //  peer model exchange) lands in later phases — for now the two buttons are
 //  placeholders and only the user's own band is shown.
 //
@@ -15,8 +15,8 @@ import Charts
 // MARK: - Bottom-bar icon
 
 /// Compare icon for the bottom bar: two people over a two-tone MyFeelsLike bar
-/// (green-yellow vs yellow-orange) — "compare your colours with someone".
-/// The people follow the bar tint; the colour swatch keeps its own colours.
+/// (green-yellow vs yellow-orange) — "compare your colors with someone".
+/// The people follow the bar tint; the color swatch keeps its own colors.
 struct CompareIcon: View {
     var body: some View {
         VStack(spacing: 2) {
@@ -32,10 +32,10 @@ struct CompareIcon: View {
     }
 }
 
-// MARK: - Colour band + row
+// MARK: - Color band + row
 
-/// A thin horizontal MyFeelsLike colour band over a 24h series (one cell per
-/// hour). Grey placeholder when there's no personalised model yet.
+/// A thin horizontal MyFeelsLike color band over a 24h series (one cell per
+/// hour). Gray placeholder when there's no personalized model yet.
 struct FeelsBand: View {
     let series: [ForecastPoint]
 
@@ -43,17 +43,17 @@ struct FeelsBand: View {
         guard let f = series.first?.date, let l = series.last?.date, f < l else { return nil }
         return f...l
     }
-    private var hasColour: Bool { series.contains { $0.myFeelsLikeScore != nil } }
+    private var hasColor: Bool { series.contains { $0.myFeelsLikeScore != nil } }
 
     var body: some View {
         Group {
-            if let domain, hasColour {
+            if let domain, hasColor {
                 Chart(series) { p in
                     RectangleMark(
                         xStart: .value("t0", p.date.addingTimeInterval(-3600)),
                         xEnd:   .value("t1", p.date),
                         yStart: .value("y0", 0), yEnd: .value("y1", 1))
-                    .foregroundStyle(colour(p))
+                    .foregroundStyle(color(p))
                 }
                 .chartYScale(domain: 0...1)
                 .chartYAxis(.hidden)
@@ -61,19 +61,19 @@ struct FeelsBand: View {
                 .chartXScale(domain: domain)
             } else {
                 RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.2))
-                    .overlay(Text("No colour yet").font(.caption2).foregroundStyle(.secondary))
+                    .overlay(Text("No color yet").font(.caption2).foregroundStyle(.secondary))
             }
         }
         .frame(height: 22)
         .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
-    private func colour(_ p: ForecastPoint) -> Color {
+    private func color(_ p: ForecastPoint) -> Color {
         ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity)
     }
 }
 
-/// One labelled colour band in the compare list (a user's name + their band).
+/// One labeled color band in the compare list (a user's name + their band).
 struct CompareBandRow: View {
     let name: String
     let series: [ForecastPoint]
@@ -91,12 +91,12 @@ struct CompareBandRow: View {
 
 struct CompareView: View {
     @ObservedObject var nearby: NearbyCompareManager
-    /// The phone user's own personalised 24h series (their colour band).
+    /// The phone user's own personalized 24h series (their color band).
     let ownSeries: [ForecastPoint]
-    /// Builds a colour-band series by applying a peer's model to *our* local
+    /// Builds a color-band series by applying a peer's model to *our* local
     /// forecast, so every band compares the same weather.
     let bandSeries: (RegressionState?) -> [ForecastPoint]
-    /// Legible text colour over the weather-sky background.
+    /// Legible text color over the weather-sky background.
     var ink: Color = .primary
 
     @State private var showComingSoon = false

@@ -67,7 +67,7 @@ enum DemoMode {
         return (s24, s10, current)
     }
 
-    // MARK: - Ratings (enough to fit a model so the colours show)
+    // MARK: - Ratings (enough to fit a model so the colors show)
 
     static func ratings() -> [Rating] {
         // Apparent 5…30 °C → score 150…900 (spread 750 ≥ 80) so canFit passes.

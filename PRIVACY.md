@@ -7,7 +7,7 @@ describes exactly what data the app handles and where it goes.
 
 Everything the app needs works locally:
 
-- **Your ratings** (how the weather felt to you) and the **personalised model**
+- **Your ratings** (how the weather felt to you) and the **personalized model**
   fitted from them are stored on your device (SwiftData) and in the app's
   preferences. They are not sent anywhere unless you explicitly opt in (see
   *Sharing with the developer* below).

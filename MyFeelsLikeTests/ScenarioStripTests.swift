@@ -3,11 +3,11 @@
 //  MyFeelsLikeTests
 //
 //  ScenarioStrip decides, per scenario option, whether enough ratings exist
-//  for the model to be informative at that level and greys the option out
+//  for the model to be informative at that level and grays the option out
 //  if not. A wrong count wouldn't crash or look obviously broken — it would
 //  just silently let the user pick an under-sampled option (or block a
 //  well-sampled one), the same "invisible" failure class as the rating
-//  colour-scroll bug (see ColorScoreColumnTests).
+//  color-scroll bug (see ColorScoreColumnTests).
 //
 
 import Testing

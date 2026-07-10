@@ -89,7 +89,7 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
             isLoading = false
             errorText = nil
             BackgroundWeatherRefresh.saveLocation(location)   // for background refresh
-            applyModel()      // colours + snapshot
+            applyModel()      // colors + snapshot
         } catch {
             errorText = error.localizedDescription
             isLoading = false
@@ -102,7 +102,7 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
         let state = WatchSyncReceiver.shared.payload?.regressionState
         let scenario = WatchSyncReceiver.shared.payload?.scenario ?? Scenario()
         // When the model learned a sun effect, also compute the in-sun/in-shade
-        // scores — used by the 24h band and the split complication centre.
+        // scores — used by the 24h band and the split complication center.
         let sunSplit = state?.selectedFeatures.contains(.sun) ?? false
         func predicted(_ pts: [ForecastPoint]) -> [ForecastPoint] {
             pts.map { var p = $0

@@ -5,8 +5,8 @@ struct ForecastTableView: View {
     var nowTick: Date
     var onRefresh: (() async -> Void)? = nil
     /// Applied to the 10-day series so the leftmost MyFeelsLike column reflects
-    /// the personalised regression model when one exists.
-    var personalise: ([ForecastPoint]) -> [ForecastPoint] = { $0 }
+    /// the personalized regression model when one exists.
+    var personalize: ([ForecastPoint]) -> [ForecastPoint] = { $0 }
     /// Features currently in the regression model. Used to decide which
     /// scenario adjusters to display (matches the graph screens).
     var activeFeatures: Set<Feature>? = nil
@@ -44,11 +44,11 @@ struct ForecastTableView: View {
         let points: [ForecastPoint]
     }
 
-    /// Historic (past 24 h) → "now" → forecast, all personalised, in time order.
+    /// Historic (past 24 h) → "now" → forecast, all personalized, in time order.
     private var allRows: [ForecastPoint] {
-        var pts = personalise(weatherService.historic)
-        if let c = weatherService.current { pts += personalise([c]) }
-        pts += personalise(weatherService.series10d)
+        var pts = personalize(weatherService.historic)
+        if let c = weatherService.current { pts += personalize([c]) }
+        pts += personalize(weatherService.series10d)
         return pts
     }
 
@@ -104,7 +104,7 @@ struct ForecastTableView: View {
         wMyFL + myFLTrailingGap + wTime + wSym + wUV + wTemp + wWet + wDew + wWind + wPrecip + wCloud + 16
     }
 
-    // MARK: - 25%-darker variants of the graph colours, used for data text
+    // MARK: - 25%-darker variants of the graph colors, used for data text
 
     private static let cTemp:   Color = .green.mix(  with: .black, by: 0.25)
     private static let cWet:    Color = .blue.mix(   with: .black, by: 0.25)
@@ -163,7 +163,7 @@ struct ForecastTableView: View {
                         .frame(minWidth: totalWidth)
                     }
                     .refreshable { await onRefresh?() }
-                    // Open centred on "now"; re-anchor when a fresh load arrives.
+                    // Open centered on "now"; re-anchor when a fresh load arrives.
                     .onAppear { scrollToNow(proxy) }
                     .onChange(of: weatherService.current?.id) { _, _ in scrollToNow(proxy) }
                 }
@@ -242,7 +242,7 @@ struct ForecastTableView: View {
         .padding(.horizontal, 8)
     }
 
-    // MyFeels score cell — coloured background, 3-digit number with text colour
+    // MyFeels score cell — colored background, 3-digit number with text color
     // chosen for contrast. Empty dash when no model has been fitted yet.
     @ViewBuilder
     private func myFeelsLikeCell(_ p: ForecastPoint) -> some View {

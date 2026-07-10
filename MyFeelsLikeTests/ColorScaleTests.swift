@@ -34,12 +34,12 @@ struct ColorScaleTests {
         #expect(rgb(ColorScale.contrastingText(forScore: 1000)).0 > 0.5)
     }
 
-    // MARK: - Forecast colour must match the colour shown while rating
+    // MARK: - Forecast color must match the color shown while rating
     //
-    // Regression for the bug where the forecast painted cooler colours than
+    // Regression for the bug where the forecast painted cooler colors than
     // the user picked: the rating column spaced its gradient anchors on a
     // power curve while the display used linear spacing. `color(forScore:)`
-    // must now reproduce, for any score, the exact colour under the rating
+    // must now reproduce, for any score, the exact color under the rating
     // indicator at the scroll position that records that score.
 
     /// Sample a SwiftUI gradient at an absolute location in [0, 1].
@@ -58,9 +58,9 @@ struct ColorScaleTests {
         return rgb(stops.last!.color)
     }
 
-    @Test func forecastColourMatchesRatingColumnColour() {
+    @Test func forecastColorMatchesRatingColumnColor() {
         // The rating column reads its score from the indicator at the vertical
-        // centre of the viewport; a score s sits at absolute gradient location
+        // center of the viewport; a score s sits at absolute gradient location
         // (1.25 - s/1000) / 1.5 (derived from the column's 3×-viewport height
         // and hot-at-top orientation).
         let gradient = ColorScoreColumn.paddedScoreGradient()

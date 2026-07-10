@@ -3,7 +3,7 @@
 //  MyFeelsLike
 //
 //  Compact controls for the user's predicted "scenario" — used as inputs
-//  to the personalised feels-like prediction shown on the charts/table.
+//  to the personalized feels-like prediction shown on the charts/table.
 //  Saved via @AppStorage so they persist across launches and screens.
 //
 //  When `activeFeatures` is provided, only chips whose feature is in the
@@ -14,7 +14,7 @@
 //    Inside a chip menu, each option is enabled only when at least
 //    `minObservations` ratings exist at that exact level.  Below that
 //    threshold the model has too little information to predict
-//    reliably at that level, so we grey the option and disable it.
+//    reliably at that level, so we gray the option and disable it.
 //
 
 import SwiftUI
@@ -152,7 +152,7 @@ struct ScenarioStrip: View {
         }
         // Menu tints its label with the app accent by default; force primary so
         // the chip text is plain black/white (the explicit .secondary parts stay
-        // grey) instead of accent-blue.
+        // gray) instead of accent-blue.
         .tint(.primary)
     }
 

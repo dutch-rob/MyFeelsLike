@@ -5,7 +5,7 @@
 //  A painted "sky" for the current conditions, seen looking up from the
 //  ground: clear blue by day, dark with stars by night, and opaque cloud
 //  patches whose coverage matches the cloud fraction at each altitude (white
-//  high cloud furthest back, light-grey mid, darker-grey low in front), plus
+//  high cloud furthest back, light-gray mid, darker-gray low in front), plus
 //  rain streaks when precipitating. Used as the screen backdrop (WeatherSkyView).
 //
 
@@ -47,8 +47,8 @@ enum SkyRenderer {
         }
 
         // Opaque cloud layers over the whole sky, back→front so lower cloud
-        // covers higher. High ≈ white (cirrus), mid light-grey (alto), low
-        // darker-grey (stratus/cumulus); dimmer at night.
+        // covers higher. High ≈ white (cirrus), mid light-gray (alto), low
+        // darker-gray (stratus/cumulus); dimmer at night.
         cloudLayer(context, rect, coverage: p.cloudCoverHigh,
                    color: Color(white: day ? 0.98 : 0.52), seed: seed &+ 1)
         cloudLayer(context, rect, coverage: p.cloudCoverMedium,
@@ -86,8 +86,8 @@ enum SkyRenderer {
     }
 
     /// One small cumulus: a flat-bottomed base with a few rounded bulges along
-    /// the top (centre bulge largest), wider than it is tall. Drawn as opaque
-    /// overlapping fills in a single colour so they read as one puffy cloud.
+    /// the top (center bulge largest), wider than it is tall. Drawn as opaque
+    /// overlapping fills in a single color so they read as one puffy cloud.
     private static func drawCumulus(_ context: GraphicsContext, centerX cx: CGFloat,
                                     baselineY by: CGFloat, width w: CGFloat,
                                     color: Color, rng: inout SeededRNG) {
@@ -96,7 +96,7 @@ enum SkyRenderer {
         // Flat-bottomed base slab (small corner radius → near-flat bottom edge).
         let baseRect = CGRect(x: cx - w * 0.42, y: by - baseH, width: w * 0.84, height: baseH)
         context.fill(Path(roundedRect: baseRect, cornerRadius: baseH * 0.3), with: .color(color))
-        // Top bulges sitting on the base; centre puff is the largest.
+        // Top bulges sitting on the base; center puff is the largest.
         let puffs: [(dx: CGFloat, r: CGFloat)] = [(-0.27, 0.28), (0.02, 0.42), (0.29, 0.30)]
         for p in puffs {
             let rr = w * p.r * CGFloat(0.9 + rng.unit() * 0.2)

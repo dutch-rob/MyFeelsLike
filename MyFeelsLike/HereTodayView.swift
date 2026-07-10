@@ -2,7 +2,7 @@
 //  HereTodayView.swift
 //  MyFeelsLike
 //
-//  The 24-hour screen: the temperature band chart, the MyFeelsLike colour band
+//  The 24-hour screen: the temperature band chart, the MyFeelsLike color band
 //  (single, or split into in-sun / in-shade), and the precip/wind chart.
 //
 
@@ -27,7 +27,7 @@ struct HereTodayView: View {
     /// Features currently in the regression model. Used to decide which
     /// scenario adjusters to show. Empty = no model, no chips shown.
     var activeFeatures: Set<Feature> = []
-    /// When true (the model learned a sun effect), the MyFeelsLike colour band
+    /// When true (the model learned a sun effect), the MyFeelsLike color band
     /// splits into an in-sun (top) and in-shade (bottom) half.
     var sunFeatureActive: Bool = false
     /// True when embedded in a fixed-height dashboard pane (iPad): panel
@@ -40,7 +40,7 @@ struct HereTodayView: View {
     @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
     @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
     @AppStorage(GraphKey.feels)    private var graphFeels    = true
-    @AppStorage(GraphKey.colour)   private var graphColour   = true
+    @AppStorage(GraphKey.color)   private var graphColor   = true
     @AppStorage(GraphKey.precip)   private var graphPrecip   = true
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
@@ -48,7 +48,7 @@ struct HereTodayView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var tempPanelVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
-    private var colourPanelVisible: Bool { graphColour }
+    private var colorPanelVisible: Bool { graphColor }
     private var windPanelVisible: Bool { graphPrecip || graphWind || graphGust }
 
     private var tempLegendEntries: [(color: Color, label: String, isArea: Bool)] {
@@ -68,13 +68,13 @@ struct HereTodayView: View {
         return e
     }
 
-    /// Normalised panel heights over whichever panels are enabled. The colour
+    /// Normalised panel heights over whichever panels are enabled. The color
     /// band is deliberately thin; `usable` < 1 leaves room for the panel
     /// labels + scenario strip + attribution so everything fits without
     /// scrolling.
-    private func panelHeights(_ h: CGFloat) -> (temp: CGFloat, colour: CGFloat, wind: CGFloat) {
+    private func panelHeights(_ h: CGFloat) -> (temp: CGFloat, color: CGFloat, wind: CGFloat) {
         let wT = tempPanelVisible ? 0.50 : 0
-        let wC = colourPanelVisible ? 0.08 : 0
+        let wC = colorPanelVisible ? 0.08 : 0
         let wW = windPanelVisible ? 0.36 : 0
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
@@ -101,7 +101,7 @@ struct HereTodayView: View {
         clockHourLabel(Calendar.current.component(.hour, from: date), use12: use12Hour)
     }
 
-    /// Whether the forecast carries personalised feels-like scores.
+    /// Whether the forecast carries personalized feels-like scores.
     private var hasModel: Bool {
         series.contains { $0.myFeelsLikeScore != nil }
     }
@@ -142,7 +142,7 @@ struct HereTodayView: View {
         return (series.first ?? current)?.isDaylight ?? true
     }
     /// Ink for axis text/legends/titles: black by day, white by night when the
-    /// sky is shown; otherwise the system colour (adapts to light/dark mode).
+    /// sky is shown; otherwise the system color (adapts to light/dark mode).
     private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
 
     var body: some View {
@@ -158,10 +158,10 @@ struct HereTodayView: View {
                     // top, the enabled charts side by side below it.
                     VStack(spacing: 8) {
                         ScenarioStrip(activeFeatures: activeFeatures)
-                        if colourPanelVisible { myFeelsLikePanel(height: h * 0.16) }
+                        if colorPanelVisible { myFeelsLikePanel(height: h * 0.16) }
                         HStack(spacing: 12) {
-                            if tempPanelVisible { temperatureChart(height: colourPanelVisible ? h * 0.72 : h * 0.9) }
-                            if windPanelVisible { precipWindChart(height: colourPanelVisible ? h * 0.72 : h * 0.9) }
+                            if tempPanelVisible { temperatureChart(height: colorPanelVisible ? h * 0.72 : h * 0.9) }
+                            if windPanelVisible { precipWindChart(height: colorPanelVisible ? h * 0.72 : h * 0.9) }
                         }
                         if let attribution {
                             WeatherAttributionLink(info: attribution)
@@ -174,7 +174,7 @@ struct HereTodayView: View {
                     VStack(spacing: 8) {
                         ScenarioStrip(activeFeatures: activeFeatures)
                         if tempPanelVisible { temperatureChart(height: hh.temp) }
-                        if colourPanelVisible { myFeelsLikePanel(height: hh.colour) }
+                        if colorPanelVisible { myFeelsLikePanel(height: hh.color) }
                         if windPanelVisible { precipWindChart(height: hh.wind) }
                         if let attribution {
                             WeatherAttributionLink(info: attribution)
@@ -188,7 +188,7 @@ struct HereTodayView: View {
         }
     }
 
-    /// A thin horizontal MyFeelsLike colour band across the 24 hours — the 24h
+    /// A thin horizontal MyFeelsLike color band across the 24 hours — the 24h
     /// analogue of the 10-day heatmap, but a single row (narrower). Aligned in
     /// time with the temperature chart's plot area via the leading padding.
     /// When the model has learned a sun effect it splits into two half-height
@@ -200,24 +200,24 @@ struct HereTodayView: View {
                 .font(.caption2).foregroundStyle(axisInk)
                 .padding(.leading, 36)
             if hasModel {
-                if sunFeatureActive { splitColourBand(height: height) }
-                else { singleColourBand(height: height) }
+                if sunFeatureActive { splitColorBand(height: height) }
+                else { singleColorBand(height: height) }
             } else {
                 RoundedRectangle(cornerRadius: 6).fill(Color.gray.opacity(0.18))
                     .frame(height: height)
                     .padding(.leading, 36)
                     .overlay(
-                        Text("No personalised colour yet")
+                        Text("No personalized color yet")
                             .font(.caption2).foregroundStyle(axisInk)
                     )
             }
         }
     }
 
-    /// Single-row colour band (current scenario), reliability as thickness.
-    private func singleColourBand(height: CGFloat) -> some View {
+    /// Single-row color band (current scenario), reliability as thickness.
+    private func singleColorBand(height: CGFloat) -> some View {
         Chart(series) { p in
-            // Reliability shrinks the band vertically toward the centre line, so
+            // Reliability shrinks the band vertically toward the center line, so
             // uncertain hours read as a thinner stripe.
             let half = myFeelsLikeReliability(p) / 2
             // Cell spans the hour *ending* at p.date (shifted ~1h left of the
@@ -246,16 +246,16 @@ struct HereTodayView: View {
 
     /// Split band: top half = in full sun, bottom half = in shade, each full
     /// height (reliability shown as opacity), with a hairline divider between.
-    private func splitColourBand(height: CGFloat) -> some View {
+    private func splitColorBand(height: CGFloat) -> some View {
         Chart {
             ForEach(series) { p in
                 let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date
                 RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
                               yStart: .value("y0", 0.5), yEnd: .value("y1", 1.0))
-                    .foregroundStyle(bandColour(p.myFeelsLikeSunScore, opacity: p.myFeelsLikeSunOpacity))
+                    .foregroundStyle(bandColor(p.myFeelsLikeSunScore, opacity: p.myFeelsLikeSunOpacity))
                 RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
                               yStart: .value("y0", 0.0), yEnd: .value("y1", 0.5))
-                    .foregroundStyle(bandColour(p.myFeelsLikeShadeScore, opacity: p.myFeelsLikeShadeOpacity))
+                    .foregroundStyle(bandColor(p.myFeelsLikeShadeScore, opacity: p.myFeelsLikeShadeOpacity))
             }
             RuleMark(y: .value("mid", 0.5))
                 .foregroundStyle(axisInk.opacity(0.5))
@@ -280,9 +280,9 @@ struct HereTodayView: View {
         .frame(height: height)
     }
 
-    /// Colour for a split-band cell: the score's colour, opacity carrying
-    /// prediction reliability. Grey when there's no score.
-    private func bandColour(_ score: Double?, opacity: Double) -> Color {
+    /// Color for a split-band cell: the score's color, opacity carrying
+    /// prediction reliability. Gray when there's no score.
+    private func bandColor(_ score: Double?, opacity: Double) -> Color {
         ColorScale.feelsColor(score: score, opacity: opacity, floor: 0.2)
     }
 
@@ -326,7 +326,7 @@ struct HereTodayView: View {
                                  series: .value("S", "dew"))
                             .foregroundStyle(.red).interpolationMethod(.linear)
                     }
-                    // Personalised feels-like (apparent) stays a line, on top.
+                    // Personalized feels-like (apparent) stays a line, on top.
                     if graphFeels {
                         LineMark(x: .value("Time", p.date),
                                  y: .value("Apparent",
@@ -361,7 +361,7 @@ struct HereTodayView: View {
                     }
                 }
             }
-            // MyFeelsLike colour now lives in its own panel below (see
+            // MyFeelsLike color now lives in its own panel below (see
             // myFeelsLikePanel), matching the 10-day screen's heatmap.
             .chartLegend(.hidden)
             .chartYScale(domain: dom)

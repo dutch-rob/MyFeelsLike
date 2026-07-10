@@ -2,7 +2,7 @@
 //  FeelsLikeRegressionTests.swift
 //  MyFeelsLikeTests
 //
-//  Solver + training-trigger + feature-selection behaviour of the regression.
+//  Solver + training-trigger + feature-selection behavior of the regression.
 //  Helpers (StubFeatures / mkRating) live in TestSupport.swift.
 //
 

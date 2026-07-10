@@ -3,8 +3,8 @@
 //  MyFeelsLike Watch App
 //
 //  10-day overview. Mirrors the phone's portrait layout: the temperature
-//  curves and the personalised feels-like colour are shown separately —
-//  the curves stay uncoloured, and the feels-like score is a heatmap panel
+//  curves and the personalized feels-like color are shown separately —
+//  the curves stay uncolored, and the feels-like score is a heatmap panel
 //  (one column per day, hour-of-day up the y-axis) below them.
 //
 
@@ -16,7 +16,7 @@ struct WatchTenDayView: View {
     @State private var showPlaces = false
     private var useF: Bool { WatchSyncReceiver.shared.payload?.useFahrenheit ?? false }
 
-    /// Whether the forecast carries personalised feels-like scores yet.
+    /// Whether the forecast carries personalized feels-like scores yet.
     private var hasModel: Bool {
         model.series10d.contains { $0.myFeelsLikeScore != nil }
     }
@@ -139,12 +139,12 @@ struct WatchTenDayView: View {
         .chartXAxis { dailyXAxis() }
     }
 
-    /// Compact grey panel shown until a personalised model exists.
+    /// Compact gray panel shown until a personalized model exists.
     private var noModelPanel: some View {
         RoundedRectangle(cornerRadius: 6)
             .fill(Color.gray.opacity(0.18))
             .overlay(
-                Text("No personalised colour yet — rate more on your phone.")
+                Text("No personalized color yet — rate more on your phone.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

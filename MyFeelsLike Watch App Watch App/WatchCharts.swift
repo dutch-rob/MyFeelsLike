@@ -2,20 +2,20 @@
 //  WatchCharts.swift
 //  MyFeelsLike Watch App
 //
-//  Small chart helpers shared by the watch screens: the MyFeelsLike colour
+//  Small chart helpers shared by the watch screens: the MyFeelsLike color
 //  for the band/heatmap cells, plus shared axis styling.
 //
 
 import SwiftUI
 import Charts
 
-/// Cell colour for the MyFeelsLike colour band / heatmap: the score's colour,
-/// its opacity carrying prediction reliability. Grey when there's no score.
+/// Cell color for the MyFeelsLike color band / heatmap: the score's color,
+/// its opacity carrying prediction reliability. Gray when there's no score.
 func watchHeatColor(_ p: ForecastPoint) -> Color {
     ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity)
 }
 
-/// Colour for a split sun/shade band cell from an explicit score + reliability.
+/// Color for a split sun/shade band cell from an explicit score + reliability.
 func watchScoreColor(_ score: Double?, opacity: Double) -> Color {
     ColorScale.feelsColor(score: score, opacity: opacity, floor: 0.2)
 }
@@ -53,7 +53,7 @@ func plainYAxis() -> some AxisContent {
     }
 }
 
-/// 24-hour x-axis: faint gridlines every 3 h, labelled bold gridlines every 6 h.
+/// 24-hour x-axis: faint gridlines every 3 h, labeled bold gridlines every 6 h.
 @AxisContentBuilder
 func hourlyXAxis() -> some AxisContent {
     AxisMarks(values: .stride(by: .hour, count: 3)) {
@@ -65,7 +65,7 @@ func hourlyXAxis() -> some AxisContent {
     }
 }
 
-/// 10-day x-axis: faint gridlines every day, labelled bold gridlines every 2.
+/// 10-day x-axis: faint gridlines every day, labeled bold gridlines every 2.
 @AxisContentBuilder
 func dailyXAxis() -> some AxisContent {
     AxisMarks(values: .stride(by: .day, count: 1)) {

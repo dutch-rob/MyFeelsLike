@@ -2,7 +2,7 @@
 //  ColorScoreColumnTests.swift
 //  MyFeelsLikeTests
 //
-//  Regression coverage for the Rate Feels Like colour column: the scroll
+//  Regression coverage for the Rate Feels Like color column: the scroll
 //  offset → score mapping, and the gradient it paints. A prior bug here
 //  (fixed in "Fix rating screen always recording 1000…") had the offset
 //  read stuck at the top of the column, so every rating silently saved
@@ -76,7 +76,7 @@ struct ColorScoreColumnTests {
     /// The column scrolls hot-at-top / cold-at-bottom (matching
     /// `score(forOffsetY:usableRange:)`). If the anchor order in
     /// `paddedScoreGradient` were ever accidentally flipped, the number
-    /// saved would still be correct but the colour shown would be wrong —
+    /// saved would still be correct but the color shown would be wrong —
     /// not something you'd catch just glancing at the app mid-scroll.
     @Test func gradientTopMatchesHottestAnchorBottomMatchesColdest() {
         let stops = ColorScoreColumn.paddedScoreGradient().stops

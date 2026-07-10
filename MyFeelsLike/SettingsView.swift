@@ -18,7 +18,7 @@ struct SettingsView: View {
     @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
     @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
     @AppStorage(GraphKey.feels)    private var graphFeels    = true
-    @AppStorage(GraphKey.colour)   private var graphColour   = true
+    @AppStorage(GraphKey.color)   private var graphColor   = true
     @AppStorage(GraphKey.precip)   private var graphPrecip   = true
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
@@ -71,7 +71,7 @@ struct SettingsView: View {
                 Toggle("Wet bulb", isOn: $graphWetBulb)
                 Toggle("Dew point", isOn: $graphDewPoint)
                 Toggle("Feels like line", isOn: $graphFeels)
-                Toggle("MyFeelsLike colour", isOn: $graphColour)
+                Toggle("MyFeelsLike color", isOn: $graphColor)
                 Toggle("Precipitation", isOn: $graphPrecip)
                 Toggle("Wind", isOn: $graphWind)
                 Toggle("Gust", isOn: $graphGust)
@@ -190,7 +190,7 @@ struct SettingsView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This permanently removes every rating you've given and clears the personalised model. This cannot be undone.")
+            Text("This permanently removes every rating you've given and clears the personalized model. This cannot be undone.")
         }
         .sheet(isPresented: $showInfo) {
             NavigationStack { InfoView() }
@@ -425,7 +425,7 @@ struct RatingExport: Codable {
     let placeID: UUID?
 
     // User input
-    let feelsLikeScore: Double   // 0…1000 colour-scale rating
+    let feelsLikeScore: Double   // 0…1000 color-scale rating
     let activity: Int
     let dress: Int
     let sun: Int

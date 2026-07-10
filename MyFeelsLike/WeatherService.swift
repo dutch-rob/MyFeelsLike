@@ -96,7 +96,7 @@ private let sharedWeatherService = WeatherKit.WeatherService()
 final class WeatherService: ObservableObject {
     @Published var series24h: [ForecastPoint] = []
     @Published var series10d: [ForecastPoint] = []
-    /// Observed/analysed past, oldest → newest (kind .historic). Runs from
+    /// Observed/analyzed past, oldest → newest (kind .historic). Runs from
     /// 00:00 of the previous day up to "now", so the 10-day heatmap's first
     /// daily column is complete.
     @Published var historic: [ForecastPoint] = []

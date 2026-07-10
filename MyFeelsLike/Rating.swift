@@ -16,8 +16,8 @@ final class Rating {
     var placeID: UUID?
 
     // User input
-    /// "Feels like" expressed as a 0…1000 colour-scale score (no temperature
-    /// units exposed to the user). 0 = coldest end of the colour bar,
+    /// "Feels like" expressed as a 0…1000 color-scale score (no temperature
+    /// units exposed to the user). 0 = coldest end of the color bar,
     /// 1000 = hottest end. This is the regression target.
     var feelsLikeScore: Double = 500
     var activity: Int = 1               // 0 Not active / 1 Light / 2 Moderate / 3 Vigorous

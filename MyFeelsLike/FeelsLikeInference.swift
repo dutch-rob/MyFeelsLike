@@ -2,7 +2,7 @@
 //  FeelsLikeInference.swift
 //  MyFeelsLike
 //
-//  Inference half of the personalised "feels like" model: the feature
+//  Inference half of the personalized "feels like" model: the feature
 //  definitions, the feature-source protocol, the inference scenario, the
 //  forecast-point feature source, and the persistable RegressionState with
 //  predict / leverage / opacity. Pure value types with no SwiftData or UI
@@ -200,7 +200,7 @@ struct RegressionState: Codable {
     ///   • h ≤ 2m/n → 1.0 (fully visible model)
     ///   • h ≥ 3m/n → 0.0 (invisible — model would be extrapolating)
     ///   • In between → linear fade.
-    /// Used by the UI to fade the personalised colour overlay where the
+    /// Used by the UI to fade the personalized color overlay where the
     /// forecast is outside the training distribution.
     func predictionOpacity(_ src: FeatureSource) -> Double {
         guard let h = leverage(src) else { return 1.0 }
