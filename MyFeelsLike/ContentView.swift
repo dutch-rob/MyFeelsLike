@@ -252,6 +252,7 @@ struct ContentView: View {
             CompareView(nearby: nearby,
                         ownSeries: weather.isRefreshing ? [] : bandSeries(regressionState),
                         bandSeries: bandSeries,
+                        ownSunSplit: sunFeatureActive,
                         ink: skyInk)
         } else {
             forecastContent
@@ -263,7 +264,13 @@ struct ContentView: View {
     /// weather and differs only by the personal model. Used for "You" and peers.
     private func bandSeries(_ model: RegressionState?) -> [ForecastPoint] {
         let sc = scenario
-        return weather.series24h.map { var p = $0; p.applyPrediction(state: model, scenario: sc); return p }
+        let split = model?.selectedFeatures.contains(.sun) ?? false
+        return weather.series24h.map { p in
+            var copy = p
+            copy.applyPrediction(state: model, scenario: sc)
+            if split { copy.applySunShadePrediction(state: model, scenario: sc) }
+            return copy
+        }
     }
 
     @ViewBuilder

@@ -40,9 +40,11 @@ struct CompareIcon: View {
 // MARK: - Color band + row
 
 /// A thin horizontal MyFeelsLike color band over a 24h series (one cell per
-/// hour). Gray placeholder when there's no personalized model yet.
+/// hour). When `sunSplit` is true it shows in-sun on top / in-shade below,
+/// matching the 24h screen. Gray placeholder when there's no model yet.
 struct FeelsBand: View {
     let series: [ForecastPoint]
+    var sunSplit: Bool = false
 
     private var domain: ClosedRange<Date>? {
         guard let f = series.first?.date, let l = series.last?.date, f < l else { return nil }
@@ -53,12 +55,25 @@ struct FeelsBand: View {
     var body: some View {
         Group {
             if let domain, hasColor {
-                Chart(series) { p in
-                    RectangleMark(
-                        xStart: .value("t0", p.date.addingTimeInterval(-3600)),
-                        xEnd:   .value("t1", p.date),
-                        yStart: .value("y0", 0), yEnd: .value("y1", 1))
-                    .foregroundStyle(color(p))
+                Chart {
+                    ForEach(series) { p in
+                        let x0 = p.date.addingTimeInterval(-3600)
+                        if sunSplit {
+                            RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
+                                          yStart: .value("y0", 0.5), yEnd: .value("y1", 1.0))
+                                .foregroundStyle(ColorScale.feelsColor(score: p.myFeelsLikeSunScore,
+                                                                       opacity: p.myFeelsLikeSunOpacity))
+                            RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
+                                          yStart: .value("y0", 0.0), yEnd: .value("y1", 0.5))
+                                .foregroundStyle(ColorScale.feelsColor(score: p.myFeelsLikeShadeScore,
+                                                                       opacity: p.myFeelsLikeShadeOpacity))
+                        } else {
+                            RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
+                                          yStart: .value("y0", 0), yEnd: .value("y1", 1))
+                                .foregroundStyle(ColorScale.feelsColor(score: p.myFeelsLikeScore,
+                                                                       opacity: p.myFeelsLikeOpacity))
+                        }
+                    }
                 }
                 .chartYScale(domain: 0...1)
                 .chartYAxis(.hidden)
@@ -72,22 +87,19 @@ struct FeelsBand: View {
         .frame(height: 22)
         .clipShape(RoundedRectangle(cornerRadius: 4))
     }
-
-    private func color(_ p: ForecastPoint) -> Color {
-        ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity)
-    }
 }
 
 /// One labeled color band in the compare list (a user's name + their band).
 struct CompareBandRow: View {
     let name: String
     let series: [ForecastPoint]
+    var sunSplit: Bool = false
     var ink: Color = .primary
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(name).font(.caption.weight(.medium)).foregroundStyle(ink)
-            FeelsBand(series: series)
+            FeelsBand(series: series, sunSplit: sunSplit)
         }
     }
 }
@@ -101,6 +113,8 @@ struct CompareView: View {
     /// Builds a color-band series by applying a peer's model to *our* local
     /// forecast, so every band compares the same weather.
     let bandSeries: (RegressionState?) -> [ForecastPoint]
+    /// Whether the phone user's own model learned a sun effect (for the "You" band).
+    var ownSunSplit: Bool = false
     /// Legible text color over the weather-sky background.
     var ink: Color = .primary
 
@@ -156,9 +170,11 @@ struct CompareView: View {
                 // Own band first, then each connected peer's. All bands are the
                 // same width so they line up for comparison (a link ends when
                 // the app closes, so no per-row cancel is needed — see "End all").
-                CompareBandRow(name: "You", series: ownSeries, ink: ink)
+                CompareBandRow(name: "You", series: ownSeries, sunSplit: ownSunSplit, ink: ink)
                 ForEach(nearby.peers) { peer in
-                    CompareBandRow(name: peerLabel(peer), series: bandSeries(peer.model), ink: ink)
+                    CompareBandRow(name: peerLabel(peer), series: bandSeries(peer.model),
+                                   sunSplit: peer.model?.selectedFeatures.contains(.sun) ?? false,
+                                   ink: ink)
                 }
 
                 if !nearby.peers.isEmpty {
