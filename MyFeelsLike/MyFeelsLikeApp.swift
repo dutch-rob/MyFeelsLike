@@ -46,6 +46,12 @@ struct MyFeelsLikeApp: App {
             let config = ModelConfiguration(isStoredInMemoryOnly: true)
             return try! ModelContainer(for: Rating.self, configurations: config)
         }
-        return try! ModelContainer(for: Rating.self)
+        // Keep ratings device-local. SwiftData's default cloudKitDatabase is
+        // .automatic, which would sync the store across the user's devices via
+        // iCloud *because* the app carries a CloudKit entitlement (used only by
+        // the opt-in developer data sharing). Force .none to keep each device's
+        // ratings and model its own.
+        let config = ModelConfiguration(cloudKitDatabase: .none)
+        return try! ModelContainer(for: Rating.self, configurations: config)
     }()
 }
