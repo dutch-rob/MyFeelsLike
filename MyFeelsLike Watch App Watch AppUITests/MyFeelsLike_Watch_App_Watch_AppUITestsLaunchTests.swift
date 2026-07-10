@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 //  MyFeelsLike_Watch_App_Watch_AppUITestsLaunchTests.swift
 //  MyFeelsLike Watch App Watch AppUITests

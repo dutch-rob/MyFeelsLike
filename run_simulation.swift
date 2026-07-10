@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 #!/usr/bin/env swift
 //
 //  run_simulation.swift

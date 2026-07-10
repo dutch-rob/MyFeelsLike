@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # download-shared-data.sh — download the opt-in, anonymised data that users
 # have shared with the developer (see Settings ▸ Share data with developers)

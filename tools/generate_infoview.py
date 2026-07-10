@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """
 generate_infoview.py
 
@@ -159,6 +160,8 @@ def generate(items: list) -> str:
     L7 = "    " * 7
 
     out = [
+        "// SPDX-License-Identifier: GPL-3.0-or-later",
+        "",
         "import SwiftUI",
         "",
         "// AUTO-GENERATED — edit README.md and run tools/generate_infoview.py to update.",

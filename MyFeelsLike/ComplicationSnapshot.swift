@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 //  ComplicationSnapshot.swift
 //  MyFeelsLike  (shared: watch app + complication widget)

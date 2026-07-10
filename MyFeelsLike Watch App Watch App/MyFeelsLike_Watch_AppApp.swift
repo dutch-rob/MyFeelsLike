@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 //  MyFeelsLike_Watch_AppApp.swift
 //  MyFeelsLike Watch App
