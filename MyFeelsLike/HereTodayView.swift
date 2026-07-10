@@ -204,12 +204,13 @@ struct HereTodayView: View {
                 if sunFeatureActive { splitColorBand(height: height) }
                 else { singleColorBand(height: height) }
             } else {
-                RoundedRectangle(cornerRadius: 6).fill(Color.gray.opacity(0.18))
+                // Frosted material keeps the text legible over the sky background.
+                RoundedRectangle(cornerRadius: 6).fill(.regularMaterial)
                     .frame(height: height)
                     .padding(.leading, 36)
                     .overlay(
                         Text("No personalized color yet")
-                            .font(.caption2).foregroundStyle(axisInk)
+                            .font(.caption2).foregroundStyle(.primary)
                     )
             }
         }

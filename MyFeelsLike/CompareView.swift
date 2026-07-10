@@ -116,18 +116,19 @@ struct CompareView: View {
                     Button {
                         nearby.isDiscovering ? nearby.stopDiscovery() : nearby.startDiscovery()
                     } label: {
-                        Label(nearby.isDiscovering ? "Searching…" : "Connect Nearby",
-                              systemImage: "dot.radiowaves.left.and.right")
-                            .frame(maxWidth: .infinity)
+                        chip(nearby.isDiscovering ? "Searching…" : "Connect Nearby",
+                             systemImage: "dot.radiowaves.left.and.right")
                     }
+                    .buttonStyle(.plain)
                     .disabled(nearby.atCapacity && !nearby.isDiscovering)
+
                     Button { showComingSoon = true } label: {
-                        Label("Invite via Text", systemImage: "message")
-                            .frame(maxWidth: .infinity)
+                        chip("Invite via Text", systemImage: "message")
                     }
+                    .buttonStyle(.plain)
+
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.bordered)
-                .font(.footnote)
 
                 if nearby.isDiscovering { discoverySection }
 
@@ -138,18 +139,12 @@ struct CompareView: View {
                 Text("Same weather, each person's model")
                     .font(.caption).foregroundStyle(ink.opacity(0.75))
 
-                // Own band first, then each connected peer's.
+                // Own band first, then each connected peer's. All bands are the
+                // same width so they line up for comparison (a link ends when
+                // the app closes, so no per-row cancel is needed — see "End all").
                 CompareBandRow(name: "You", series: ownSeries, ink: ink)
                 ForEach(nearby.peers) { peer in
-                    HStack(alignment: .bottom, spacing: 8) {
-                        CompareBandRow(name: peerLabel(peer), series: bandSeries(peer.model), ink: ink)
-                        Button { nearby.cancel(peer) } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("End link with \(peer.name)")
-                    }
+                    CompareBandRow(name: peerLabel(peer), series: bandSeries(peer.model), ink: ink)
                 }
 
                 if !nearby.peers.isEmpty {
@@ -180,6 +175,21 @@ struct CompareView: View {
             Text("Inviting by text is being built. For now, use Connect Nearby.")
         }
         .onDisappear { nearby.stopDiscovery() }   // keep live links, stop searching
+    }
+
+    /// Styled like the scenario chips on the forecast screens: a frosted capsule
+    /// with a hairline edge, so it reads over the weather-sky background.
+    @ViewBuilder
+    private func chip(_ title: String, systemImage: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage).font(.caption2)
+            Text(title).font(.caption.weight(.medium))
+        }
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(.regularMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(.secondary.opacity(0.3), lineWidth: 0.5))
     }
 
     // MARK: Discovery list

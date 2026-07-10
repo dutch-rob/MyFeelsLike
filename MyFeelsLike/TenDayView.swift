@@ -336,7 +336,9 @@ struct TenDayView: View {
     /// exists, explaining why (with quantities where possible).
     private var noModelPanel: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.18))
+            // A frosted material (not translucent gray) so the text keeps
+            // contrast over the weather-sky background, day or night.
+            RoundedRectangle(cornerRadius: 8).fill(.regularMaterial)
             VStack(alignment: .leading, spacing: 6) {
                 Text("No personalized feels-like color yet")
                     .font(.caption.weight(.semibold))
