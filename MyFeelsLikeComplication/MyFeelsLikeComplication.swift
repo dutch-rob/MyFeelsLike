@@ -96,6 +96,13 @@ struct FeelsGauge {
         return min(max(v, r.lowerBound), r.upperBound)
     }
 
+    /// Position of the current value within the day's range, 0…1.
+    var fraction: Double {
+        let r = range
+        let span = r.upperBound - r.lowerBound
+        return span > 0 ? (value - r.lowerBound) / span : 0.5
+    }
+
     var gradient: Gradient {
         guard let f = frame else { return Gradient(colors: [.gray.opacity(0.5)]) }
         if hasModel {
@@ -188,35 +195,83 @@ struct FeelsCornerView: View {
     }
 }
 
+/// A circular range gauge (like the weather app): an open ~270° arc tinted with
+/// the day's whole MyFeelsLike range, a marker at the current value, and custom
+/// content in the center. Replaces the stock Gauge, which only fills min→now and
+/// so can't show the full range.
+private struct RangeGauge<Center: View>: View {
+    let gradient: Gradient
+    let fraction: Double            // 0…1 position of "now" within the range
+    var lineWidth: CGFloat = 5
+    @ViewBuilder var center: () -> Center
+
+    private let gapDegrees = 90.0
+    private var sweep: Double { 360 - gapDegrees }            // 270° arc
+    private var startDegrees: Double { 90 + gapDegrees / 2 }  // gap centered at the bottom
+
+    private var arc: some Shape { Circle().trim(from: 0, to: CGFloat(sweep / 360)) }
+    private var markerRadians: Double { max(0, min(1, fraction)) * sweep * .pi / 180 }
+
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            let radius = side / 2 - lineWidth / 2
+            ZStack {
+                ZStack {
+                    arc.stroke(Color.gray.opacity(0.25),
+                               style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    arc.stroke(AngularGradient(gradient: gradient, center: .center,
+                                               startAngle: .degrees(0), endAngle: .degrees(sweep)),
+                               style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    Circle()
+                        .fill(.white)
+                        .frame(width: lineWidth + 1.5, height: lineWidth + 1.5)
+                        .overlay(Circle().strokeBorder(.black.opacity(0.6), lineWidth: 0.5))
+                        .offset(x: radius * CGFloat(cos(markerRadians)),
+                                y: radius * CGFloat(sin(markerRadians)))
+                }
+                .rotationEffect(.degrees(startDegrees))
+                center()
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+}
+
 struct FeelsCircularView: View {
     let entry: FeelsEntry
     var body: some View {
         let g = FeelsGauge(entry)
-        Gauge(value: g.value, in: g.range) {
-            EmptyView()
-        } currentValueLabel: {
+        RangeGauge(gradient: g.gradient, fraction: g.fraction) { center(g) }
+    }
+
+    // The center disc (single, or split in-sun/in-shade) inset within the ring,
+    // with the outlined temperature on top.
+    @ViewBuilder
+    private func center(_ g: FeelsGauge) -> some View {
+        ZStack {
+            Group {
+                if let sun = g.centerSunColor, let shade = g.centerShadeColor {
+                    VStack(spacing: 0) {
+                        Rectangle().fill(sun)
+                        Rectangle().fill(shade)
+                    }
+                    .clipShape(Circle())
+                } else if let c = g.centerColor {
+                    Circle().fill(c)
+                }
+            }
+            .padding(7)
+
             if let fill = g.centerTextColor, let outline = g.centerOutlineColor {
                 OutlinedText(text: g.tempLabel, fill: fill, outline: outline)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .minimumScaleFactor(0.4)
             } else {
-                Text(g.tempLabel).foregroundStyle(.primary)
-            }
-        }
-        .gaugeStyle(.accessoryCircular)
-        .tint(g.gradient)
-        // Fill the center disc with the current MyFeelsLike color, inset so
-        // the range ring stays visible around it. The temperature sits on top
-        // in a contrasting color. When the model knows a sun effect the disc
-        // splits: in-sun on top, in-shade below.
-        .background {
-            if let sun = g.centerSunColor, let shade = g.centerShadeColor {
-                VStack(spacing: 0) {
-                    Rectangle().fill(sun)
-                    Rectangle().fill(shade)
-                }
-                .clipShape(Circle())
-                .padding(5)
-            } else if let c = g.centerColor {
-                Circle().fill(c).padding(5)
+                Text(g.tempLabel)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .minimumScaleFactor(0.4)
+                    .foregroundStyle(.primary)
             }
         }
     }

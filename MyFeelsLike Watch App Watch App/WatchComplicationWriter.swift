@@ -36,10 +36,12 @@ enum WatchComplicationWriter {
             let k = dayKey(p.date)
             dTempMin[k] = min(dTempMin[k] ?? .greatestFiniteMagnitude, p.temperatureC)
             dTempMax[k] = max(dTempMax[k] ?? -.greatestFiniteMagnitude, p.temperatureC)
-            if let s = p.myFeelsLikeScore {
-                dFeelMin[k] = min(dFeelMin[k] ?? .greatestFiniteMagnitude, s)
-                dFeelMax[k] = max(dFeelMax[k] ?? -.greatestFiniteMagnitude, s)
-            }
+            // The day's MyFeelsLike range spans lowest-in-shade to highest-in-sun
+            // (when the model knows a sun effect); otherwise the plain score.
+            let lo = sunSplit ? p.myFeelsLikeShadeScore : p.myFeelsLikeScore
+            let hi = sunSplit ? p.myFeelsLikeSunScore   : p.myFeelsLikeScore
+            if let lo { dFeelMin[k] = min(dFeelMin[k] ?? .greatestFiniteMagnitude, lo) }
+            if let hi { dFeelMax[k] = max(dFeelMax[k] ?? -.greatestFiniteMagnitude, hi) }
         }
 
         var hours: [ForecastPoint] = []

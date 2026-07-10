@@ -68,9 +68,16 @@ struct ForecastPoint: Identifiable, Codable {
             myFeelsLikeOpacity = 0
             return
         }
-        let src = ForecastFeatureSource(p: self, scenario: scenario)
+        let src = ForecastFeatureSource(p: self, scenario: nightAdjusted(scenario))
         myFeelsLikeScore   = Self.finiteScore(state.predict(src))
         myFeelsLikeOpacity = Self.finiteOpacity(state.predictionOpacity(src))
+    }
+
+    /// There is no sun at night, so a night hour is always "in shade" regardless
+    /// of the chosen sun setting (matching the rating screen).
+    private func nightAdjusted(_ scenario: Scenario) -> Scenario {
+        guard !isDaylight else { return scenario }
+        var s = scenario; s.sun = -1; return s
     }
 
     /// A finite score, or nil — a degenerate fit must never emit NaN/Inf into
@@ -88,7 +95,9 @@ struct ForecastPoint: Identifiable, Codable {
             myFeelsLikeShadeScore = nil; myFeelsLikeShadeOpacity = 0
             return
         }
-        var sunScenario = scenario;   sunScenario.sun = 1
+        // No sun at night: the in-sun variant collapses to shade, so both bands
+        // read the same after dark.
+        var sunScenario = scenario;   sunScenario.sun = isDaylight ? 1 : -1
         var shadeScenario = scenario; shadeScenario.sun = -1
         let sunSrc = ForecastFeatureSource(p: self, scenario: sunScenario)
         let shadeSrc = ForecastFeatureSource(p: self, scenario: shadeScenario)
