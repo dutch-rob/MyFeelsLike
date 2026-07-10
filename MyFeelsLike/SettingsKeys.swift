@@ -21,6 +21,8 @@ enum SettingsKey {
     static let compareName       = "compareName"
     /// One-shot: we've already prompted for a compare name on first Compare use.
     static let didAskCompareName = "didAskCompareName"
+    /// Last app version whose welcome / what's-new sheet was shown ("" = never).
+    static let lastSeenVersion   = "lastSeenVersion"
 
     // Scenario the prediction is made for.
     static let scenarioActivity  = "scenarioActivity"

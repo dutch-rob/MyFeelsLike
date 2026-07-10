@@ -27,6 +27,12 @@ struct ContentView: View {
     /// When true, the Compare screen replaces the forecast content (the bottom
     /// bar swaps its compare button for a back button).
     @State private var showingCompare = false
+    @State private var showInfo    = false
+    @State private var showWelcome = false
+    /// Set when the welcome sheet's "Read the guide" was tapped; opens Info once
+    /// that sheet has finished dismissing (sheets can't overlap).
+    @State private var wantsGuide  = false
+    @AppStorage(SettingsKey.lastSeenVersion) private var lastSeenVersion = ""
     // Tab indices: 0 = table phantom, 1 = 24h (real), 2 = 10d (real),
     //              3 = table (real), 4 = 24h phantom  — for circular wrap.
     @State private var selectedTab = 1
@@ -167,6 +173,17 @@ struct ContentView: View {
                              placeName: weather.placeDescription)
             }
         }
+        .sheet(isPresented: $showInfo) {
+            NavigationStack { InfoView() }
+        }
+        // First launch (and after each update) introduce the app and offer the
+        // guide. Open Info only once the welcome sheet has finished dismissing.
+        .sheet(isPresented: $showWelcome, onDismiss: {
+            lastSeenVersion = AppVersion.current
+            if wantsGuide { wantsGuide = false; showInfo = true }
+        }) {
+            WelcomeSheet(isUpdate: !lastSeenVersion.isEmpty) { wantsGuide = true }
+        }
         .onReceive(locationProvider.$currentLocation.compactMap { $0 }) { loc in
             // Only fire on a location update when there is no data yet.
             // Prevents this from racing with pull-to-refresh or the
@@ -205,6 +222,10 @@ struct ContentView: View {
                 didWipeForScoreV1 = true
             }
             refitRegression()
+            // Welcome on first launch; "what's new" after an update.
+            if !DemoMode.isActive && lastSeenVersion != AppVersion.current {
+                showWelcome = true
+            }
         }
         .onChange(of: showTable) { _, _ in selectedTab = 1 }   // avoid a now-invalid tab tag
         .onChange(of: shareData) { _, _ in syncDeveloperData() }   // opt in → upload, opt out → delete
@@ -265,17 +286,35 @@ struct ContentView: View {
     }
 
     /// Fixed place name – taps open the places sheet.
+    /// Centered place name (taps open Places) with an ⓘ at the trailing edge
+    /// that opens the Info screen — the bottom bar is already busy enough.
     private var titleButton: some View {
-        Button { showPlaces = true } label: {
-            Text(displayTitle)
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundStyle(skyInk)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .padding(.horizontal)
+        ZStack {
+            Button { showPlaces = true } label: {
+                Text(displayTitle)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(skyInk)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal)
+            }
+            .buttonStyle(.plain)
+
+            HStack {
+                Spacer()
+                Button { showInfo = true } label: {
+                    Image(systemName: "info.circle")
+                        .font(.body)
+                        .foregroundStyle(skyInk)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("About MyFeelsLike")
+                .accessibilityIdentifier("infoButton")
+            }
         }
-        .buttonStyle(.plain)
         .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
     }
 
