@@ -19,6 +19,8 @@ enum SettingsKey {
     static let showTable         = "showTable"
     /// The name shown to others when comparing nearby (else the device name).
     static let compareName       = "compareName"
+    /// One-shot: we've already prompted for a compare name on first Compare use.
+    static let didAskCompareName = "didAskCompareName"
 
     // Scenario the prediction is made for.
     static let scenarioActivity  = "scenarioActivity"

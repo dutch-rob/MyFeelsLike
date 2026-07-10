@@ -20,16 +20,20 @@ import Charts
 /// The people follow the bar tint; the color swatch keeps its own colors.
 struct CompareIcon: View {
     var body: some View {
-        VStack(spacing: 2) {
+        // Colors flank the figures (rather than sitting under them) so the icon
+        // is wider, the people can be taller, and the whole thing reads clearly.
+        HStack(spacing: 3) {
+            swatch(ColorScale.color(forScore: 300))   // green-yellow
             Image(systemName: "person.2.fill")
-                .font(.system(size: 12))
-            HStack(spacing: 0) {
-                Rectangle().fill(ColorScale.color(forScore: 300))   // green-yellow
-                Rectangle().fill(ColorScale.color(forScore: 420))   // yellow-orange
-            }
-            .frame(width: 24, height: 7)
-            .clipShape(RoundedRectangle(cornerRadius: 2))
+                .font(.system(size: 17))
+            swatch(ColorScale.color(forScore: 420))   // yellow-orange
         }
+    }
+
+    private func swatch(_ color: Color) -> some View {
+        RoundedRectangle(cornerRadius: 1.5)
+            .fill(color)
+            .frame(width: 5, height: 18)
     }
 }
 
@@ -102,6 +106,11 @@ struct CompareView: View {
 
     @State private var showComingSoon = false
 
+    @AppStorage(SettingsKey.compareName) private var compareName = ""
+    @AppStorage(SettingsKey.didAskCompareName) private var didAskCompareName = false
+    @State private var showNamePrompt = false
+    @State private var nameDraft = ""
+
     private static let clock: DateFormatter = {
         let f = DateFormatter(); f.timeStyle = .short; f.dateStyle = .none; return f
     }()
@@ -114,13 +123,13 @@ struct CompareView: View {
 
                 HStack(spacing: 12) {
                     Button {
-                        nearby.isDiscovering ? nearby.stopDiscovery() : nearby.startDiscovery()
+                        nearby.isBrowsing ? nearby.stopBrowsing() : nearby.startBrowsing()
                     } label: {
-                        chip(nearby.isDiscovering ? "Searching…" : "Connect Nearby",
+                        chip(nearby.isBrowsing ? "Searching…" : "Connect Nearby",
                              systemImage: "dot.radiowaves.left.and.right")
                     }
                     .buttonStyle(.plain)
-                    .disabled(nearby.atCapacity && !nearby.isDiscovering)
+                    .disabled(nearby.atCapacity && !nearby.isBrowsing)
 
                     Button { showComingSoon = true } label: {
                         chip("Invite via Text", systemImage: "message")
@@ -130,7 +139,12 @@ struct CompareView: View {
                     Spacer(minLength: 0)
                 }
 
-                if nearby.isDiscovering { discoverySection }
+                // You're discoverable just by being here — only the person
+                // starting the link has to search.
+                Text("Others can invite you while this screen is open.")
+                    .font(.caption2).foregroundStyle(ink.opacity(0.7))
+
+                if nearby.isBrowsing { discoverySection }
 
                 Divider()
 
@@ -168,13 +182,39 @@ struct CompareView: View {
             Button("Accept · for 1 hour") { nearby.accept(invite, lifetime: .oneHour) }
             Button("Accept · until one of us cancels") { nearby.accept(invite, lifetime: .untilCancel) }
             Button("Decline", role: .cancel) { nearby.decline(invite) }
+        } message: { _ in
+            Text("A nearby link also ends when either app is closed.")
+        }
+        // First use: ask what name others should see (iOS hides the real device
+        // name from apps, so everyone would otherwise show up as "iPhone").
+        .alert("Your compare name", isPresented: $showNamePrompt) {
+            TextField("Name", text: $nameDraft)
+            Button("Save") {
+                let n = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !n.isEmpty { compareName = n }
+                didAskCompareName = true
+                nearby.refreshIdentity()
+            }
+            Button("Not now", role: .cancel) { didAskCompareName = true }
+        } message: {
+            Text("This is what other people see when you compare nearby. You can change it later in Settings.")
         }
         .alert("Coming soon", isPresented: $showComingSoon) {
             Button("OK", role: .cancel) { }
         } message: {
             Text("Inviting by text is being built. For now, use Connect Nearby.")
         }
-        .onDisappear { nearby.stopDiscovery() }   // keep live links, stop searching
+        .onAppear {
+            nearby.startAdvertising()          // discoverable while this screen is open
+            if !didAskCompareName,
+               compareName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showNamePrompt = true
+            }
+        }
+        .onDisappear {                          // keep live links, stop radio work
+            nearby.stopBrowsing()
+            nearby.stopAdvertising()
+        }
     }
 
     /// Styled like the scenario chips on the forecast screens: a frosted capsule

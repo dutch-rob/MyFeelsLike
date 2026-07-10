@@ -56,7 +56,10 @@ final class NearbyCompareManager: NSObject, ObservableObject {
     }
 
     // MARK: Published UI state
-    @Published var isDiscovering = false
+    /// Searching for peers to invite (the "Connect Nearby" button).
+    @Published var isBrowsing = false
+    /// Discoverable to peers who are searching (auto, while Compare is open).
+    @Published private(set) var isAdvertising = false
     @Published var discovered: [Discovered] = []
     @Published private(set) var pendingInvite: Invite?     // shown one at a time
     @Published private(set) var peers: [Peer] = []
@@ -96,7 +99,9 @@ final class NearbyCompareManager: NSObject, ObservableObject {
     /// links are live so their identity stays stable.
     private func rebuildIdentityIfNameChanged() {
         let name = Self.resolvedName()
-        guard name != myPeerID.displayName, peers.isEmpty else { return }
+        // Never rebuild while advertising/browsing is live or a link is open.
+        guard name != myPeerID.displayName,
+              peers.isEmpty, !isAdvertising, !isBrowsing else { return }
         advertiser.stopAdvertisingPeer()
         browser.stopBrowsingForPeers()
         myPeerID = MCPeerID(displayName: name)
@@ -108,23 +113,51 @@ final class NearbyCompareManager: NSObject, ObservableObject {
 
     var atCapacity: Bool { peers.count >= Self.maxPeers }
 
-    // MARK: Discovery
+    // MARK: Discoverability (advertising) and searching (browsing)
+    //
+    // Advertising and browsing are separate on purpose: the Compare screen makes
+    // you *discoverable* automatically, so the other person only has to have the
+    // app open. Only the person starting the link has to tap "Connect Nearby",
+    // which browses for peers to invite.
 
-    func startDiscovery() {
-        guard !isDiscovering else { return }
+    /// Become discoverable to peers who are searching. Called while the Compare
+    /// screen is on-screen.
+    func startAdvertising() {
+        guard !isAdvertising else { return }
         rebuildIdentityIfNameChanged()
-        isDiscovering = true
+        isAdvertising = true
         advertiser.startAdvertisingPeer()
+        ensurePruneTimer()
+    }
+
+    func stopAdvertising() {
+        guard isAdvertising else { return }
+        isAdvertising = false
+        advertiser.stopAdvertisingPeer()
+    }
+
+    /// Search for peers to invite (the "Connect Nearby" button).
+    func startBrowsing() {
+        guard !isBrowsing else { return }
+        rebuildIdentityIfNameChanged()
+        isBrowsing = true
         browser.startBrowsingForPeers()
         ensurePruneTimer()
     }
 
-    func stopDiscovery() {
-        guard isDiscovering else { return }
-        isDiscovering = false
-        advertiser.stopAdvertisingPeer()
+    func stopBrowsing() {
+        guard isBrowsing else { return }
+        isBrowsing = false
         browser.stopBrowsingForPeers()
         discovered.removeAll()
+    }
+
+    /// Re-advertise under a freshly chosen compare name.
+    func refreshIdentity() {
+        let wasAdvertising = isAdvertising
+        stopAdvertising()
+        stopBrowsing()
+        if wasAdvertising { startAdvertising() }
     }
 
     /// Invite a discovered peer. The *accepter* chooses the link's lifetime.
@@ -164,7 +197,8 @@ final class NearbyCompareManager: NSObject, ObservableObject {
 
     func cancelAll() {
         for id in Array(sessions.keys) { disconnect(id, sendBye: true) }
-        stopDiscovery()
+        stopAdvertising()
+        stopBrowsing()
     }
 
     // MARK: - Internals (main queue only)
@@ -208,7 +242,7 @@ final class NearbyCompareManager: NSObject, ObservableObject {
         for p in peers where (p.deadline.map { now >= $0 } ?? false) {
             disconnect(p.peerID, sendBye: true)
         }
-        if sessions.isEmpty && !isDiscovering {
+        if sessions.isEmpty && !isAdvertising && !isBrowsing {
             pruneTimer?.invalidate(); pruneTimer = nil
         }
     }
