@@ -547,8 +547,8 @@ struct ContentView: View {
         VStack(spacing: 0) {
             tabLabel("10 day forecast")
             TenDayView(
-                series: weather.isRefreshing ? [] : personalized(weather.series10d),
-                historic: weather.isRefreshing ? [] : personalized(weather.historic),
+                series: weather.isRefreshing ? [] : personalized(weather.series10d, splitSun: sunFeatureActive),
+                historic: weather.isRefreshing ? [] : personalized(weather.historic, splitSun: sunFeatureActive),
                 current: weather.isRefreshing ? nil : personalized(weather.current),
                 progress: weather.loadProgress,
                 nowTick: nowTick,

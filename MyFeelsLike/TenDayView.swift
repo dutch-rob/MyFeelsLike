@@ -310,7 +310,7 @@ struct TenDayView: View {
                 yStart: .value("Hour", hour),
                 yEnd:   .value("Hour end", hour + 1)
             )
-            .foregroundStyle(myFeelsLikeHeatColor(p))
+            .foregroundStyle(cellStyle(p))
         }
         .chartYScale(domain: 0...24)
         .chartYAxis {
@@ -330,6 +330,20 @@ struct TenDayView: View {
                 }
             }
         }
+    }
+
+    /// Fill for one heatmap cell. When the model learned a sun effect, each
+    /// hour cell is a horizontal gradient — in-shade on the left, in-sun on the
+    /// right — so a day's shade↔sun spread reads within its column. Otherwise a
+    /// solid MyFeelsLike color.
+    private func cellStyle(_ p: ForecastPoint) -> AnyShapeStyle {
+        if let sun = p.myFeelsLikeSunScore, let shade = p.myFeelsLikeShadeScore, sun != shade {
+            let shadeC = ColorScale.feelsColor(score: shade, opacity: p.myFeelsLikeShadeOpacity)
+            let sunC   = ColorScale.feelsColor(score: sun,   opacity: p.myFeelsLikeSunOpacity)
+            return AnyShapeStyle(LinearGradient(colors: [shadeC, sunC],
+                                                startPoint: .leading, endPoint: .trailing))
+        }
+        return AnyShapeStyle(myFeelsLikeHeatColor(p))
     }
 
     /// Gray panel shown in place of the heatmap until a personalized model
