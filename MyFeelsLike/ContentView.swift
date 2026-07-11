@@ -85,6 +85,13 @@ struct ContentView: View {
     /// Legible ink over the sky: black by day, white by night (system otherwise).
     private var skyInk: Color { showSky ? (skyIsDay ? .black : .white) : .primary }
 
+    @Environment(\.colorScheme) private var systemScheme
+    /// Appearance for the chrome (chips, bottom bar) over the sky: light by day
+    /// so the frosted capsules read white against the blue, dark by night — tied
+    /// to the weather, not the phone's dark-mode setting. Follows the system when
+    /// the sky is hidden.
+    private var chromeScheme: ColorScheme { showSky ? (skyIsDay ? .light : .dark) : systemScheme }
+
     @Query(sort: \Rating.timestamp) private var ratings: [Rating]
     @State private var regressionState: RegressionState? = RegressionStateStore.load()
     @Environment(\.modelContext) private var modelContext
@@ -259,17 +266,22 @@ struct ContentView: View {
     /// screen when it's showing).
     @ViewBuilder
     private var mainContent: some View {
-        if showingCompare {
-            CompareView(nearby: nearby,
-                        ownSeries: weather.isRefreshing ? [] : bandSeries(regressionState),
-                        bandSeries: bandSeries,
-                        ownModel: regressionState,
-                        ownSunSplit: sunFeatureActive,
-                        invite: incomingInvite,
-                        ink: skyInk)
-        } else {
-            forecastContent
+        Group {
+            if showingCompare {
+                CompareView(nearby: nearby,
+                            ownSeries: weather.isRefreshing ? [] : bandSeries(regressionState),
+                            bandSeries: bandSeries,
+                            ownModel: regressionState,
+                            ownSunSplit: sunFeatureActive,
+                            invite: incomingInvite,
+                            ink: skyInk)
+            } else {
+                forecastContent
+            }
         }
+        // Chips/buttons follow the weather's day/night, not the phone's dark-mode
+        // setting, so they stay white over the daytime sky (sheets are unaffected).
+        .environment(\.colorScheme, chromeScheme)
     }
 
     /// A color-band series: a given model applied to *our* local 24h forecast
@@ -431,6 +443,7 @@ struct ContentView: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
+        .environment(\.colorScheme, chromeScheme)
     }
 
     /// Frosted-capsule chip style shared by every bottom-bar control (matches the
