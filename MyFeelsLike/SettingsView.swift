@@ -26,6 +26,7 @@ struct SettingsView: View {
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.showTable)       private var showTable     = true
     @AppStorage(SettingsKey.compareName)     private var compareName   = ""
+    @AppStorage(SettingsKey.shareForCompare) private var shareForCompare = true
     @AppStorage(SettingsKey.sunShadeStyle)   private var sunShadeStyle  = SunShadeStyle.separate
 
     @Environment(\.modelContext) private var modelContext
@@ -106,10 +107,11 @@ struct SettingsView: View {
                 TextField("Your name", text: $compareName, prompt: Text(defaultCompareName))
                     .textInputAutocapitalization(.words)
                     .submitLabel(.done)
+                Toggle("Let others compare with me", isOn: $shareForCompare)
             } header: {
                 Text("Compare")
             } footer: {
-                Text("Shown to others when you compare nearby. Leave blank to use your device name.")
+                Text("Your name is shown to people you compare with; leave it blank to use your device name. When \u{201C}Let others compare with me\u{201D} is on, your model (coefficients only — never your ratings, location, or places) is shared so people you invite can see it. Turn it off to withdraw your shared model; you can still compare with others.")
             }
 
             Section {

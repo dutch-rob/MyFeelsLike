@@ -25,6 +25,9 @@ enum SettingsKey {
     static let lastSeenVersion   = "lastSeenVersion"
     /// How in-shade vs in-sun is drawn: SunShadeStyle raw value ("separate"/"gradient").
     static let sunShadeStyle     = "sunShadeStyle"
+    /// Publish your model so others can compare with you (default on). Off keeps
+    /// you able to see others while withdrawing your own shared model.
+    static let shareForCompare   = "shareForCompare"
 
     // Scenario the prediction is made for.
     static let scenarioActivity  = "scenarioActivity"

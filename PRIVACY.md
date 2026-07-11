@@ -22,15 +22,34 @@ order to receive the weather for that location. This is handled by Apple and
 governed by [Apple's privacy policy](https://www.apple.com/legal/privacy/).
 WeatherKit attribution and a link to Apple's data sources are shown in the app.
 
-## Comparing with other users (nearby)
+## Comparing with other users
 
-When you use **Compare ▸ Connect Nearby**, two devices connect directly over the
-local network / Bluetooth (Apple's MultipeerConnectivity) — there is no server:
+The **Compare** screen lets you see how the same weather would feel to someone
+else, by running *your* local forecast through *their* personal model.
 
-- Only your **regression model** (a small set of coefficients) and your chosen
-  **compare name** are exchanged. Your individual ratings are **not** sent.
-- A peer's model is held **in memory only** while the link is alive and is
-  **deleted when the link ends** (after one hour, or when either person cancels).
+**What is shared:** only your **regression model** — a small set of coefficients
+plus the model diagnostics needed to fade uncertain predictions — together with
+your chosen **compare name**. Your individual **ratings are never shared**, and
+no location, coordinates, or place names are included.
+
+**How it is shared (CloudKit public database):** so that a comparison survives
+quitting the app, your model is published to the app's CloudKit *public*
+database under a **long, random, unguessable share ID** generated on your device
+(not derived from your Apple ID). To compare with you, another person must learn
+that share ID — either from a **nearby** handshake or a **texted invite link**
+(`myfeelslike://compare?id=…`). Records are fetched by their exact name only; the
+record type carries **no queryable index**, so the models **cannot be listed or
+enumerated** — a share ID works like a secret capability.
+
+- Publishing your own model requires being **signed into iCloud**. If you are
+  not, others simply can't see your MyFeelsLike (the app tells you so, and says
+  whether it is your iCloud or the other person's that is missing).
+- **Nearby** links (Apple's MultipeerConnectivity, over local network /
+  Bluetooth) exchange share IDs directly between the two devices; there is no
+  intermediary server for the handshake itself.
+- **Removing** a saved person forgets them on your device. To withdraw *your
+  own* shared model, turn off **Settings ▸ Let others compare with me** — this
+  deletes your published record; you can still compare with others.
 - Data received from a peer is **never** included in anything shared with the
   developer.
 

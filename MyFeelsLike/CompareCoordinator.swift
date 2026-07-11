@@ -37,6 +37,18 @@ final class CompareCoordinator: ObservableObject {
     /// True while a refresh is in flight (drives the spinner on the button).
     @Published private(set) var isRefreshing = false
 
+    /// One-shot guard so we withdraw the published model only once after the
+    /// user turns sharing off (reset whenever sharing is on again).
+    private var didUnpublish = false
+
+    /// Whether the user lets others compare with them (publishes your model).
+    /// Defaults to true when the preference has never been set.
+    private var shareEnabled: Bool {
+        let d = UserDefaults.standard
+        return d.object(forKey: SettingsKey.shareForCompare) == nil
+            ? true : d.bool(forKey: SettingsKey.shareForCompare)
+    }
+
     /// First appearance: show saved peers immediately as "loading", then publish
     /// our model and fetch everyone.
     func start(myName: String, myModel: RegressionState?) {
@@ -51,10 +63,16 @@ final class CompareCoordinator: ObservableObject {
 
         let available = await CompareShare.accountAvailable()
         accountAvailable = available
-        if available, myModel != nil {
+        if !shareEnabled {
+            // Sharing turned off: withdraw our model once, keep reading others'.
+            if !didUnpublish { await CompareShare.unpublish(); didUnpublish = true }
+            publishFailed = false
+        } else if available, myModel != nil {
+            didUnpublish = false
             let result = await CompareShare.publish(name: myName, model: myModel)
             publishFailed = { if case .failure = result { return true } else { return false } }()
         } else {
+            didUnpublish = false
             publishFailed = false   // no model, or not signed in (surfaced separately)
         }
 
