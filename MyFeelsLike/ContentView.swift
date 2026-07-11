@@ -399,24 +399,21 @@ struct ContentView: View {
         }
     }
 
-    /// Bottom toolbar: Places + Rate Feels Like centered, Settings cog at right.
-    /// Places · Rate · Compare · Settings, spread evenly across the width rather
-    /// than a centered cluster with the cog pinned to the trailing edge.
+    /// Bottom toolbar: Places · Rate · Compare · Settings, spread evenly across
+    /// the width. Each is a frosted capsule "chip" matching the scenario chips at
+    /// the top of the main screens, so the controls read consistently over the
+    /// (sometimes busy) sky background.
     private var bottomBar: some View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
             Button { showPlaces = true } label: {
-                Label("Places", systemImage: "mappin.and.ellipse")
-                    .lineLimit(1).minimumScaleFactor(0.8)
-                    .frame(minHeight: 44)
+                bottomChip(Label("Places", systemImage: "mappin.and.ellipse"))
             }
             .accessibilityIdentifier("placesButton")
 
             Spacer(minLength: 0)
             Button { showRate = true } label: {
-                Label("Rate Feels Like", systemImage: "thermometer.medium")
-                    .lineLimit(1).minimumScaleFactor(0.8)
-                    .frame(minHeight: 44)
+                bottomChip(Label("Rate Feels Like", systemImage: "thermometer.medium"))
             }
             .disabled(weather.series24h.isEmpty)
             .accessibilityIdentifier("rateButton")
@@ -426,18 +423,30 @@ struct ContentView: View {
 
             Spacer(minLength: 0)
             Button { showSettings = true } label: {
-                Image(systemName: "gearshape")
-                    .font(.title3)
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
+                bottomChip(Image(systemName: "gearshape").font(.callout))
             }
             .accessibilityLabel("Settings")
             .accessibilityIdentifier("settingsButton")
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 4)
-        .tint(showSky ? skyInk : Color.accentColor)
-        .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+    }
+
+    /// Frosted-capsule chip style shared by every bottom-bar control (matches the
+    /// scenario chips at the top of the screens). A 44 pt min tap target wraps
+    /// the smaller visible capsule.
+    private func bottomChip<V: View>(_ content: V) -> some View {
+        content
+            .font(.caption.weight(.medium))
+            .lineLimit(1).minimumScaleFactor(0.8)
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(.secondary.opacity(0.3), lineWidth: 0.5))
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
     }
 
     /// Opens the Compare screen; becomes a back button while it's showing.
@@ -445,18 +454,13 @@ struct ContentView: View {
     private var compareButton: some View {
         if showingCompare {
             Button { showingCompare = false } label: {
-                Image(systemName: "chevron.backward")
-                    .font(.title3)
-                    .frame(minWidth: 44, minHeight: 44)   // HIG minimum tap target
-                    .contentShape(Rectangle())
+                bottomChip(Label("Back", systemImage: "chevron.backward"))
             }
             .accessibilityLabel("Back")
             .accessibilityIdentifier("compareBackButton")
         } else {
             Button { showingCompare = true } label: {
-                CompareIcon()
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
+                bottomChip(CompareIcon())
             }
             .accessibilityLabel("Compare with others")
             .accessibilityIdentifier("compareButton")

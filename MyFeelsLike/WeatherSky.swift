@@ -30,8 +30,10 @@ enum SkyRenderer {
     /// covering its own fraction of the sky; clear gaps show the sky through.
     static func draw(_ context: GraphicsContext, rect: CGRect, point p: ForecastPoint,
                      isDay day: Bool, seed: UInt64) {
-        // Flat base sky (no gradient, no altitude sectors).
-        let sky = day ? Color(red: 0.46, green: 0.73, blue: 0.98) : Color(red: 0.03, green: 0.05, blue: 0.15)
+        // Flat base sky (no gradient, no altitude sectors). Day is a softer,
+        // less-saturated blue than a vivid sky so the clouds and the screen's
+        // content stay easy to read over it; night is near-black.
+        let sky = day ? Color(red: 0.60, green: 0.76, blue: 0.92) : Color(red: 0.03, green: 0.05, blue: 0.15)
         context.fill(Path(rect), with: .color(sky))
 
         // Stars at night, scattered across the whole sky; clouds paint over them.
@@ -47,15 +49,22 @@ enum SkyRenderer {
             }
         }
 
-        // Opaque cloud layers over the whole sky, back→front so lower cloud
-        // covers higher. High ≈ white (cirrus), mid light-gray (alto), low
-        // darker-gray (stratus/cumulus); dimmer at night.
-        cloudLayer(context, rect, coverage: p.cloudCoverHigh,
-                   color: Color(white: day ? 0.98 : 0.52), seed: seed &+ 1)
-        cloudLayer(context, rect, coverage: p.cloudCoverMedium,
-                   color: Color(white: day ? 0.80 : 0.40), seed: seed &+ 2)
-        cloudLayer(context, rect, coverage: p.cloudCoverLow,
-                   color: Color(white: day ? 0.56 : 0.28), seed: seed &+ 3)
+        // Cloud layers over the whole sky, back→front so lower cloud covers
+        // higher. High ≈ white (cirrus), mid light-gray (alto), low darker-gray
+        // (stratus/cumulus). Drawn into a lightly-blurred, slightly translucent
+        // sublayer so their edges are soft and they read as background rather
+        // than competing with the screen content. Lighter by day (so they melt
+        // into the pale sky) and darker by night (so they melt into the dark).
+        context.drawLayer { layer in
+            layer.opacity = 0.9
+            layer.addFilter(.blur(radius: 3))
+            cloudLayer(layer, rect, coverage: p.cloudCoverHigh,
+                       color: Color(white: day ? 0.99 : 0.44), seed: seed &+ 1)
+            cloudLayer(layer, rect, coverage: p.cloudCoverMedium,
+                       color: Color(white: day ? 0.90 : 0.32), seed: seed &+ 2)
+            cloudLayer(layer, rect, coverage: p.cloudCoverLow,
+                       color: Color(white: day ? 0.76 : 0.22), seed: seed &+ 3)
+        }
 
         // Rain streaks, intensity from mm (with a nudge from probability).
         let rain = min(1.0, p.precipitationMM / 3.0 + (p.precipProbability > 0.5 ? 0.25 : 0))
