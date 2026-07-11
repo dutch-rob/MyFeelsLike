@@ -337,12 +337,7 @@ struct TenDayView: View {
     /// right — so a day's shade↔sun spread reads within its column. Otherwise a
     /// solid MyFeelsLike color.
     private func cellStyle(_ p: ForecastPoint) -> AnyShapeStyle {
-        if let sun = p.myFeelsLikeSunScore, let shade = p.myFeelsLikeShadeScore, sun != shade {
-            let shadeC = ColorScale.feelsColor(score: shade, opacity: p.myFeelsLikeShadeOpacity)
-            let sunC   = ColorScale.feelsColor(score: sun,   opacity: p.myFeelsLikeSunOpacity)
-            return AnyShapeStyle(LinearGradient(colors: [shadeC, sunC],
-                                                startPoint: .leading, endPoint: .trailing))
-        }
+        if let g = sunShadeGradient(p) { return AnyShapeStyle(g) }
         return AnyShapeStyle(myFeelsLikeHeatColor(p))
     }
 

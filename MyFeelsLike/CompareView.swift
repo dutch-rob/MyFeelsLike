@@ -40,8 +40,9 @@ struct CompareIcon: View {
 // MARK: - Color band + row
 
 /// A thin horizontal MyFeelsLike color band over a 24h series (one cell per
-/// hour). When `sunSplit` is true it shows in-sun on top / in-shade below,
-/// matching the 24h screen. Gray placeholder when there's no model yet.
+/// hour). When `sunSplit` is true each hour cell is a shade→sun gradient
+/// (in-shade left, in-sun right), matching the 24h and 10-day screens. Gray
+/// placeholder when there's no model yet.
 struct FeelsBand: View {
     let series: [ForecastPoint]
     var sunSplit: Bool = false
@@ -58,21 +59,14 @@ struct FeelsBand: View {
                 Chart {
                     ForEach(series) { p in
                         let x0 = p.date.addingTimeInterval(-3600)
-                        if sunSplit {
-                            RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                                          yStart: .value("y0", 0.5), yEnd: .value("y1", 1.0))
-                                .foregroundStyle(ColorScale.feelsColor(score: p.myFeelsLikeSunScore,
-                                                                       opacity: p.myFeelsLikeSunOpacity))
-                            RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                                          yStart: .value("y0", 0.0), yEnd: .value("y1", 0.5))
-                                .foregroundStyle(ColorScale.feelsColor(score: p.myFeelsLikeShadeScore,
-                                                                       opacity: p.myFeelsLikeShadeOpacity))
-                        } else {
-                            RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                                          yStart: .value("y0", 0), yEnd: .value("y1", 1))
-                                .foregroundStyle(ColorScale.feelsColor(score: p.myFeelsLikeScore,
+                        let style: AnyShapeStyle = {
+                            if sunSplit, let g = sunShadeGradient(p) { return AnyShapeStyle(g) }
+                            return AnyShapeStyle(ColorScale.feelsColor(score: p.myFeelsLikeScore,
                                                                        opacity: p.myFeelsLikeOpacity))
-                        }
+                        }()
+                        RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
+                                      yStart: .value("y0", 0), yEnd: .value("y1", 1))
+                            .foregroundStyle(style)
                     }
                 }
                 .chartYScale(domain: 0...1)

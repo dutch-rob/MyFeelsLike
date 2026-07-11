@@ -246,35 +246,28 @@ struct HereTodayView: View {
         .frame(height: height)
     }
 
-    /// Split band: top half = in full sun, bottom half = in shade, each full
-    /// height (reliability shown as opacity), with a hairline divider between.
+    /// Gradient band: each hour cell runs in-shade (left) → in-sun (right), so a
+    /// column's shade↔sun spread reads horizontally. Reliability shrinks the cell
+    /// vertically, matching the single band. Night cells (sun == shade) fall back
+    /// to the solid MyFeelsLike color.
     private func splitColorBand(height: CGFloat) -> some View {
         Chart {
             ForEach(series) { p in
                 let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date
+                let half = myFeelsLikeReliability(p) / 2
+                let style: AnyShapeStyle = sunShadeGradient(p).map(AnyShapeStyle.init)
+                    ?? AnyShapeStyle(bandColor(p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity))
                 RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                              yStart: .value("y0", 0.5), yEnd: .value("y1", 1.0))
-                    .foregroundStyle(bandColor(p.myFeelsLikeSunScore, opacity: p.myFeelsLikeSunOpacity))
-                RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                              yStart: .value("y0", 0.0), yEnd: .value("y1", 0.5))
-                    .foregroundStyle(bandColor(p.myFeelsLikeShadeScore, opacity: p.myFeelsLikeShadeOpacity))
+                              yStart: .value("y0", 0.5 - half), yEnd: .value("y1", 0.5 + half))
+                    .foregroundStyle(style)
             }
-            RuleMark(y: .value("mid", 0.5))
-                .foregroundStyle(axisInk.opacity(0.5))
-                .lineStyle(StrokeStyle(lineWidth: 0.5))
         }
         .chartYScale(domain: 0...1)
-        // Tiny sun/shade markers in the leading gutter, aligned to each half —
-        // they also reserve the leading width so the band lines up with the
-        // temperature chart above.
+        // Reserve the same leading width as the temperature/wind charts so the
+        // band lines up with them.
         .chartYAxis {
-            AxisMarks(position: .leading, values: [0.25, 0.75]) { v in
-                AxisValueLabel {
-                    Image(systemName: (v.as(Double.self) ?? 0) > 0.5 ? "sun.max.fill" : "cloud.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(axisInk)
-                        .frame(width: 16, alignment: .leading)
-                }
+            AxisMarks(position: .leading, values: [0]) {
+                AxisValueLabel { Text("00").font(.caption).foregroundStyle(.clear) }
             }
         }
         .chartXAxis(.hidden)
