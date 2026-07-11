@@ -25,6 +25,9 @@ private struct CompareMessage: Codable {
     var kind: Kind
     var model: RegressionState?
     var deadline: Date?     // set by the accepting side in its `hello`
+    /// The sender's CloudKit compare share ID, so a nearby link can be saved
+    /// and re-fetched later (nil ⇒ older build, or nothing to persist).
+    var shareID: String?
 }
 
 final class NearbyCompareManager: NSObject, ObservableObject {
@@ -188,7 +191,8 @@ final class NearbyCompareManager: NSObject, ObservableObject {
 
     func updateLocalModel(_ model: RegressionState?) {
         localModel = model
-        broadcast(CompareMessage(kind: .modelUpdate, model: model, deadline: nil))
+        broadcast(CompareMessage(kind: .modelUpdate, model: model, deadline: nil,
+                                 shareID: CompareShare.myShareID))
     }
 
     // MARK: Ending links
@@ -256,6 +260,11 @@ final class NearbyCompareManager: NSObject, ObservableObject {
             guard let idx = peers.firstIndex(where: { $0.peerID == peerID }) else { return }
             peers[idx].model = msg.model
             if let d = msg.deadline { peers[idx].deadline = d }   // accepter's deadline wins
+            // Save the link so it survives the app closing: next time Compare
+            // opens we re-fetch this person's model from CloudKit by share ID.
+            if let sid = msg.shareID {
+                ComparePeerStore.add(shareID: sid, name: peerID.displayName)
+            }
         }
     }
 
@@ -266,8 +275,10 @@ final class NearbyCompareManager: NSObject, ObservableObject {
             guard !atCapacity else { disconnect(peerID, sendBye: false); return }
             peers.append(Peer(peerID: peerID, model: nil, deadline: acceptedDeadline[peerID]))
         }
-        // Say hello with my model; include my chosen deadline if I accepted.
-        send(CompareMessage(kind: .hello, model: localModel, deadline: acceptedDeadline[peerID]),
+        // Say hello with my model; include my chosen deadline if I accepted,
+        // and my share ID so they can save this link and re-fetch it later.
+        send(CompareMessage(kind: .hello, model: localModel, deadline: acceptedDeadline[peerID],
+                            shareID: CompareShare.myShareID),
              over: session)
         ensurePruneTimer()
     }
