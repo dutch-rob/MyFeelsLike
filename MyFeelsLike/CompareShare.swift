@@ -27,6 +27,15 @@ import OSLog
 
 private let log = Logger(subsystem: "robotex.MyFeelsLike", category: "Compare")
 
+/// A compare invite received from an opened deep link — a share ID + the
+/// sender's name, plus a nonce so repeated invites from the same person still
+/// register as a change to any observer.
+struct CompareInvite: Equatable {
+    let id: String
+    let name: String
+    let nonce: UUID
+}
+
 /// A peer's shared model, reconstructed from their CloudKit record. The full
 /// `RegressionState` (including invXtX) is carried, so their band shows the same
 /// reliability fade it would on their own phone.
@@ -80,6 +89,36 @@ enum CompareShare {
 
     private static func recordID(for shareID: String) -> CKRecord.ID {
         CKRecord.ID(recordName: "compare-\(shareID)")
+    }
+
+    // MARK: Invite links (texted / shared)
+
+    static let urlScheme = "myfeelslike"
+    static let urlHost   = "compare"
+
+    /// A deep link that adds *this* install as a compare peer when opened:
+    /// `myfeelslike://compare?id=<myShareID>&name=<name>`.
+    static func inviteURL(name: String) -> URL? {
+        var c = URLComponents()
+        c.scheme = urlScheme
+        c.host   = urlHost
+        var items = [URLQueryItem(name: "id", value: myShareID)]
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { items.append(URLQueryItem(name: "name", value: trimmed)) }
+        c.queryItems = items
+        return c.url
+    }
+
+    /// Parse an incoming compare deep link into (share ID, sender name).
+    /// Returns nil for anything that isn't a compare invite or lacks an id.
+    static func parseInvite(_ url: URL) -> (id: String, name: String)? {
+        guard url.scheme?.lowercased() == urlScheme,
+              url.host?.lowercased() == urlHost else { return nil }
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        guard let id = items.first(where: { $0.name == "id" })?.value?
+                .trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else { return nil }
+        let name = items.first(where: { $0.name == "name" })?.value ?? ""
+        return (id, name)
     }
 
     // MARK: Account status

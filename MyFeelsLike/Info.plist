@@ -13,5 +13,16 @@
 		<string>_mfl-compare._tcp</string>
 		<string>_mfl-compare._udp</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>robotex.MyFeelsLike.compare</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>myfeelslike</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

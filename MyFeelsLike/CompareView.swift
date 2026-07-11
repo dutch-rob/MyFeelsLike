@@ -47,6 +47,7 @@ struct CompareIcon: View {
 struct FeelsBand: View {
     let series: [ForecastPoint]
     var sunSplit: Bool = false
+    @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
 
     private var domain: ClosedRange<Date>? {
         guard let f = series.first?.date, let l = series.last?.date, f < l else { return nil }
@@ -57,23 +58,27 @@ struct FeelsBand: View {
     var body: some View {
         Group {
             if let domain, hasColor {
-                Chart {
-                    ForEach(series) { p in
-                        let x0 = p.date.addingTimeInterval(-3600)
-                        let style: AnyShapeStyle = {
-                            if sunSplit, let g = sunShadeGradient(p, vertical: true) { return AnyShapeStyle(g) }
-                            return AnyShapeStyle(ColorScale.feelsColor(score: p.myFeelsLikeScore,
-                                                                       opacity: p.myFeelsLikeOpacity))
-                        }()
-                        RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                                      yStart: .value("y0", 0), yEnd: .value("y1", 1))
-                            .foregroundStyle(style)
+                if sunSplit && sunShadeStyle == .separate {
+                    // Two thin bars — in-shade (all hours) over in-sun (daytime
+                    // only, night blank) — matching the 24h screen's Separate style.
+                    VStack(spacing: 2) {
+                        bar(domain: domain) { p in
+                            (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
+                                AnyShapeStyle(ColorScale.feelsColor(score: $0, opacity: p.myFeelsLikeShadeOpacity))
+                            }
+                        }
+                        bar(domain: domain) { p in
+                            guard p.isDaylight, let s = p.myFeelsLikeSunScore else { return nil }
+                            return AnyShapeStyle(ColorScale.feelsColor(score: s, opacity: p.myFeelsLikeSunOpacity))
+                        }
+                    }
+                } else {
+                    bar(domain: domain) { p in
+                        if sunSplit, let g = sunShadeGradient(p, vertical: true) { return AnyShapeStyle(g) }
+                        return AnyShapeStyle(ColorScale.feelsColor(score: p.myFeelsLikeScore,
+                                                                   opacity: p.myFeelsLikeOpacity))
                     }
                 }
-                .chartYScale(domain: 0...1)
-                .chartYAxis(.hidden)
-                .chartXAxis(.hidden)
-                .chartXScale(domain: domain)
             } else {
                 RoundedRectangle(cornerRadius: 4).fill(Color.gray.opacity(0.2))
                     .overlay(Text("No color yet").font(.caption2).foregroundStyle(.secondary))
@@ -81,6 +86,26 @@ struct FeelsBand: View {
         }
         .frame(height: 22)
         .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    /// One full-height strip of cells, filled by `style` (nil leaves an hour
+    /// blank — used to drop night from the in-sun strip).
+    private func bar(domain: ClosedRange<Date>,
+                     style: @escaping (ForecastPoint) -> AnyShapeStyle?) -> some View {
+        Chart {
+            ForEach(series) { p in
+                if let s = style(p) {
+                    RectangleMark(xStart: .value("t0", p.date.addingTimeInterval(-3600)),
+                                  xEnd:   .value("t1", p.date),
+                                  yStart: .value("y0", 0), yEnd: .value("y1", 1))
+                        .foregroundStyle(s)
+                }
+            }
+        }
+        .chartYScale(domain: 0...1)
+        .chartYAxis(.hidden)
+        .chartXAxis(.hidden)
+        .chartXScale(domain: domain)
     }
 }
 
@@ -112,12 +137,14 @@ struct CompareView: View {
     var ownModel: RegressionState? = nil
     /// Whether the phone user's own model learned a sun effect (for the "You" band).
     var ownSunSplit: Bool = false
+    /// An invite that arrived via an opened deep link; adds that peer.
+    var invite: CompareInvite? = nil
     /// Legible text color over the weather-sky background.
     var ink: Color = .primary
 
     @StateObject private var coordinator = CompareCoordinator()
 
-    @State private var showComingSoon = false
+    @State private var showShareInvite = false
     @State private var peerIDDraft = ""
     @State private var peerNameDraft = ""
     @State private var showCopied = false
@@ -147,7 +174,7 @@ struct CompareView: View {
                     .buttonStyle(.plain)
                     .disabled(nearby.atCapacity && !nearby.isBrowsing)
 
-                    Button { showComingSoon = true } label: {
+                    Button { showShareInvite = true } label: {
                         chip("Invite via Text", systemImage: "message")
                     }
                     .buttonStyle(.plain)
@@ -241,10 +268,15 @@ struct CompareView: View {
         } message: {
             Text("This is what other people see when you compare nearby. You can change it later in Settings.")
         }
-        .alert("Coming soon", isPresented: $showComingSoon) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("Inviting by text is being built. For now, use Connect Nearby.")
+        .sheet(isPresented: $showShareInvite) {
+            if let url = CompareShare.inviteURL(name: myDisplayName) {
+                InviteShareSheet(items: [inviteMessage, url])
+            }
+        }
+        .onChange(of: invite) { _, inv in
+            guard let inv else { return }
+            coordinator.add(shareID: inv.id, name: inv.name,
+                            myName: myDisplayName, myModel: ownModel)
         }
         .onAppear {
             nearby.startAdvertising()          // discoverable while this screen is open
@@ -281,6 +313,11 @@ struct CompareView: View {
     private var myDisplayName: String {
         let n = compareName.trimmingCharacters(in: .whitespacesAndNewlines)
         return n.isEmpty ? UIDevice.current.name : n
+    }
+
+    /// Context line accompanying the invite link in the share sheet.
+    private var inviteMessage: String {
+        "Let's compare how the weather feels to each of us in MyFeelsLike. Open this on your iPhone with the app installed:"
     }
 
     /// One saved peer: their band when loaded, a spinner while loading, or a
@@ -415,4 +452,16 @@ struct CompareView: View {
         }
         return "\(peer.name) · until cancel"
     }
+}
+
+// MARK: - UIKit share-sheet bridge (invite link)
+
+/// Presents the system share sheet so an invite link can go out via Messages,
+/// Mail, AirDrop, etc.
+private struct InviteShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

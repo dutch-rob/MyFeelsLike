@@ -27,6 +27,8 @@ struct ContentView: View {
     /// When true, the Compare screen replaces the forecast content (the bottom
     /// bar swaps its compare button for a back button).
     @State private var showingCompare = false
+    /// Set when a compare invite deep link is opened; passed into CompareView.
+    @State private var incomingInvite: CompareInvite? = nil
     @State private var showInfo    = false
     @State private var showWelcome = false
     /// Set when the welcome sheet's "Read the guide" was tapped; opens Info once
@@ -184,6 +186,15 @@ struct ContentView: View {
         }) {
             WelcomeSheet(isUpdate: !lastSeenVersion.isEmpty) { wantsGuide = true }
         }
+        .onOpenURL { url in
+            guard let (id, name) = CompareShare.parseInvite(url) else { return }
+            // Persist immediately so it's there when Compare appears, then jump
+            // to the Compare screen (CompareView also reacts to `incomingInvite`
+            // if it's already open).
+            ComparePeerStore.add(shareID: id, name: name)
+            incomingInvite = CompareInvite(id: id, name: name, nonce: UUID())
+            showingCompare = true
+        }
         .onReceive(locationProvider.$currentLocation.compactMap { $0 }) { loc in
             // Only fire on a location update when there is no data yet.
             // Prevents this from racing with pull-to-refresh or the
@@ -254,6 +265,7 @@ struct ContentView: View {
                         bandSeries: bandSeries,
                         ownModel: regressionState,
                         ownSunSplit: sunFeatureActive,
+                        invite: incomingInvite,
                         ink: skyInk)
         } else {
             forecastContent
