@@ -662,7 +662,7 @@
 				DEVELOPMENT_TEAM = 96ND29QYH3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "MyFeelsLike Watch App";
+				INFOPLIST_KEY_CFBundleDisplayName = MyFeelsLike;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Shows weather for your current location";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = robotex.MyFeelsLike;
@@ -698,7 +698,7 @@
 				DEVELOPMENT_TEAM = 96ND29QYH3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "MyFeelsLike Watch App";
+				INFOPLIST_KEY_CFBundleDisplayName = MyFeelsLike;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Shows weather for your current location";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = robotex.MyFeelsLike;
