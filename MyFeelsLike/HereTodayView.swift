@@ -294,8 +294,10 @@ struct HereTodayView: View {
 
             // Title in the middle of the band, outlined so it stays legible over
             // whatever colors sit under it (like the watch complication number).
-            OutlinedText(text: "MyFeelsLike — sun / shade", fill: .white, outline: .black, width: 1.5)
-                .font(.system(size: 14, weight: .bold))
+            // "shade / sun" matches the band's order (in-shade on top, in-sun
+            // below).
+            OutlinedText(text: "MyFeelsLike — shade / sun", fill: .white, outline: .black, width: 1.3)
+                .font(.system(size: 12, weight: .bold))
                 .padding(.leading, 36)
         }
         .frame(height: height)
