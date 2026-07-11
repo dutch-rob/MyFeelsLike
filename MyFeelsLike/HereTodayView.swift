@@ -246,28 +246,34 @@ struct HereTodayView: View {
         .frame(height: height)
     }
 
-    /// Gradient band: each hour cell runs in-shade (left) → in-sun (right), so a
-    /// column's shade↔sun spread reads horizontally. Reliability shrinks the cell
-    /// vertically, matching the single band. Night cells (sun == shade) fall back
-    /// to the solid MyFeelsLike color.
+    /// Gradient band: each hour cell runs in-shade (top) → in-sun (bottom) — one
+    /// column of the 10-day heatmap turned 90°, so the day's shade↔sun spread
+    /// reads vertically. Reliability is carried by cell opacity (the gradient
+    /// needs the full height to read). Night cells (sun == shade) fall back to
+    /// the solid MyFeelsLike color.
     private func splitColorBand(height: CGFloat) -> some View {
         Chart {
             ForEach(series) { p in
                 let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date
-                let half = myFeelsLikeReliability(p) / 2
-                let style: AnyShapeStyle = sunShadeGradient(p).map(AnyShapeStyle.init)
+                let style: AnyShapeStyle = sunShadeGradient(p, vertical: true).map(AnyShapeStyle.init)
                     ?? AnyShapeStyle(bandColor(p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity))
                 RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                              yStart: .value("y0", 0.5 - half), yEnd: .value("y1", 0.5 + half))
+                              yStart: .value("y0", 0), yEnd: .value("y1", 1))
                     .foregroundStyle(style)
             }
         }
         .chartYScale(domain: 0...1)
-        // Reserve the same leading width as the temperature/wind charts so the
-        // band lines up with them.
+        // Tiny shade/sun markers in the leading gutter (cloud on top, sun below)
+        // cue the vertical direction; they also reserve the leading width so the
+        // band lines up with the temperature chart above.
         .chartYAxis {
-            AxisMarks(position: .leading, values: [0]) {
-                AxisValueLabel { Text("00").font(.caption).foregroundStyle(.clear) }
+            AxisMarks(position: .leading, values: [0.25, 0.75]) { v in
+                AxisValueLabel {
+                    Image(systemName: (v.as(Double.self) ?? 0) > 0.5 ? "cloud.fill" : "sun.max.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(axisInk)
+                        .frame(width: 16, alignment: .leading)
+                }
             }
         }
         .chartXAxis(.hidden)

@@ -191,29 +191,33 @@ func myFeelsLikeReliability(_ p: ForecastPoint) -> Double {
     return max(0.15, min(1, p.myFeelsLikeOpacity))
 }
 
-/// Horizontal shade→sun gradient for one cell: solid in-shade color across the
-/// left quarter, solid in-sun color across the right quarter, and a linear blend
-/// in the middle half. Giving each color a plateau (rather than blending edge to
+/// Shade→sun gradient for one cell: solid in-shade color across the first
+/// quarter, solid in-sun color across the last quarter, and a linear blend in
+/// the middle half. Giving each color a plateau (rather than blending edge to
 /// edge) lets the eye pick out "this is the shade color, this is the sun color"
-/// while still reading the transition. Shared by the 24h band and 10-day heatmap
-/// so both look identical.
-func sunShadeGradient(shade: Color, sun: Color) -> LinearGradient {
+/// while still reading the transition. Direction differs by screen: the 10-day
+/// heatmap runs it horizontally (in-shade left → in-sun right), the 24h band
+/// runs it vertically (in-shade top → in-sun bottom, i.e. a heatmap column
+/// rotated 90°). Shared so every screen uses the same shape and colors.
+func sunShadeGradient(shade: Color, sun: Color, vertical: Bool = false) -> LinearGradient {
     LinearGradient(stops: [
         .init(color: shade, location: 0.00),
         .init(color: shade, location: 0.25),
         .init(color: sun,   location: 0.75),
         .init(color: sun,   location: 1.00),
-    ], startPoint: .leading, endPoint: .trailing)
+    ], startPoint: vertical ? .top : .leading,
+       endPoint:   vertical ? .bottom : .trailing)
 }
 
 /// The shade/sun gradient for a forecast point, or `nil` when the point has no
 /// distinct sun value (no sun feature, or night where sun == shade) — callers
 /// fall back to the solid MyFeelsLike color in that case.
-func sunShadeGradient(_ p: ForecastPoint) -> LinearGradient? {
+func sunShadeGradient(_ p: ForecastPoint, vertical: Bool = false) -> LinearGradient? {
     guard let sun = p.myFeelsLikeSunScore, let shade = p.myFeelsLikeShadeScore,
           sun != shade else { return nil }
     return sunShadeGradient(shade: ColorScale.feelsColor(score: shade, opacity: p.myFeelsLikeShadeOpacity),
-                            sun:   ColorScale.feelsColor(score: sun,   opacity: p.myFeelsLikeSunOpacity))
+                            sun:   ColorScale.feelsColor(score: sun,   opacity: p.myFeelsLikeSunOpacity),
+                            vertical: vertical)
 }
 
 

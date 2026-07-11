@@ -41,8 +41,8 @@ struct CompareIcon: View {
 
 /// A thin horizontal MyFeelsLike color band over a 24h series (one cell per
 /// hour). When `sunSplit` is true each hour cell is a shade→sun gradient
-/// (in-shade left, in-sun right), matching the 24h and 10-day screens. Gray
-/// placeholder when there's no model yet.
+/// (in-shade top, in-sun bottom), matching the 24h screen. Gray placeholder
+/// when there's no model yet.
 struct FeelsBand: View {
     let series: [ForecastPoint]
     var sunSplit: Bool = false
@@ -60,7 +60,7 @@ struct FeelsBand: View {
                     ForEach(series) { p in
                         let x0 = p.date.addingTimeInterval(-3600)
                         let style: AnyShapeStyle = {
-                            if sunSplit, let g = sunShadeGradient(p) { return AnyShapeStyle(g) }
+                            if sunSplit, let g = sunShadeGradient(p, vertical: true) { return AnyShapeStyle(g) }
                             return AnyShapeStyle(ColorScale.feelsColor(score: p.myFeelsLikeScore,
                                                                        opacity: p.myFeelsLikeOpacity))
                         }()
