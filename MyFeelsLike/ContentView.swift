@@ -187,12 +187,12 @@ struct ContentView: View {
             WelcomeSheet(isUpdate: !lastSeenVersion.isEmpty) { wantsGuide = true }
         }
         .onOpenURL { url in
-            guard let (id, name) = CompareShare.parseInvite(url) else { return }
+            guard let (id, name, token) = CompareShare.parseInvite(url) else { return }
             // Persist immediately so it's there when Compare appears, then jump
             // to the Compare screen (CompareView also reacts to `incomingInvite`
-            // if it's already open).
+            // if it's already open, and writes the acceptance back to the inviter).
             ComparePeerStore.add(shareID: id, name: name)
-            incomingInvite = CompareInvite(id: id, name: name, nonce: UUID())
+            incomingInvite = CompareInvite(id: id, name: name, token: token, nonce: UUID())
             showingCompare = true
         }
         .onReceive(locationProvider.$currentLocation.compactMap { $0 }) { loc in

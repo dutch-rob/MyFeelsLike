@@ -83,6 +83,13 @@ final class CompareCoordinator: ObservableObject {
             publishFailed = false   // no model, or not signed in (surfaced separately)
         }
 
+        // Collect any acceptances of invites we sent, so people we texted appear
+        // on our side too (two-way inclusion).
+        for a in await CompareShare.collectAcceptances() {
+            CompareShare.unrevoke(a.id)
+            ComparePeerStore.add(shareID: a.id, name: a.name)
+        }
+
         // Reconcile the shown list with what's saved (peers may have been added
         // since start), keeping any state we already have so rows don't flicker.
         let saved = ComparePeerStore.load()
@@ -117,10 +124,16 @@ final class CompareCoordinator: ObservableObject {
 
     /// Add (or update) a peer, then refresh so their band appears. Re-adding
     /// someone previously cancelled clears our revocation so they can see us again.
-    func add(shareID: String, name: String, myName: String, myModel: RegressionState?) {
+    /// When `token` is set (opened from a texted invite), also mirror the
+    /// acceptance back so the inviter adds us too.
+    func add(shareID: String, name: String, token: String? = nil,
+             myName: String, myModel: RegressionState?) {
         CompareShare.unrevoke(shareID)
         ComparePeerStore.add(shareID: shareID, name: name)
-        Task { await refresh(myName: myName, myModel: myModel) }
+        Task {
+            if let token { await CompareShare.acceptInvite(token: token, myName: myName) }
+            await refresh(myName: myName, myModel: myModel)
+        }
     }
 
     /// Cancel a comparison: forget them locally *and* record the revocation in

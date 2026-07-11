@@ -147,6 +147,9 @@ struct CompareView: View {
 
     @State private var showMessageComposer = false
     @State private var inviteCopiedAlert = false
+    /// The invite link for the current "Invite via Text" — generated once on tap
+    /// so a single token is minted per invite (not on every sheet re-render).
+    @State private var pendingInviteURL: URL?
     @State private var peerIDDraft = ""
     @State private var peerNameDraft = ""
     @State private var showCopied = false
@@ -177,9 +180,10 @@ struct CompareView: View {
                     .disabled(nearby.atCapacity && !nearby.isBrowsing)
 
                     Button {
+                        pendingInviteURL = CompareShare.inviteURL(name: myDisplayName)
                         if MFMessageComposeViewController.canSendText() {
                             showMessageComposer = true
-                        } else if let url = CompareShare.inviteURL(name: myDisplayName) {
+                        } else if let url = pendingInviteURL {
                             UIPasteboard.general.string = url.absoluteString
                             inviteCopiedAlert = true
                         }
@@ -278,7 +282,7 @@ struct CompareView: View {
             Text("This is what other people see when you compare nearby. You can change it later in Settings.")
         }
         .sheet(isPresented: $showMessageComposer) {
-            if let url = CompareShare.inviteURL(name: myDisplayName) {
+            if let url = pendingInviteURL {
                 MessageComposer(body: "\(inviteMessage) \(url.absoluteString)") {
                     showMessageComposer = false
                 }
@@ -292,7 +296,7 @@ struct CompareView: View {
         }
         .onChange(of: invite) { _, inv in
             guard let inv else { return }
-            coordinator.add(shareID: inv.id, name: inv.name,
+            coordinator.add(shareID: inv.id, name: inv.name, token: inv.token,
                             myName: myDisplayName, myModel: ownModel)
         }
         .onAppear {

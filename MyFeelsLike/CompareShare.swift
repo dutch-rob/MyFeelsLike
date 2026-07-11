@@ -33,6 +33,8 @@ private let log = Logger(subsystem: "robotex.MyFeelsLike", category: "Compare")
 struct CompareInvite: Equatable {
     let id: String
     let name: String
+    /// One-time token from the link, used to mirror the acceptance back.
+    let token: String?
     let nonce: UUID
 }
 
@@ -120,29 +122,83 @@ enum CompareShare {
     static let urlScheme = "myfeelslike"
     static let urlHost   = "compare"
 
-    /// A deep link that adds *this* install as a compare peer when opened:
-    /// `myfeelslike://compare?id=<myShareID>&name=<name>`.
+    /// A deep link that adds *this* install as a compare peer when opened, and
+    /// carries a one-time token so the acceptance can be mirrored back to us:
+    /// `myfeelslike://compare?id=<myShareID>&name=<name>&t=<token>`. The token is
+    /// remembered locally so we can collect the acceptance on our next refresh.
     static func inviteURL(name: String) -> URL? {
+        let token = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+        sentInviteTokens = Array((sentInviteTokens + [token]).suffix(50))
         var c = URLComponents()
         c.scheme = urlScheme
         c.host   = urlHost
-        var items = [URLQueryItem(name: "id", value: myShareID)]
+        var items = [URLQueryItem(name: "id", value: myShareID),
+                     URLQueryItem(name: "t", value: token)]
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { items.append(URLQueryItem(name: "name", value: trimmed)) }
         c.queryItems = items
         return c.url
     }
 
-    /// Parse an incoming compare deep link into (share ID, sender name).
+    /// Parse an incoming compare deep link into (share ID, sender name, token).
     /// Returns nil for anything that isn't a compare invite or lacks an id.
-    static func parseInvite(_ url: URL) -> (id: String, name: String)? {
+    static func parseInvite(_ url: URL) -> (id: String, name: String, token: String?)? {
         guard url.scheme?.lowercased() == urlScheme,
               url.host?.lowercased() == urlHost else { return nil }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         guard let id = items.first(where: { $0.name == "id" })?.value?
                 .trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else { return nil }
         let name = items.first(where: { $0.name == "name" })?.value ?? ""
-        return (id, name)
+        let token = items.first(where: { $0.name == "t" })?.value?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (id, name, (token?.isEmpty == false) ? token : nil)
+    }
+
+    // MARK: Two-way invite (mirror the acceptance back to the inviter)
+
+    private static let sentInvitesKey = "compareSentInvites"
+
+    /// Tokens for invites this user has sent that are still awaiting acceptance.
+    static var sentInviteTokens: [String] {
+        get { UserDefaults.standard.stringArray(forKey: sentInvitesKey) ?? [] }
+        set { UserDefaults.standard.set(newValue, forKey: sentInvitesKey) }
+    }
+
+    /// The invitee calls this after opening an invite: it writes a small record
+    /// under the invite's token carrying our share ID + name, so the inviter —
+    /// who knows the token — can add us back on their next refresh.
+    static func acceptInvite(token: String, myName: String) async {
+        guard await accountAvailable() else { return }
+        let rec = CKRecord(recordType: recordType,
+                           recordID: CKRecord.ID(recordName: "accept-\(token)"))
+        rec["name"]   = myName.isEmpty ? "MyFeelsLike user" : myName
+        rec["json"]   = myShareID           // reuse json as the accepter's id
+        rec["schema"] = schemaVersion
+        do {
+            _ = try await database.modifyRecords(saving: [rec], deleting: [],
+                                                 savePolicy: .allKeys, atomically: false)
+        } catch {
+            log.error("Accept-invite write failed: \(describe(error), privacy: .public)")
+        }
+    }
+
+    /// The inviter calls this on refresh: for each pending sent token, look for
+    /// an acceptance record; return the accepters (share ID + name), and clear
+    /// the token + delete the record once collected.
+    static func collectAcceptances() async -> [(id: String, name: String)] {
+        var found: [(id: String, name: String)] = []
+        var remaining = sentInviteTokens
+        for token in sentInviteTokens {
+            let rid = CKRecord.ID(recordName: "accept-\(token)")
+            guard let rec = try? await database.record(for: rid),
+                  let sid = (rec["json"] as? String)?.lowercased(), !sid.isEmpty else { continue }
+            let name = (rec["name"] as? String) ?? "Someone"
+            found.append((id: sid, name: name))
+            remaining.removeAll { $0 == token }
+            _ = try? await database.modifyRecords(saving: [], deleting: [rid], atomically: false)
+        }
+        sentInviteTokens = remaining
+        return found
     }
 
     // MARK: Account status
