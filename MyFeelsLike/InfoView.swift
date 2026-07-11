@@ -5,6 +5,7 @@ import SwiftUI
 // AUTO-GENERATED — edit README.md and run tools/generate_infoview.py to update.
 
 struct InfoView: View {
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -95,6 +96,9 @@ struct InfoView: View {
                 // Icon before the title echoes the 'i' button users tap
                 // to get here, so the connection is obvious.
                 Label("Info", systemImage: "info.circle").font(.headline)
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") { dismiss() }
             }
         }
         .textSelection(.enabled)

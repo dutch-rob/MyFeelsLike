@@ -80,17 +80,10 @@ struct PlacesListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "chevron.left")
-                            .fontWeight(.semibold)
-                        Text("Back")
-                    }
-                    .foregroundStyle(.tint)
-                }
+            // A trailing "Done" to match Settings and Info — every view-and-leave
+            // sheet dismisses the same way.
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") { dismiss() }
             }
         }
         .onAppear {
