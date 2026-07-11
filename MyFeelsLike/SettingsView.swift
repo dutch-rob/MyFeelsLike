@@ -26,6 +26,7 @@ struct SettingsView: View {
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.showTable)       private var showTable     = true
     @AppStorage(SettingsKey.compareName)     private var compareName   = ""
+    @AppStorage(SettingsKey.sunShadeStyle)   private var sunShadeStyle  = SunShadeStyle.separate
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -87,6 +88,18 @@ struct SettingsView: View {
                 Toggle("Table screen", isOn: $showTable)
             } footer: {
                 Text("When off, swiping only switches between the 24-hour and 10-day graph screens.")
+            }
+
+            Section {
+                Picker("In sun vs in shade", selection: $sunShadeStyle) {
+                    Text("Separate").tag(SunShadeStyle.separate)
+                    Text("Gradient").tag(SunShadeStyle.gradient)
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Sun / shade")
+            } footer: {
+                Text("How the color band shows in-sun vs in-shade when your model has learned a sun effect. Separate draws two bands (shade, and sun by daytime). Gradient blends shade→sun inside each cell — compact, but takes a moment to read.")
             }
 
             Section {

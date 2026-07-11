@@ -23,6 +23,8 @@ enum SettingsKey {
     static let didAskCompareName = "didAskCompareName"
     /// Last app version whose welcome / what's-new sheet was shown ("" = never).
     static let lastSeenVersion   = "lastSeenVersion"
+    /// How in-shade vs in-sun is drawn: SunShadeStyle raw value ("separate"/"gradient").
+    static let sunShadeStyle     = "sunShadeStyle"
 
     // Scenario the prediction is made for.
     static let scenarioActivity  = "scenarioActivity"

@@ -47,6 +47,7 @@ struct TenDayView: View {
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
+    @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var tempPanelVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
@@ -281,40 +282,112 @@ struct TenDayView: View {
     /// is time; this grid's y-axis is hour-of-day).
     @ViewBuilder
     private func feelsLikeHeatmap(height: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("MyFeelsLike by time of day")
-                .font(.caption2).foregroundStyle(axisInk)
-                .padding(.leading, 36)
-            if hasModel {
-                heatmapChart.frame(height: height - 16)
-            } else {
-                noModelPanel.frame(height: height - 16)
+        if hasModel && sunShadeStyle == .separate && hasSunSplit {
+            separateHeatmaps(height: height)
+        } else {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("MyFeelsLike by time of day")
+                    .font(.caption2).foregroundStyle(axisInk)
+                    .padding(.leading, 36)
+                if hasModel {
+                    heatmapChart.frame(height: height - 16)
+                } else {
+                    noModelPanel.frame(height: height - 16)
+                }
+            }
+        }
+    }
+
+    /// Whether the forecast carries a distinct in-sun vs in-shade prediction
+    /// (i.e. the model learned a sun effect), so the "separate" style has two
+    /// things to show.
+    private var hasSunSplit: Bool {
+        allPoints.contains {
+            guard let sun = $0.myFeelsLikeSunScore, let shade = $0.myFeelsLikeShadeScore
+            else { return false }
+            return sun != shade
+        }
+    }
+
+    /// Daylight hour window across the forecast (min sunrise hour … max sunset
+    /// hour), used to crop the night off the in-sun heatmap so it takes less
+    /// room. Falls back to a sensible 6…20 if daylight can't be determined.
+    private var daylightHourBounds: (lo: Int, hi: Int) {
+        let hrs = allPoints.filter { $0.isDaylight }
+            .map { Calendar.current.component(.hour, from: $0.date) }
+        guard let lo = hrs.min(), let hi = hrs.max() else { return (6, 20) }
+        return (lo, min(24, hi + 1))
+    }
+
+    /// Separate style: an in-shade heatmap over the full day, and a shorter
+    /// in-sun heatmap cropped to daylight hours (no sun at night). Heights are
+    /// split so both grids keep roughly the same cell size.
+    @ViewBuilder
+    private func separateHeatmaps(height: CGFloat) -> some View {
+        let bounds = daylightHourBounds
+        let sunSpan = max(1, bounds.hi - bounds.lo)
+        let total = 24 + sunSpan
+        // Reserve room for the two small labels + spacing, then divide the rest
+        // between the grids in proportion to their hour spans.
+        let grids = max(40, height - 34)
+        let shadeH = grids * 24 / CGFloat(total)
+        let sunH   = grids * CGFloat(sunSpan) / CGFloat(total)
+        VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("MyFeelsLike — in shade")
+                    .font(.caption2).foregroundStyle(axisInk).padding(.leading, 36)
+                heatGrid(yLo: 0, yHi: 24, yValues: [0, 6, 12, 18, 24]) { p in
+                    (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
+                        AnyShapeStyle(ColorScale.feelsColor(score: $0, opacity: p.myFeelsLikeShadeOpacity))
+                    }
+                }
+                .frame(height: shadeH)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("MyFeelsLike — in sun (daytime)")
+                    .font(.caption2).foregroundStyle(axisInk).padding(.leading, 36)
+                heatGrid(yLo: bounds.lo, yHi: bounds.hi,
+                         yValues: [bounds.lo, (bounds.lo + bounds.hi) / 2, bounds.hi]) { p in
+                    guard p.isDaylight, let s = p.myFeelsLikeSunScore else { return nil }
+                    return AnyShapeStyle(ColorScale.feelsColor(score: s, opacity: p.myFeelsLikeSunOpacity))
+                }
+                .frame(height: sunH)
             }
         }
     }
 
     private var heatmapChart: some View {
+        heatGrid(yLo: 0, yHi: 24, yValues: [0, 6, 12, 18, 24]) { cellStyle($0) }
+    }
+
+    /// One day-column heatmap: `color` fills each (day, hour) cell, returning nil
+    /// to leave a cell blank (used to drop night from the in-sun grid). The
+    /// y-axis spans `yLo…yHi` hours; cell width still shrinks with reliability.
+    private func heatGrid(yLo: Int, yHi: Int, yValues: [Int],
+                          color: @escaping (ForecastPoint) -> AnyShapeStyle?) -> some View {
         let cal = Calendar.current
         return Chart(allPoints) { p in
-            let dayStart = cal.startOfDay(for: p.date)
-            let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
             let hour = cal.component(.hour, from: p.date)
-            // Reliability shrinks the cell horizontally toward the center of
-            // its day column, so uncertain hours read as a narrow sliver.
-            let full = dayEnd.timeIntervalSince(dayStart)
-            let mid = dayStart.addingTimeInterval(full / 2)
-            let half = full / 2 * myFeelsLikeReliability(p)
-            RectangleMark(
-                xStart: .value("Day", mid.addingTimeInterval(-half)),
-                xEnd:   .value("Day end", mid.addingTimeInterval(half)),
-                yStart: .value("Hour", hour),
-                yEnd:   .value("Hour end", hour + 1)
-            )
-            .foregroundStyle(cellStyle(p))
+            if hour >= yLo, hour < yHi, let style = color(p) {
+                let dayStart = cal.startOfDay(for: p.date)
+                let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+                // Reliability shrinks the cell horizontally toward the center of
+                // its day column, so uncertain hours read as a narrow sliver.
+                let full = dayEnd.timeIntervalSince(dayStart)
+                let mid = dayStart.addingTimeInterval(full / 2)
+                let half = full / 2 * myFeelsLikeReliability(p)
+                RectangleMark(
+                    xStart: .value("Day", mid.addingTimeInterval(-half)),
+                    xEnd:   .value("Day end", mid.addingTimeInterval(half)),
+                    yStart: .value("Hour", hour),
+                    yEnd:   .value("Hour end", hour + 1)
+                )
+                .foregroundStyle(style)
+            }
         }
-        .chartYScale(domain: 0...24)
+        .chartYScale(domain: yLo...yHi)
         .chartYAxis {
-            AxisMarks(position: .leading, values: [0, 6, 12, 18, 24]) { v in
+            AxisMarks(position: .leading, values: yValues) { v in
                 let hv = v.as(Int.self) ?? 0
                 AxisValueLabel {
                     Text(hv == 24 && !use12Hour ? "24" : clockHourLabel(hv, use12: use12Hour))
@@ -332,10 +405,8 @@ struct TenDayView: View {
         }
     }
 
-    /// Fill for one heatmap cell. When the model learned a sun effect, each
-    /// hour cell is a horizontal gradient — in-shade on the left, in-sun on the
-    /// right — so a day's shade↔sun spread reads within its column. Otherwise a
-    /// solid MyFeelsLike color.
+    /// Fill for one heatmap cell in the gradient style: a horizontal in-shade →
+    /// in-sun gradient when the model learned a sun effect, else a solid color.
     private func cellStyle(_ p: ForecastPoint) -> AnyShapeStyle {
         if let g = sunShadeGradient(p) { return AnyShapeStyle(g) }
         return AnyShapeStyle(myFeelsLikeHeatColor(p))

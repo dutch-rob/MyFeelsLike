@@ -191,6 +191,15 @@ func myFeelsLikeReliability(_ p: ForecastPoint) -> Double {
     return max(0.15, min(1, p.myFeelsLikeOpacity))
 }
 
+/// How the in-shade vs in-sun difference is drawn in the color band / heatmap.
+/// `separate` (the default) shows two distinct bars/heatmaps — clearest at a
+/// glance; `gradient` blends shade→sun within each cell — more compact and
+/// preferred by some once they know the code.
+enum SunShadeStyle: String, CaseIterable {
+    case separate
+    case gradient
+}
+
 /// Shade→sun gradient for one cell: solid in-shade color across the first
 /// quarter, solid in-sun color across the last quarter, and a linear blend in
 /// the middle half. Giving each color a plateau (rather than blending edge to

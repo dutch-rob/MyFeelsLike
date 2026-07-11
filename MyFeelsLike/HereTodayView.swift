@@ -46,6 +46,7 @@ struct HereTodayView: View {
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
+    @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var tempPanelVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
@@ -196,12 +197,17 @@ struct HereTodayView: View {
     /// rows: in-sun on top, in-shade below.
     @ViewBuilder
     private func myFeelsLikePanel(height: CGFloat) -> some View {
+        let splitActive = sunFeatureActive && hasModel
         VStack(alignment: .leading, spacing: 2) {
-            Text(sunFeatureActive && hasModel ? "MyFeelsLike — sun / shade" : "MyFeelsLike by hour")
+            Text(splitActive && sunShadeStyle == .gradient ? "MyFeelsLike — sun / shade"
+                                                           : "MyFeelsLike by hour")
                 .font(.caption2).foregroundStyle(axisInk)
                 .padding(.leading, 36)
             if hasModel {
-                if sunFeatureActive { splitColorBand(height: height) }
+                if sunFeatureActive {
+                    if sunShadeStyle == .separate { separateColorBands(height: height) }
+                    else { splitColorBand(height: height) }
+                }
                 else { singleColorBand(height: height) }
             } else {
                 // Frosted material keeps the text legible over the sky background.
@@ -273,6 +279,54 @@ struct HereTodayView: View {
                         .font(.system(size: 9))
                         .foregroundStyle(axisInk)
                         .frame(width: 16, alignment: .leading)
+                }
+            }
+        }
+        .chartXAxis(.hidden)
+        .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .frame(height: height)
+    }
+
+    /// Separate style: two stacked solid bands — in-shade (all hours) above, and
+    /// in-sun (daytime only, night left blank) below. Both share the same time
+    /// axis, so the sun band lines up under the shade band and simply has gaps
+    /// where there's no daylight. Cloud/sun markers label each.
+    private func separateColorBands(height: CGFloat) -> some View {
+        let barH = max(10, (height - 6) / 2)
+        return VStack(spacing: 6) {
+            soloBand(icon: "cloud.fill", height: barH) { p in
+                (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
+                    ColorScale.feelsColor(score: $0, opacity: p.myFeelsLikeShadeOpacity, floor: 0.2)
+                }
+            }
+            soloBand(icon: "sun.max.fill", height: barH) { p in
+                guard p.isDaylight, let s = p.myFeelsLikeSunScore else { return nil }
+                return ColorScale.feelsColor(score: s, opacity: p.myFeelsLikeSunOpacity, floor: 0.2)
+            }
+        }
+    }
+
+    /// One solid color band (reliability as thickness). `color` returns nil to
+    /// leave an hour blank (used to drop night from the in-sun band).
+    private func soloBand(icon: String, height: CGFloat,
+                          color: @escaping (ForecastPoint) -> Color?) -> some View {
+        Chart {
+            ForEach(series) { p in
+                if let c = color(p) {
+                    let half = myFeelsLikeReliability(p) / 2
+                    RectangleMark(xStart: .value("t0", p.date.addingTimeInterval(-3600)),
+                                  xEnd:   .value("t1", p.date),
+                                  yStart: .value("y0", 0.5 - half), yEnd: .value("y1", 0.5 + half))
+                        .foregroundStyle(c)
+                }
+            }
+        }
+        .chartYScale(domain: 0...1)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0.5]) { _ in
+                AxisValueLabel {
+                    Image(systemName: icon).font(.system(size: 9))
+                        .foregroundStyle(axisInk).frame(width: 16, alignment: .leading)
                 }
             }
         }
