@@ -46,12 +46,21 @@ struct MyFeelsLikeApp: App {
             let config = ModelConfiguration(isStoredInMemoryOnly: true)
             return try! ModelContainer(for: Rating.self, configurations: config)
         }
-        // Keep ratings device-local. SwiftData's default cloudKitDatabase is
-        // .automatic, which would sync the store across the user's devices via
-        // iCloud *because* the app carries a CloudKit entitlement (used only by
-        // the opt-in developer data sharing). Force .none to keep each device's
-        // ratings and model its own.
-        let config = ModelConfiguration(cloudKitDatabase: .none)
-        return try! ModelContainer(for: Rating.self, configurations: config)
+        // Cross-device iCloud sync is opt-in (Settings ▸ Sync across my devices),
+        // off by default so each device keeps its own ratings and model. When on,
+        // use CloudKit's automatic private-database sync; when off, keep the store
+        // device-local (the app's CloudKit entitlement — used by developer sharing
+        // and Compare — would otherwise make SwiftData's default .automatic sync
+        // silently). The container is built once at launch, so the toggle only
+        // takes effect on the next launch.
+        let syncOn = UserDefaults.standard.bool(forKey: SettingsKey.syncAcrossDevices)
+        let config = ModelConfiguration(cloudKitDatabase: syncOn ? .automatic : .none)
+        if let container = try? ModelContainer(for: Rating.self, configurations: config) {
+            return container
+        }
+        // If CloudKit setup fails (misconfiguration, unavailable), fall back to a
+        // local store so the app still launches instead of crashing.
+        let local = ModelConfiguration(cloudKitDatabase: .none)
+        return try! ModelContainer(for: Rating.self, configurations: local)
     }()
 }

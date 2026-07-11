@@ -28,6 +28,9 @@ enum SettingsKey {
     /// Publish your model so others can compare with you (default on). Off keeps
     /// you able to see others while withdrawing your own shared model.
     static let shareForCompare   = "shareForCompare"
+    /// Sync ratings + model across the user's own devices via iCloud (default
+    /// off). Read once at launch to pick the SwiftData CloudKit configuration.
+    static let syncAcrossDevices = "syncAcrossDevices"
 
     // Scenario the prediction is made for.
     static let scenarioActivity  = "scenarioActivity"

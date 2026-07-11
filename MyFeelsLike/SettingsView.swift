@@ -27,6 +27,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.showTable)       private var showTable     = true
     @AppStorage(SettingsKey.compareName)     private var compareName   = ""
     @AppStorage(SettingsKey.shareForCompare) private var shareForCompare = true
+    @AppStorage(SettingsKey.syncAcrossDevices) private var syncAcrossDevices = false
     @AppStorage(SettingsKey.sunShadeStyle)   private var sunShadeStyle  = SunShadeStyle.separate
 
     @Environment(\.modelContext) private var modelContext
@@ -40,6 +41,7 @@ struct SettingsView: View {
 
     @State private var showResetConfirm = false
     @State private var showInfo = false
+    @State private var showSyncRestartNote = false
 
     @State private var exportURL: URL? = nil
     @State private var showExportShare = false
@@ -112,6 +114,14 @@ struct SettingsView: View {
                 Text("Compare")
             } footer: {
                 Text("Your name is shown to people you compare with; leave it blank to use your device name. When \u{201C}Let others compare with me\u{201D} is on, your model (coefficients only — never your ratings, location, or places) is shared so people you invite can see it. Turn it off to withdraw your shared model; you can still compare with others.")
+            }
+
+            Section {
+                Toggle("Sync across my devices", isOn: $syncAcrossDevices)
+            } header: {
+                Text("iCloud")
+            } footer: {
+                Text("When on, your ratings and personalized model sync across your own devices signed into the same iCloud account. This is separate from Compare. Changing it takes effect after you quit and reopen the app.")
             }
 
             Section {
@@ -188,6 +198,12 @@ struct SettingsView: View {
                     Label("About MyFeelsLike", systemImage: "info.circle")
                 }
             }
+        }
+        .onChange(of: syncAcrossDevices) { _, _ in showSyncRestartNote = true }
+        .alert("Reopen to apply", isPresented: $showSyncRestartNote) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Quit MyFeelsLike (swipe it away in the App Switcher) and reopen it for the device-sync change to take effect.")
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
