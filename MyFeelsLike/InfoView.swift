@@ -89,8 +89,14 @@ struct InfoView: View {
                 .padding(.vertical, 16)
             }
         }
-        .navigationTitle("Info")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                // Icon before the title echoes the 'i' button users tap
+                // to get here, so the connection is obvious.
+                Label("Info", systemImage: "info.circle").font(.headline)
+            }
+        }
         .textSelection(.enabled)
     }
 }

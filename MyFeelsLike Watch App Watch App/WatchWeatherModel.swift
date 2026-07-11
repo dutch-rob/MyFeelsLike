@@ -29,6 +29,11 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
 
     private let manager = CLLocationManager()
     private let weatherService = WeatherKit.WeatherService()
+    /// When the current forecast was last fetched, so wrist-raises don't trigger
+    /// a fresh WeatherKit call + location request + complication reload every
+    /// time (a notable battery cost). Data this fresh is reused as-is.
+    private var lastLoadedAt: Date?
+    private static let freshWindow: TimeInterval = 15 * 60
 
     override init() {
         super.init()
@@ -37,7 +42,15 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
         manager.requestWhenInUseAuthorization()
     }
 
-    func refresh() {
+    /// Fetch the forecast. On a wrist-raise / app activation this is called
+    /// without `force`, so if the data is still fresh (< 15 min) it does
+    /// nothing — saving a WeatherKit fetch, a location fix, and a complication
+    /// reload. `force` (place change, manual refresh) always refetches.
+    func refresh(force: Bool = false) {
+        if !force, !series10d.isEmpty, let last = lastLoadedAt,
+           Date().timeIntervalSince(last) < Self.freshWindow {
+            return
+        }
         isLoading = true
         if let p = selectedPlace {
             let loc = CLLocation(
@@ -52,7 +65,7 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
     /// Switch to a place (nil = back to current location) and refetch.
     func select(_ place: PlaceDTO?) {
         selectedPlace = place
-        refresh()
+        refresh(force: true)
     }
 
     // MARK: CLLocationManagerDelegate
@@ -89,6 +102,7 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
             current   = cur
             isLoading = false
             errorText = nil
+            lastLoadedAt = Date()
             BackgroundWeatherRefresh.saveLocation(location)   // for background refresh
             applyModel()      // colors + snapshot
         } catch {

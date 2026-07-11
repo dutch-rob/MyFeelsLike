@@ -13,6 +13,7 @@
 import SwiftUI
 import Charts
 import UIKit
+import MessageUI
 
 // MARK: - Bottom-bar icon
 
@@ -144,7 +145,8 @@ struct CompareView: View {
 
     @StateObject private var coordinator = CompareCoordinator()
 
-    @State private var showShareInvite = false
+    @State private var showMessageComposer = false
+    @State private var inviteCopiedAlert = false
     @State private var peerIDDraft = ""
     @State private var peerNameDraft = ""
     @State private var showCopied = false
@@ -174,7 +176,14 @@ struct CompareView: View {
                     .buttonStyle(.plain)
                     .disabled(nearby.atCapacity && !nearby.isBrowsing)
 
-                    Button { showShareInvite = true } label: {
+                    Button {
+                        if MFMessageComposeViewController.canSendText() {
+                            showMessageComposer = true
+                        } else if let url = CompareShare.inviteURL(name: myDisplayName) {
+                            UIPasteboard.general.string = url.absoluteString
+                            inviteCopiedAlert = true
+                        }
+                    } label: {
                         chip("Invite via Text", systemImage: "message")
                     }
                     .buttonStyle(.plain)
@@ -268,10 +277,18 @@ struct CompareView: View {
         } message: {
             Text("This is what other people see when you compare nearby. You can change it later in Settings.")
         }
-        .sheet(isPresented: $showShareInvite) {
+        .sheet(isPresented: $showMessageComposer) {
             if let url = CompareShare.inviteURL(name: myDisplayName) {
-                InviteShareSheet(items: [inviteMessage, url])
+                MessageComposer(body: "\(inviteMessage) \(url.absoluteString)") {
+                    showMessageComposer = false
+                }
+                .ignoresSafeArea()
             }
+        }
+        .alert("Link copied", isPresented: $inviteCopiedAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Messages isn't available here, so the invite link was copied. Paste it into any messaging app to send it.")
         }
         .onChange(of: invite) { _, inv in
             guard let inv else { return }
@@ -358,6 +375,8 @@ struct CompareView: View {
             return "Sign into iCloud on this phone to load \(name)."
         case .noModel:
             return "\(name) hasn't built a model yet."
+        case .endedByPeer:
+            return "\(name) ended the comparison."
         case .other(let m):
             return m
         }
@@ -454,14 +473,30 @@ struct CompareView: View {
     }
 }
 
-// MARK: - UIKit share-sheet bridge (invite link)
+// MARK: - UIKit Messages composer (invite link)
 
-/// Presents the system share sheet so an invite link can go out via Messages,
-/// Mail, AirDrop, etc.
-private struct InviteShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+/// Opens the system Messages composer prefilled with the invite text, so
+/// "Invite via Text" offers exactly that — texting — rather than a broad share
+/// sheet full of unrelated apps.
+private struct MessageComposer: UIViewControllerRepresentable {
+    let body: String
+    let onFinish: () -> Void
+
+    func makeUIViewController(context: Context) -> MFMessageComposeViewController {
+        let vc = MFMessageComposeViewController()
+        vc.body = body
+        vc.messageComposeDelegate = context.coordinator
+        return vc
     }
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+    func updateUIViewController(_ vc: MFMessageComposeViewController, context: Context) {}
+    func makeCoordinator() -> Coordinator { Coordinator(onFinish: onFinish) }
+
+    final class Coordinator: NSObject, MFMessageComposeViewControllerDelegate {
+        let onFinish: () -> Void
+        init(onFinish: @escaping () -> Void) { self.onFinish = onFinish }
+        func messageComposeViewController(_ controller: MFMessageComposeViewController,
+                                          didFinishWith result: MessageComposeResult) {
+            onFinish()
+        }
+    }
 }

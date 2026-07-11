@@ -51,6 +51,11 @@ final class CompareCoordinator: ObservableObject {
 
     /// First appearance: show saved peers immediately as "loading", then publish
     /// our model and fetch everyone.
+    /// Our identity, cached from the latest start/refresh so `remove` can
+    /// republish our revocation list without the caller passing it again.
+    private var lastMyName = ""
+    private var lastMyModel: RegressionState?
+
     func start(myName: String, myModel: RegressionState?) {
         loaded = ComparePeerStore.load().map { LoadedPeer(peer: $0, state: .loading) }
         Task { await refresh(myName: myName, myModel: myModel) }
@@ -58,6 +63,8 @@ final class CompareCoordinator: ObservableObject {
 
     /// Publish our model (if signed in) and re-fetch every saved peer.
     func refresh(myName: String, myModel: RegressionState?) async {
+        lastMyName = myName
+        lastMyModel = myModel
         isRefreshing = true
         defer { isRefreshing = false }
 
@@ -98,21 +105,31 @@ final class CompareCoordinator: ObservableObject {
                 } else {
                     loaded[i].state = .loaded(pm.model)
                 }
+            case .failure(.endedByPeer):
+                // They cancelled the comparison — drop them on our side too.
+                ComparePeerStore.remove(shareID: p.shareID)
+                loaded.removeAll { $0.peer.shareID == p.shareID }
             case .failure(let e):
                 loaded[i].state = .failed(e)
             }
         }
     }
 
-    /// Add (or update) a peer, then refresh so their band appears.
+    /// Add (or update) a peer, then refresh so their band appears. Re-adding
+    /// someone previously cancelled clears our revocation so they can see us again.
     func add(shareID: String, name: String, myName: String, myModel: RegressionState?) {
+        CompareShare.unrevoke(shareID)
         ComparePeerStore.add(shareID: shareID, name: name)
         Task { await refresh(myName: myName, myModel: myModel) }
     }
 
-    /// Forget a saved peer (local only; their record is untouched).
+    /// Cancel a comparison: forget them locally *and* record the revocation in
+    /// our published model, so their app drops us on its next refresh.
     func remove(_ peer: ComparePeer) {
+        CompareShare.revoke(peer.shareID)
         ComparePeerStore.remove(shareID: peer.shareID)
         loaded.removeAll { $0.peer.shareID == peer.shareID }
+        // Republish so the revocation reaches CloudKit right away.
+        Task { await refresh(myName: lastMyName, myModel: lastMyModel) }
     }
 }

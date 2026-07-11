@@ -58,6 +58,8 @@ enum CompareError: Error {
     case peerNotFound
     /// The peer's record exists but couldn't be decoded (version skew / corrupt).
     case peerUnreadable
+    /// The peer cancelled the comparison (our ID is in their revoked list).
+    case endedByPeer
     /// Network or other CloudKit failure; carries a human-readable description.
     case other(String)
 
@@ -89,6 +91,28 @@ enum CompareShare {
 
     private static func recordID(for shareID: String) -> CKRecord.ID {
         CKRecord.ID(recordName: "compare-\(shareID)")
+    }
+
+    // MARK: Revocations (mutual cancel)
+
+    private static let revokedKey = "compareRevokedIDs"
+
+    /// Share IDs this user has cancelled. Published in our record so that when
+    /// the other person refreshes and sees their own ID here, their app knows we
+    /// ended the comparison and drops us too.
+    static var revokedIDs: Set<String> {
+        get { Set(UserDefaults.standard.stringArray(forKey: revokedKey) ?? []) }
+        set { UserDefaults.standard.set(Array(newValue), forKey: revokedKey) }
+    }
+
+    static func revoke(_ shareID: String) {
+        var s = revokedIDs; s.insert(shareID.lowercased()); revokedIDs = s
+    }
+
+    /// Clear a revocation (e.g. the same person is re-added later), so they can
+    /// see us again after the next publish.
+    static func unrevoke(_ shareID: String) {
+        var s = revokedIDs; s.remove(shareID.lowercased()); revokedIDs = s
     }
 
     // MARK: Invite links (texted / shared)
@@ -144,10 +168,11 @@ enum CompareShare {
             return .failure(.other("Could not encode model."))
         }
         let rec = CKRecord(recordType: recordType, recordID: recordID(for: myShareID))
-        rec["name"]   = name.isEmpty ? "MyFeelsLike user" : name
-        rec["ts"]     = model.lastFitAt
-        rec["schema"] = schemaVersion
-        rec["json"]   = json
+        rec["name"]    = name.isEmpty ? "MyFeelsLike user" : name
+        rec["ts"]      = model.lastFitAt
+        rec["schema"]  = schemaVersion
+        rec["json"]    = json
+        rec["revoked"] = revokedIDs.sorted().joined(separator: ",")
         do {
             _ = try await database.modifyRecords(saving: [rec], deleting: [],
                                                  savePolicy: .allKeys, atomically: false)
@@ -178,6 +203,11 @@ enum CompareShare {
         guard !cleaned.isEmpty else { return .failure(.peerNotFound) }
         do {
             let rec = try await database.record(for: recordID(for: cleaned))
+            // They cancelled the comparison if our own share ID is in their
+            // revoked list — treat it as ended so we drop them too.
+            let revoked = (rec["revoked"] as? String)?
+                .split(separator: ",").map { String($0) } ?? []
+            if revoked.contains(myShareID) { return .failure(.endedByPeer) }
             guard let json = rec["json"] as? String, let data = json.data(using: .utf8),
                   let model = try? JSONDecoder().decode(RegressionState.self, from: data) else {
                 return .failure(.peerUnreadable)
