@@ -252,6 +252,7 @@ struct ContentView: View {
             CompareView(nearby: nearby,
                         ownSeries: weather.isRefreshing ? [] : bandSeries(regressionState),
                         bandSeries: bandSeries,
+                        ownModel: regressionState,
                         ownSunSplit: sunFeatureActive,
                         ink: skyInk)
         } else {

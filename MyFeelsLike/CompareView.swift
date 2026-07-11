@@ -12,6 +12,7 @@
 
 import SwiftUI
 import Charts
+import UIKit
 
 // MARK: - Bottom-bar icon
 
@@ -107,12 +108,19 @@ struct CompareView: View {
     /// Builds a color-band series by applying a peer's model to *our* local
     /// forecast, so every band compares the same weather.
     let bandSeries: (RegressionState?) -> [ForecastPoint]
+    /// The phone user's own model, published so others can compare with them.
+    var ownModel: RegressionState? = nil
     /// Whether the phone user's own model learned a sun effect (for the "You" band).
     var ownSunSplit: Bool = false
     /// Legible text color over the weather-sky background.
     var ink: Color = .primary
 
+    @StateObject private var coordinator = CompareCoordinator()
+
     @State private var showComingSoon = false
+    @State private var peerIDDraft = ""
+    @State private var peerNameDraft = ""
+    @State private var showCopied = false
 
     @AppStorage(SettingsKey.compareName) private var compareName = ""
     @AppStorage(SettingsKey.didAskCompareName) private var didAskCompareName = false
@@ -154,17 +162,38 @@ struct CompareView: View {
 
                 if nearby.isBrowsing { discoverySection }
 
+                // Warn when your own iCloud can't publish / refresh.
+                if coordinator.accountAvailable == false {
+                    warningBanner("You're not signed into iCloud on this phone, so others can't see your MyFeelsLike and saved comparisons can't refresh. Sign in from the Settings app.")
+                } else if coordinator.publishFailed {
+                    warningBanner("Couldn't share your MyFeelsLike just now. Check your connection, then tap refresh.")
+                }
+
                 Divider()
 
-                // Every band is your local weather run through that person's
-                // model, so they compare like-for-like.
-                Text("Same weather, each person's model")
-                    .font(.caption).foregroundStyle(ink.opacity(0.75))
+                HStack {
+                    // Every band is your local weather run through that person's
+                    // model, so they compare like-for-like.
+                    Text("Same weather, each person's model")
+                        .font(.caption).foregroundStyle(ink.opacity(0.75))
+                    Spacer(minLength: 0)
+                    Button {
+                        Task { await coordinator.refresh(myName: myDisplayName, myModel: ownModel) }
+                    } label: {
+                        if coordinator.isRefreshing { ProgressView().controlSize(.mini) }
+                        else { Image(systemName: "arrow.clockwise").font(.caption) }
+                    }
+                    .buttonStyle(.plain).foregroundStyle(ink)
+                    .disabled(coordinator.isRefreshing)
+                }
 
-                // Own band first, then each connected peer's. All bands are the
-                // same width so they line up for comparison (a link ends when
-                // the app closes, so no per-row cancel is needed — see "End all").
+                // Own band first, then saved (CloudKit) peers, then any live
+                // nearby peers. All bands are the same width so they line up.
                 CompareBandRow(name: "You", series: ownSeries, sunSplit: ownSunSplit, ink: ink)
+
+                ForEach(coordinator.loaded) { lp in
+                    savedPeerRow(lp)
+                }
                 ForEach(nearby.peers) { peer in
                     CompareBandRow(name: peerLabel(peer), series: bandSeries(peer.model),
                                    sunSplit: peer.model?.selectedFeatures.contains(.sun) ?? false,
@@ -173,11 +202,14 @@ struct CompareView: View {
 
                 if !nearby.peers.isEmpty {
                     Button(role: .destructive) { nearby.cancelAll() } label: {
-                        Label("End all links", systemImage: "xmark.circle")
+                        Label("End nearby links", systemImage: "xmark.circle")
                     }
                     .font(.footnote)
                     .padding(.top, 4)
                 }
+
+                Divider()
+                linkByIDSection
 
                 Spacer(minLength: 0)
             }
@@ -216,6 +248,7 @@ struct CompareView: View {
         }
         .onAppear {
             nearby.startAdvertising()          // discoverable while this screen is open
+            coordinator.start(myName: myDisplayName, myModel: ownModel)
             if !didAskCompareName,
                compareName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 showNamePrompt = true
@@ -240,6 +273,110 @@ struct CompareView: View {
         .padding(.vertical, 5)
         .background(.regularMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(.secondary.opacity(0.3), lineWidth: 0.5))
+    }
+
+    // MARK: Saved (CloudKit) peers
+
+    /// The display name others see: the chosen compare name, else the device name.
+    private var myDisplayName: String {
+        let n = compareName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return n.isEmpty ? UIDevice.current.name : n
+    }
+
+    /// One saved peer: their band when loaded, a spinner while loading, or a
+    /// plain-language reason it couldn't load.
+    @ViewBuilder
+    private func savedPeerRow(_ lp: LoadedPeer) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                Text(lp.peer.name).font(.caption.weight(.medium)).foregroundStyle(ink)
+                if case .loading = lp.state { ProgressView().controlSize(.mini) }
+                Spacer(minLength: 0)
+                Button { coordinator.remove(lp.peer) } label: {
+                    Image(systemName: "xmark.circle.fill").font(.caption).foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            switch lp.state {
+            case .loading:
+                FeelsBand(series: [])       // gray placeholder keeps the row height steady
+            case .loaded(let model):
+                FeelsBand(series: bandSeries(model),
+                          sunSplit: model.selectedFeatures.contains(.sun))
+            case .failed(let err):
+                Text(failureText(err, name: lp.peer.name))
+                    .font(.caption2).foregroundStyle(.orange)
+            }
+        }
+    }
+
+    /// Plain-language reason a peer couldn't load, naming whose side is at fault.
+    private func failureText(_ err: CompareError, name: String) -> String {
+        switch err {
+        case .peerNotFound:
+            return "\(name) isn't sharing right now — they may need to open Compare, or sign into iCloud on their phone."
+        case .peerUnreadable:
+            return "\(name)'s MyFeelsLike couldn't be read (their app may be a different version)."
+        case .youNotSignedIn:
+            return "Sign into iCloud on this phone to load \(name)."
+        case .noModel:
+            return "\(name) hasn't built a model yet."
+        case .other(let m):
+            return m
+        }
+    }
+
+    private func warningBanner(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text(text)
+        }
+        .font(.caption2).foregroundStyle(.orange)
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: Link by ID (hand-off before texted invites land)
+
+    @ViewBuilder
+    private var linkByIDSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Link by ID").font(.caption.weight(.semibold)).foregroundStyle(ink)
+
+            // Your ID, to hand to someone else.
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Your compare ID").font(.caption2).foregroundStyle(ink.opacity(0.7))
+                    Text(CompareShare.myShareID)
+                        .font(.caption2.monospaced()).foregroundStyle(ink)
+                        .lineLimit(1).truncationMode(.middle)
+                }
+                Spacer(minLength: 0)
+                Button {
+                    UIPasteboard.general.string = CompareShare.myShareID
+                    showCopied = true
+                } label: { chip(showCopied ? "Copied" : "Copy", systemImage: "doc.on.doc") }
+                .buttonStyle(.plain)
+            }
+
+            // Add someone by their ID.
+            TextField("Paste someone's ID", text: $peerIDDraft)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled().textInputAutocapitalization(.never)
+            TextField("Their name (optional)", text: $peerNameDraft)
+                .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.words)
+            Button {
+                let id = peerIDDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !id.isEmpty else { return }
+                coordinator.add(shareID: id, name: peerNameDraft,
+                                myName: myDisplayName, myModel: ownModel)
+                peerIDDraft = ""; peerNameDraft = ""
+            } label: { chip("Add", systemImage: "plus.circle") }
+            .buttonStyle(.plain)
+            .disabled(peerIDDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
     }
 
     // MARK: Discovery list
