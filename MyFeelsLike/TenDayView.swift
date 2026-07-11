@@ -540,9 +540,6 @@ struct TenDayView: View {
         let base = dom.lowerBound
         let windPts = historic + series
         VStack(alignment: .leading, spacing: 2) {
-            ChartLegendRow(entries: windLegendEntries, ink: axisInk)
-            .padding(.leading, 36)
-
             Chart {
                 // Areas back→front over history + forecast: gust (translucent
                 // red) → wind (solid red) → rain (solid blue). The gust and
@@ -579,7 +576,10 @@ struct TenDayView: View {
                 }
             }
             .chartLegend(.hidden)
-            .chartYScale(domain: dom)
+            // Flipped: zero at the top (nearest the heatmap), so the wind/rain
+            // areas hang downward and this chart shares the day labels above
+            // rather than repeating its own.
+            .chartYScale(domain: [dom.upperBound, dom.lowerBound])
             .chartYAxis {
                 AxisMarks(position: .leading) { _ in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
@@ -588,17 +588,18 @@ struct TenDayView: View {
                 }
             }
             .chartXAxis {
-                AxisMarks(values: .stride(by: .day, count: 1)) { value in
+                // Grid lines only — day labels are shared with the chart above.
+                AxisMarks(values: .stride(by: .day, count: 1)) { _ in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
                     AxisTick().foregroundStyle(axisInk.opacity(0.6))
-                    AxisValueLabel {
-                        Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "")
-                            .font(.caption).foregroundStyle(axisInk)
-                    }
                 }
             }
             .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
             .frame(height: height - 20)
+
+            // Legend below the panel (moved from the top), near the largest values.
+            ChartLegendRow(entries: windLegendEntries, ink: axisInk)
+                .padding(.leading, 36)
         }
     }
 }

@@ -198,11 +198,16 @@ struct HereTodayView: View {
     @ViewBuilder
     private func myFeelsLikePanel(height: CGFloat) -> some View {
         let splitActive = sunFeatureActive && hasModel
+        // In separate style the title sits *between* the two bands (for symmetry),
+        // so it's omitted from the top here.
+        let separateSplit = splitActive && sunShadeStyle == .separate
         VStack(alignment: .leading, spacing: 2) {
-            Text(splitActive && sunShadeStyle == .gradient ? "MyFeelsLike — sun / shade"
-                                                           : "MyFeelsLike by hour")
-                .font(.caption2).foregroundStyle(axisInk)
-                .padding(.leading, 36)
+            if !separateSplit {
+                Text(splitActive && sunShadeStyle == .gradient ? "MyFeelsLike — sun / shade"
+                                                               : "MyFeelsLike by hour")
+                    .font(.caption2).foregroundStyle(axisInk)
+                    .padding(.leading, 36)
+            }
             if hasModel {
                 if sunFeatureActive {
                     if sunShadeStyle == .separate { separateColorBands(height: height) }
@@ -292,13 +297,18 @@ struct HereTodayView: View {
     /// axis, so the sun band lines up under the shade band and simply has gaps
     /// where there's no daylight. Cloud/sun markers label each.
     private func separateColorBands(height: CGFloat) -> some View {
-        let barH = max(10, (height - 6) / 2)
-        return VStack(spacing: 6) {
+        // Reserve a row for the centered title; split the rest between the bands.
+        let barH = max(10, (height - 18) / 2)
+        return VStack(spacing: 3) {
             soloBand(icon: "cloud.fill", height: barH) { p in
                 (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
                     ColorScale.feelsColor(score: $0, opacity: p.myFeelsLikeShadeOpacity, floor: 0.2)
                 }
             }
+            // Title centered between the two bands, for symmetry.
+            Text("MyFeelsLike by hour")
+                .font(.caption2).foregroundStyle(axisInk)
+                .padding(.leading, 36)
             soloBand(icon: "sun.max.fill", height: barH) { p in
                 guard p.isDaylight, let s = p.myFeelsLikeSunScore else { return nil }
                 return ColorScale.feelsColor(score: s, opacity: p.myFeelsLikeSunOpacity, floor: 0.2)
@@ -457,9 +467,6 @@ struct HereTodayView: View {
         let dom = windYDomain
         let base = dom.lowerBound
         VStack(alignment: .leading, spacing: 2) {
-            ChartLegendRow(entries: windLegendEntries, ink: axisInk)
-            .padding(.leading, 36)
-
             Chart {
                 ForEach(series) { p in
                     let gust = useFahrenheit ? p.windGustMPH : p.windGustKPH
@@ -534,7 +541,11 @@ struct HereTodayView: View {
                 }
             }
             .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
-            .frame(height: height - 4)
+            .frame(height: height - 20)
+
+            // Legend below the panel (moved from the top), near the largest values.
+            ChartLegendRow(entries: windLegendEntries, ink: axisInk)
+                .padding(.leading, 36)
         }
     }
 }
