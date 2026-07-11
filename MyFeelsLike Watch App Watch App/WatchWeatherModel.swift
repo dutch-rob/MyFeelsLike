@@ -19,6 +19,9 @@ import WidgetKit
 final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var series24h: [ForecastPoint] = []
     @Published var series10d: [ForecastPoint] = []
+    /// Observed past ~1 day (kind .historic), so the 10-day heatmap's first
+    /// daily column is complete (a full first bar, like the phone).
+    @Published var historic: [ForecastPoint] = []
     @Published var current: ForecastPoint?
     @Published var isLoading = false
     @Published var errorText: String?
@@ -97,8 +100,22 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
                                                location: location)
             let cur = WeatherMapping.mapCurrent(weather.currentWeather, location: location)
 
+            // Observed past — a separate query (like the phone) starting at 00:00
+            // of the previous day, so the 10-day heatmap's first daily column is
+            // complete. Non-fatal: a failure just leaves the first bar partial.
+            let cal = Calendar.current
+            let histStart = cal.date(byAdding: .day, value: -1, to: cal.startOfDay(for: now))
+                ?? now.addingTimeInterval(-48 * 3600)
+            let histWeather = try? await weatherService.weather(
+                for: location, including: .hourly(startDate: histStart, endDate: now))
+            let hist = histWeather.map {
+                WeatherMapping.mapPoints(from: $0.forecast, start: histStart, end: now,
+                                         location: location, kind: .historic)
+            } ?? []
+
             series24h = s24
             series10d = s10
+            historic  = hist
             current   = cur
             isLoading = false
             errorText = nil
@@ -127,6 +144,7 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
         }
         series24h = predicted(series24h)
         series10d = predicted(series10d)
+        historic  = predicted(historic)
         if var c = current {
             c.applyPrediction(state: state, scenario: scenario)
             if sunSplit { c.applySunShadePrediction(state: state, scenario: scenario) }

@@ -17,6 +17,10 @@ struct WatchTenDayView: View {
     @State private var showPlaces = false
     private var useF: Bool { WatchSyncReceiver.shared.payload?.useFahrenheit ?? false }
 
+    /// Observed past + forecast, oldest → newest — so all three charts span the
+    /// same range and the heatmap's first daily column is complete (full bar).
+    private var allPoints: [ForecastPoint] { model.historic + model.series10d }
+
     /// Whether the forecast carries personalized feels-like scores yet.
     private var hasModel: Bool {
         model.series10d.contains { $0.myFeelsLikeScore != nil }
@@ -24,7 +28,7 @@ struct WatchTenDayView: View {
 
     /// Tight y-range covering the four temperature curves (+ small padding).
     private var tempYDomain: ClosedRange<Double> {
-        let vals = model.series10d.flatMap { p -> [Double] in
+        let vals = allPoints.flatMap { p -> [Double] in
             useF ? [p.temperatureF, p.wetBulbF, p.dewPointF, p.apparentTemperatureF]
                  : [p.temperatureC, p.wetBulbC, p.dewPointC, p.apparentTemperatureC]
         }
@@ -78,7 +82,7 @@ struct WatchTenDayView: View {
 
     private var tempChart: some View {
         let base = tempYDomain.lowerBound
-        return Chart(model.series10d) { p in
+        return Chart(allPoints) { p in
             AreaMark(x: .value("t", p.date),
                      yStart: .value("base", base),
                      yEnd: .value("temp", useF ? p.temperatureF : p.temperatureC),
@@ -116,7 +120,7 @@ struct WatchTenDayView: View {
 
     private var heatmapChart: some View {
         let cal = Calendar.current
-        return Chart(model.series10d) { p in
+        return Chart(allPoints) { p in
             let dayStart = cal.startOfDay(for: p.date)
             let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
             let hour = cal.component(.hour, from: p.date)
@@ -165,7 +169,7 @@ struct WatchTenDayView: View {
     // wind (solid red), precip chance (solid blue) — with a dashed gust line and
     // a solid wind line on top.
     private var windChart: some View {
-        Chart(model.series10d) { p in
+        Chart(allPoints) { p in
             AreaMark(x: .value("t", p.date),
                      yStart: .value("base", 0),
                      yEnd: .value("gust", useF ? p.windGustMPH : p.windGustKPH),
