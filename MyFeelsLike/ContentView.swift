@@ -224,6 +224,7 @@ struct ContentView: View {
             if DemoMode.isActive {
                 seedDemo()
                 weather.loadDemo()
+                applyScreenshotScreen()   // navigate for App Store screenshot capture
             } else {
                 await loadWeather()
                 places.refreshWeatherIfNeeded()
@@ -514,6 +515,21 @@ struct ContentView: View {
     private func syncDeveloperData() {
         guard !DemoMode.isActive else { return }
         DeveloperDataSync.sync(consent: shareData, ratings: ratings, model: regressionState)
+    }
+
+    /// Navigate to a specific screen for App Store screenshot capture, driven by
+    /// the `-UITestScreen <name>` launch argument (demo runs only). "today" is the
+    /// default, so no arg is needed for it.
+    private func applyScreenshotScreen() {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-UITestScreen"), i + 1 < args.count else { return }
+        switch args[i + 1] {
+        case "tenday": selectedTab = 2
+        case "table":  selectedTab = 3          // real table tab (see tabPagerWithTable)
+        case "rate":   showRate = true
+        case "places": showPlaces = true
+        default:       break                    // "today" → default tab 1
+        }
     }
 
     /// Seed canned sample ratings + places for demo/screenshot runs (in-memory).

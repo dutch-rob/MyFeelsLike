@@ -1,8 +1,18 @@
 default_platform(:ios)
 
+# NOTE: fastlane's built-in `capture_screenshots` (snapshot) crashes on Xcode 26
+# — the new `simctl` JSON makes snapshot call `.name` on a String
+# (test_command_generator.rb: `device.devicetype.name`). Until that's fixed
+# upstream, we drive App Store screenshots through tools/make-screenshots.sh,
+# which uses the app's demo mode + the `-UITestScreen` launch arg and captures
+# with `xcrun simctl io screenshot`. Output lands in fastlane/screenshots/en-US
+# with the same "<Device>-NN_name.png" naming.
+
 platform :ios do
-  desc "Generate App Store screenshots for iPhone + iPad (uses demo mode)"
+  desc "Generate App Store screenshots for iPhone + iPad (demo mode, via simctl)"
   lane :screenshots do
-    capture_screenshots(scheme: "MyFeelsLike")
+    sh("cd .. && xcodebuild build -scheme MyFeelsLike " \
+       "-destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' -quiet")
+    sh("cd .. && bash tools/make-screenshots.sh")
   end
 end
