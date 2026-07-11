@@ -515,7 +515,10 @@ struct HereTodayView: View {
                 }
             }
             .chartLegend(.hidden)
-            .chartYScale(domain: dom)
+            // Flipped: zero at the top (nearest the color bar), so the wind/rain
+            // areas hang downward and this chart shares the hour labels of the
+            // temperature chart above rather than repeating its own.
+            .chartYScale(domain: [dom.upperBound, dom.lowerBound])
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
@@ -524,17 +527,14 @@ struct HereTodayView: View {
                 }
             }
             .chartXAxis {
-                AxisMarks(values: .stride(by: .hour, count: 2)) { value in
+                // Grid lines only — the hour labels are shared with the chart above.
+                AxisMarks(values: .stride(by: .hour, count: 2)) { _ in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
                     AxisTick().foregroundStyle(axisInk.opacity(0.6))
-                    AxisValueLabel(centered: true) {
-                        Text(value.as(Date.self).map { hourLabel(for: $0) } ?? "")
-                            .font(.caption).foregroundStyle(axisInk)
-                    }
                 }
             }
             .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
-            .frame(height: height - 20)
+            .frame(height: height - 4)
         }
     }
 }
