@@ -198,20 +198,21 @@ struct HereTodayView: View {
     @ViewBuilder
     private func myFeelsLikePanel(height: CGFloat) -> some View {
         let splitActive = sunFeatureActive && hasModel
-        // In separate style the title sits *between* the two bands (for symmetry),
-        // so it's omitted from the top here.
+        // In separate style the title sits between the two bands, and in gradient
+        // style it's overlaid inside the band — so it's omitted from the top in
+        // both split modes.
         let separateSplit = splitActive && sunShadeStyle == .separate
+        let gradientSplit = splitActive && sunShadeStyle == .gradient
         VStack(alignment: .leading, spacing: 2) {
-            if !separateSplit {
-                Text(splitActive && sunShadeStyle == .gradient ? "MyFeelsLike — sun / shade"
-                                                               : "MyFeelsLike by hour")
+            if !separateSplit && !gradientSplit {
+                Text("MyFeelsLike by hour")
                     .font(.caption2).foregroundStyle(axisInk)
                     .padding(.leading, 36)
             }
             if hasModel {
                 if sunFeatureActive {
                     if sunShadeStyle == .separate { separateColorBands(height: height) }
-                    else { splitColorBand(height: height) }
+                    else { splitColorBand(height: height + 14) }   // reclaim the title row
                 }
                 else { singleColorBand(height: height) }
             } else {
@@ -263,32 +264,40 @@ struct HereTodayView: View {
     /// needs the full height to read). Night cells (sun == shade) fall back to
     /// the solid MyFeelsLike color.
     private func splitColorBand(height: CGFloat) -> some View {
-        Chart {
-            ForEach(series) { p in
-                let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date
-                let style: AnyShapeStyle = sunShadeGradient(p, vertical: true).map(AnyShapeStyle.init)
-                    ?? AnyShapeStyle(bandColor(p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity))
-                RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                              yStart: .value("y0", 0), yEnd: .value("y1", 1))
-                    .foregroundStyle(style)
-            }
-        }
-        .chartYScale(domain: 0...1)
-        // Tiny shade/sun markers in the leading gutter (cloud on top, sun below)
-        // cue the vertical direction; they also reserve the leading width so the
-        // band lines up with the temperature chart above.
-        .chartYAxis {
-            AxisMarks(position: .leading, values: [0.25, 0.75]) { v in
-                AxisValueLabel {
-                    Image(systemName: (v.as(Double.self) ?? 0) > 0.5 ? "cloud.fill" : "sun.max.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(axisInk)
-                        .frame(width: 16, alignment: .leading)
+        ZStack {
+            Chart {
+                ForEach(series) { p in
+                    let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date
+                    let style: AnyShapeStyle = sunShadeGradient(p, vertical: true).map(AnyShapeStyle.init)
+                        ?? AnyShapeStyle(bandColor(p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity))
+                    RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
+                                  yStart: .value("y0", 0), yEnd: .value("y1", 1))
+                        .foregroundStyle(style)
                 }
             }
+            .chartYScale(domain: 0...1)
+            // Tiny shade/sun markers in the leading gutter (cloud on top, sun below)
+            // cue the vertical direction; they also reserve the leading width so the
+            // band lines up with the temperature chart above.
+            .chartYAxis {
+                AxisMarks(position: .leading, values: [0.25, 0.75]) { v in
+                    AxisValueLabel {
+                        Image(systemName: (v.as(Double.self) ?? 0) > 0.5 ? "cloud.fill" : "sun.max.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(axisInk)
+                            .frame(width: 16, alignment: .leading)
+                    }
+                }
+            }
+            .chartXAxis(.hidden)
+            .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+
+            // Title in the middle of the band, outlined so it stays legible over
+            // whatever colors sit under it (like the watch complication number).
+            OutlinedText(text: "MyFeelsLike — sun / shade", fill: .white, outline: .black, width: 1.5)
+                .font(.system(size: 14, weight: .bold))
+                .padding(.leading, 36)
         }
-        .chartXAxis(.hidden)
-        .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
         .frame(height: height)
     }
 
@@ -343,6 +352,13 @@ struct HereTodayView: View {
         .chartXAxis(.hidden)
         .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
         .frame(height: height)
+        // Title overlaid in the middle of the band, outlined so it stays legible
+        // over whatever colors sit under it (like the watch complication number).
+        .overlay {
+            OutlinedText(text: "MyFeelsLike — sun / shade", fill: .white, outline: .black, width: 1.5)
+                .font(.system(size: 14, weight: .bold))
+                .padding(.leading, 36)
+        }
     }
 
     /// Color for a split-band cell: the score's color, opacity carrying
@@ -546,6 +562,30 @@ struct HereTodayView: View {
             // Legend below the panel (moved from the top), near the largest values.
             ChartLegendRow(entries: windLegendEntries, ink: axisInk)
                 .padding(.leading, 36)
+        }
+    }
+}
+
+// MARK: - Outlined text (legible over any background)
+
+/// Text drawn with a contrasting outline (8-direction stroke + fill on top), so
+/// it stays readable over a varying color band — the same technique used for the
+/// number in the round watch complication.
+private struct OutlinedText: View {
+    let text: String
+    let fill: Color
+    let outline: Color
+    var width: CGFloat = 1
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<8, id: \.self) { i in
+                let angle = Double(i) / 8.0 * 2.0 * .pi
+                Text(text)
+                    .foregroundStyle(outline)
+                    .offset(x: width * CGFloat(cos(angle)), y: width * CGFloat(sin(angle)))
+            }
+            Text(text).foregroundStyle(fill)
         }
     }
 }
