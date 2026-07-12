@@ -526,10 +526,11 @@ struct ContentView: View {
         switch args[i + 1] {
         case "tenday": selectedTab = 2
         case "table":  selectedTab = 3          // real table tab (see tabPagerWithTable)
-        case "rate":   showRate = true
-        case "places": showPlaces = true
         default:       break                    // "today" → default tab 1
         }
+        // The Rate / Places sheets aren't auto-presented here: SwiftUI drops an
+        // isPresented change made this early in the view's life, so those two
+        // screens are captured by tapping their bottom-bar buttons (demo mode).
     }
 
     /// Seed canned sample ratings + places for demo/screenshot runs (in-memory).

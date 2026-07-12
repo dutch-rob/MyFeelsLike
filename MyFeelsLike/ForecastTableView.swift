@@ -105,14 +105,25 @@ struct ForecastTableView: View {
         wMyFL + myFLTrailingGap + wTime + wSym + wUV + wTemp + wWet + wDew + wWind + wPrecip + wCloud + 16
     }
 
-    // MARK: - 25%-darker variants of the graph colors, used for data text
+    // MARK: - Data-text colors, adapted to the sky's day/night for contrast
 
-    private static let cTemp:   Color = .green.mix(  with: .black, by: 0.25)
-    private static let cWet:    Color = .blue.mix(   with: .black, by: 0.25)
-    private static let cDew:    Color = .red.mix(    with: .black, by: 0.25)
-    private static let cWind:   Color = .red.mix(    with: .black, by: 0.25)
-    private static let cPrecip: Color = .blue.mix(   with: .black, by: 0.25)
-    private static let cMyFL:   Color = .purple.mix( with: .black, by: 0.25)
+    // The parent forces colorScheme to match the weather (light by day, dark by
+    // night), so the value colors darken over the pale daytime sky and lighten
+    // over the dark night sky — keeping the green/blue/red coding legible on both.
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// A graph color shifted for contrast against the current background: mixed
+    /// toward black by day, toward white by night.
+    private func valueColor(_ base: Color) -> Color {
+        colorScheme == .dark ? base.mix(with: .white, by: 0.35)
+                             : base.mix(with: .black, by: 0.45)
+    }
+    private var cTemp:   Color { valueColor(.green) }
+    private var cWet:    Color { valueColor(.blue) }
+    private var cDew:    Color { valueColor(.red) }
+    private var cWind:   Color { valueColor(.red) }
+    private var cPrecip: Color { valueColor(.blue) }
+    private var cMyFL:   Color { valueColor(.purple) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -222,7 +233,7 @@ struct ForecastTableView: View {
 
             cell(p.kind == .current ? "now" : timeLabel(for: p.date),
                  width: wTime, align: .leading,
-                 color: p.kind == .current ? Self.cMyFL : nil)
+                 color: p.kind == .current ? cMyFL : nil)
 
             // Weather condition icon
             Image(systemName: p.symbolName)
@@ -230,12 +241,12 @@ struct ForecastTableView: View {
                 .frame(width: wSym, alignment: .center)
 
             cell(fmtUV(p.uvIndex),                                       width: wUV,    align: .trailing)
-            cell(fmtTemp(p),                                             width: wTemp,  align: .trailing, color: Self.cTemp)
-            cell(fmt1(useFahrenheit ? p.wetBulbF    : p.wetBulbC),       width: wWet,   align: .trailing, color: Self.cWet)
-            cell(fmt1(useFahrenheit ? p.dewPointF   : p.dewPointC),      width: wDew,   align: .trailing, color: Self.cDew)
-            cell(fmtWind(p),                                             width: wWind,  align: .trailing, color: Self.cWind)
+            cell(fmtTemp(p),                                             width: wTemp,  align: .trailing, color: cTemp)
+            cell(fmt1(useFahrenheit ? p.wetBulbF    : p.wetBulbC),       width: wWet,   align: .trailing, color: cWet)
+            cell(fmt1(useFahrenheit ? p.dewPointF   : p.dewPointC),      width: wDew,   align: .trailing, color: cDew)
+            cell(fmtWind(p),                                             width: wWind,  align: .trailing, color: cWind)
             // CurrentWeather has no precipitation or cloud-by-altitude breakdown.
-            cell(p.kind == .current ? "" : fmtPrecip(p), width: wPrecip, align: .trailing, color: Self.cPrecip)
+            cell(p.kind == .current ? "" : fmtPrecip(p), width: wPrecip, align: .trailing, color: cPrecip)
             cell(fmtCloud(p),   width: wCloud,  align: .trailing)
         }
         .font(.caption)

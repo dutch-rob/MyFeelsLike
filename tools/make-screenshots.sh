@@ -27,7 +27,9 @@ DEVICES=(
   "352D53EB-F8D7-42D7-90E3-145E9F17E45C|iPhone 17 Pro Max"
   "B62C181F-E6F0-4053-859E-42A583057F1E|iPad Pro 13-inch (M5)"
 )
-SCREENS=(today tenday table rate places)
+# Rate / Places are sheets that don't auto-present via a launch arg — capture
+# those by tapping the bottom-bar buttons while running in demo mode.
+SCREENS=(today tenday table)
 
 shoot() {   # udid  devname  index  screen
   local udid="$1" dev="$2" idx="$3" screen="$4"
