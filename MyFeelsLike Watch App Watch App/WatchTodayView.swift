@@ -44,6 +44,18 @@ struct WatchTodayView: View {
         return (lo - pad)...(hi + pad)
     }
 
+    /// Top of the wind/precip y-range (0 is the other end). Used to flip the
+    /// panel so it hangs downward like the phone.
+    private var windYMax: Double {
+        let vals = model.series24h.flatMap { p -> [Double] in
+            [useF ? p.windGustMPH : p.windGustKPH,
+             useF ? p.windSpeedMPH : p.windSpeedKPH,
+             p.precipProbability * 100]
+        }
+        let hi = vals.max() ?? 1
+        return hi + max(1, hi * 0.08)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -224,6 +236,9 @@ struct WatchTodayView: View {
                      series: .value("s", "windL"))
                 .foregroundStyle(.red).interpolationMethod(.linear)
         }
+        // Flipped like the phone: zero at the top (nearest the color band), so
+        // the wind/precip areas hang downward instead of growing up.
+        .chartYScale(domain: [windYMax, 0])
         .chartYAxis { plainYAxis() }
         .chartXAxis { hourlyXAxis() }
     }
