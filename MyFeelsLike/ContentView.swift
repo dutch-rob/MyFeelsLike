@@ -44,8 +44,8 @@ struct ContentView: View {
     @AppStorage(SettingsKey.scenarioDress)    private var scenarioDress:    Int = 0
     @AppStorage(SettingsKey.scenarioSun)      private var scenarioSun:      Int = 0
     @AppStorage(GraphKey.temp)     private var graphTemp     = true
-    @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
-    @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
+    @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = false
+    @AppStorage(GraphKey.dewPoint) private var graphDewPoint = false
     @AppStorage(GraphKey.feels)    private var graphFeels    = true
     @AppStorage(GraphKey.color)   private var graphColor   = true
     @AppStorage(GraphKey.precip)   private var graphPrecip   = true

@@ -39,8 +39,8 @@ struct TenDayView: View {
     @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
     @AppStorage(SettingsKey.use12HourClock) private var use12Hour = false
     @AppStorage(GraphKey.temp)     private var graphTemp     = true
-    @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
-    @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
+    @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = false
+    @AppStorage(GraphKey.dewPoint) private var graphDewPoint = false
     @AppStorage(GraphKey.feels)    private var graphFeels    = true
     @AppStorage(GraphKey.color)   private var graphColor   = true
     @AppStorage(GraphKey.precip)   private var graphPrecip   = true
@@ -48,7 +48,7 @@ struct TenDayView: View {
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
-    @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.area
+    @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 

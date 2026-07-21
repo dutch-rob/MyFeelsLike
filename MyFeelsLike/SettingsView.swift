@@ -16,8 +16,8 @@ struct SettingsView: View {
 
     // #10: which graph series to show. All default on.
     @AppStorage(GraphKey.temp)     private var graphTemp     = true
-    @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = true
-    @AppStorage(GraphKey.dewPoint) private var graphDewPoint = true
+    @AppStorage(GraphKey.wetBulb)  private var graphWetBulb  = false
+    @AppStorage(GraphKey.dewPoint) private var graphDewPoint = false
     @AppStorage(GraphKey.feels)    private var graphFeels    = true
     @AppStorage(GraphKey.color)   private var graphColor   = true
     @AppStorage(GraphKey.precip)   private var graphPrecip   = true
@@ -29,7 +29,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.shareForCompare) private var shareForCompare = true
     @AppStorage(SettingsKey.syncAcrossDevices) private var syncAcrossDevices = false
     @AppStorage(SettingsKey.sunShadeStyle)   private var sunShadeStyle  = SunShadeStyle.separate
-    @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.area
+    @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
 
     @Environment(\.modelContext) private var modelContext
