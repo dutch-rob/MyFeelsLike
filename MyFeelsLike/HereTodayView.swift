@@ -47,7 +47,10 @@ struct HereTodayView: View {
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
+    @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.area
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    private var linesOnly: Bool { chartStyle == .lines }
 
     /// The time the user is scrubbing to after a long-press on a chart. A dashed
     /// vertical line is drawn at this time across every panel, and a readout card
@@ -504,25 +507,46 @@ struct HereTodayView: View {
                     // the opaque fronts nest into clean bands — and any band still
                     // reaches the axis when the ones below it are turned off.
                     if graphTemp {
-                        AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", base),
-                                 yEnd: .value("Temp", dry),
-                                 series: .value("S", "dry"))
-                            .foregroundStyle(.green).interpolationMethod(.linear)
+                        if linesOnly {
+                            LineMark(x: .value("Time", p.date), y: .value("Temp", dry),
+                                     series: .value("S", "dry"))
+                                .foregroundStyle(.green).interpolationMethod(.linear)
+                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                        } else {
+                            AreaMark(x: .value("Time", p.date),
+                                     yStart: .value("base", base),
+                                     yEnd: .value("Temp", dry),
+                                     series: .value("S", "dry"))
+                                .foregroundStyle(.green).interpolationMethod(.linear)
+                        }
                     }
                     if graphWetBulb {
-                        AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", base),
-                                 yEnd: .value("Wet Bulb", wet),
-                                 series: .value("S", "wet"))
-                            .foregroundStyle(.blue).interpolationMethod(.linear)
+                        if linesOnly {
+                            LineMark(x: .value("Time", p.date), y: .value("Wet Bulb", wet),
+                                     series: .value("S", "wet"))
+                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                        } else {
+                            AreaMark(x: .value("Time", p.date),
+                                     yStart: .value("base", base),
+                                     yEnd: .value("Wet Bulb", wet),
+                                     series: .value("S", "wet"))
+                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                        }
                     }
                     if graphDewPoint {
-                        AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", base),
-                                 yEnd: .value("Dew Point", dew),
-                                 series: .value("S", "dew"))
-                            .foregroundStyle(.red).interpolationMethod(.linear)
+                        if linesOnly {
+                            LineMark(x: .value("Time", p.date), y: .value("Dew Point", dew),
+                                     series: .value("S", "dew"))
+                                .foregroundStyle(.red).interpolationMethod(.linear)
+                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                        } else {
+                            AreaMark(x: .value("Time", p.date),
+                                     yStart: .value("base", base),
+                                     yEnd: .value("Dew Point", dew),
+                                     series: .value("S", "dew"))
+                                .foregroundStyle(.red).interpolationMethod(.linear)
+                        }
                     }
                     // Personalized feels-like (apparent) stays a line, on top.
                     if graphFeels {
@@ -620,23 +644,31 @@ struct HereTodayView: View {
                     // Areas back→front: gust (translucent red) → wind (solid
                     // red) → rain (solid blue). The gust and wind curves are
                     // then drawn on top of the rain so they stay readable.
-                    if graphGust {
+                    if graphGust && !linesOnly {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Gust", gust), series: .value("S", "gustA"))
                             .foregroundStyle(.red.opacity(0.35)).interpolationMethod(.linear)
                     }
-                    if graphWind {
+                    if graphWind && !linesOnly {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Wind", wind), series: .value("S", "windA"))
                             .foregroundStyle(.red).interpolationMethod(.linear)
                     }
                     if graphPrecip {
-                        AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", base),
-                                 yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
-                            .foregroundStyle(.blue).interpolationMethod(.linear)
+                        if linesOnly {
+                            LineMark(x: .value("Time", p.date),
+                                     y: .value("Precip %", p.precipProbability * 100),
+                                     series: .value("S", "rainL"))
+                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                        } else {
+                            AreaMark(x: .value("Time", p.date),
+                                     yStart: .value("base", base),
+                                     yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
+                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                        }
                     }
                     // Gust dashed + wind solid lines, on top of the areas.
                     if graphGust {
@@ -670,10 +702,12 @@ struct HereTodayView: View {
             }
             .chartLegend(.hidden)
             .chartOverlay { proxy in scrubOverlay(proxy) }
-            // Flipped: zero at the top (nearest the color bar), so the wind/rain
-            // areas hang downward and this chart shares the hour labels of the
-            // temperature chart above rather than repeating its own.
-            .chartYScale(domain: [dom.upperBound, dom.lowerBound])
+            // Area mode flips the scale — zero at the top (nearest the color
+            // bar), so the wind/rain areas hang downward and share the hour
+            // labels of the temperature chart above. Lines mode reads the normal
+            // way up (zero at the bottom), matching the temperature panel.
+            .chartYScale(domain: linesOnly ? [dom.lowerBound, dom.upperBound]
+                                            : [dom.upperBound, dom.lowerBound])
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))

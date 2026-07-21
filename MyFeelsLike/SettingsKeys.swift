@@ -25,6 +25,10 @@ enum SettingsKey {
     static let lastSeenVersion   = "lastSeenVersion"
     /// How in-shade vs in-sun is drawn: SunShadeStyle raw value ("separate"/"gradient").
     static let sunShadeStyle     = "sunShadeStyle"
+    /// How the temperature / precip / wind curves are drawn: ChartSeriesStyle raw
+    /// value ("area" filled bands, or "lines" — thin curves, no fill; in lines
+    /// mode the precip/wind panel reads bottom-up like the temperature panel).
+    static let chartSeriesStyle  = "chartSeriesStyle"
     /// Publish your model so others can compare with you (default on). Off keeps
     /// you able to see others while withdrawing your own shared model.
     static let shareForCompare   = "shareForCompare"

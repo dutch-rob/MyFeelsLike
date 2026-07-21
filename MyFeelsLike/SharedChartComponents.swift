@@ -200,6 +200,16 @@ enum SunShadeStyle: String, CaseIterable {
     case gradient
 }
 
+/// How the temperature and precip/wind curves are drawn.
+/// `area` (default) fills each series from the baseline — bold, easy to read at
+/// a glance. `lines` draws thin curves with no fill — less visual weight, closer
+/// to a classic meteogram, and (unlike the filled precip/wind panel) reads
+/// bottom-up rather than hanging from the top.
+enum ChartSeriesStyle: String, CaseIterable {
+    case area
+    case lines
+}
+
 /// Shade→sun gradient for one cell: solid in-shade color across the first
 /// quarter, solid in-sun color across the last quarter, and a linear blend in
 /// the middle half. Giving each color a plateau (rather than blending edge to

@@ -29,6 +29,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.shareForCompare) private var shareForCompare = true
     @AppStorage(SettingsKey.syncAcrossDevices) private var syncAcrossDevices = false
     @AppStorage(SettingsKey.sunShadeStyle)   private var sunShadeStyle  = SunShadeStyle.separate
+    @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.area
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -85,6 +86,18 @@ struct SettingsView: View {
                 Text("Graphs")
             } footer: {
                 Text("Choose which series to show. Emptying a panel hides it; turning everything off leaves just the table.")
+            }
+
+            Section {
+                Picker("Style", selection: $chartStyle) {
+                    Text("Filled").tag(ChartSeriesStyle.area)
+                    Text("Lines").tag(ChartSeriesStyle.lines)
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Chart style")
+            } footer: {
+                Text("Filled draws each series as a colored band from the baseline. Lines draws thin curves only — lighter, more like a classic meteogram — and the precipitation/wind panel then reads bottom-up instead of hanging from the top.")
             }
 
             Section {

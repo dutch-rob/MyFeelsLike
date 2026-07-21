@@ -48,7 +48,10 @@ struct TenDayView: View {
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
+    @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.area
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    private var linesOnly: Bool { chartStyle == .lines }
 
     /// The time the user is scrubbing to after a long-press on a chart. A dashed
     /// vertical line is drawn at this time across every panel, and a readout card
@@ -607,9 +610,15 @@ struct TenDayView: View {
             .padding(.leading, 36)
 
             Chart {
-                // Past, current and forecast all share the same filled bands;
-                // a dashed vertical line marks "now" so the past is still clear.
-                tempAreas(allPoints, base: dom.lowerBound)
+                // Area mode: past, current and forecast share the same filled
+                // bands. Lines mode: dashed past + solid forecast curves (a
+                // classic meteogram), joined at "now".
+                if linesOnly {
+                    tempLines(historicPlus, suffix: "h", dash: [4, 3])
+                    tempLines(forecastPlus, suffix: "",  dash: nil)
+                } else {
+                    tempAreas(allPoints, base: dom.lowerBound)
+                }
                 if let nx = nowLineDate {
                     RuleMark(x: .value("Now", nx))
                         .foregroundStyle(axisInk.opacity(0.55))
@@ -674,23 +683,31 @@ struct TenDayView: View {
                 ForEach(windPts) { p in
                     let gust = useFahrenheit ? p.windGustMPH : p.windGustKPH
                     let wind = useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH
-                    if graphGust {
+                    if graphGust && !linesOnly {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Gust", gust), series: .value("S", "gustA"))
                             .foregroundStyle(.red.opacity(0.35)).interpolationMethod(.linear)
                     }
-                    if graphWind {
+                    if graphWind && !linesOnly {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Wind", wind), series: .value("S", "windA"))
                             .foregroundStyle(.red).interpolationMethod(.linear)
                     }
                     if graphPrecip {
-                        AreaMark(x: .value("Time", p.date),
-                                 yStart: .value("base", base),
-                                 yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
-                            .foregroundStyle(.blue).interpolationMethod(.linear)
+                        if linesOnly {
+                            LineMark(x: .value("Time", p.date),
+                                     y: .value("Precip %", p.precipProbability * 100),
+                                     series: .value("S", "rainL"))
+                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                        } else {
+                            AreaMark(x: .value("Time", p.date),
+                                     yStart: .value("base", base),
+                                     yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
+                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                        }
                     }
                 }
                 // Wind/gust curves: dashed past, solid future, joined at "now".
@@ -705,10 +722,11 @@ struct TenDayView: View {
             }
             .chartLegend(.hidden)
             .chartOverlay { proxy in scrubOverlay(proxy) }
-            // Flipped: zero at the top (nearest the heatmap), so the wind/rain
-            // areas hang downward and this chart shares the day labels above
-            // rather than repeating its own.
-            .chartYScale(domain: [dom.upperBound, dom.lowerBound])
+            // Area mode flips the scale — zero at the top (nearest the heatmap),
+            // so the wind/rain areas hang downward and share the day labels
+            // above. Lines mode reads the normal way up (zero at the bottom).
+            .chartYScale(domain: linesOnly ? [dom.lowerBound, dom.upperBound]
+                                            : [dom.upperBound, dom.lowerBound])
             .chartYAxis {
                 AxisMarks(position: .leading) { _ in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
