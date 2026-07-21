@@ -54,7 +54,7 @@ struct ContentView: View {
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     /// #3: when off, the table screen is dropped from the pager so swiping only
     /// cycles between the two graph screens.
-    @AppStorage(SettingsKey.showTable)       private var showTable     = true
+    @AppStorage(SettingsKey.showTable)       private var showTable     = false
     @Environment(\.scenePhase) private var scenePhase
 
     /// True when at least one forecast graph is enabled. When false, the 24h

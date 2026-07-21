@@ -49,6 +49,11 @@ struct HereTodayView: View {
     @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
+    /// The time the user is scrubbing to after a long-press on a chart. A dashed
+    /// vertical line is drawn at this time across every panel, and a readout card
+    /// (the "table row" for that hour) is anchored to it. nil = not scrubbing.
+    @State private var scrubDate: Date? = nil
+
     private var tempPanelVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
     private var colorPanelVisible: Bool { graphColor }
     private var windPanelVisible: Bool { graphPrecip || graphWind || graphGust }
@@ -146,6 +151,116 @@ struct HereTodayView: View {
     /// Ink for axis text/legends/titles: black by day, white by night when the
     /// sky is shown; otherwise the system color (adapts to light/dark mode).
     private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
+
+    // MARK: Scrubbing (long-press to read a specific hour's values)
+
+    /// The forecast hour nearest the scrubbed time, if any.
+    private var scrubPoint: ForecastPoint? {
+        guard let t = scrubDate else { return nil }
+        return series.min { abs($0.date.timeIntervalSince(t)) < abs($1.date.timeIntervalSince(t)) }
+    }
+
+    /// Transparent overlay for a chart that turns a long-press-then-drag into a
+    /// scrub: it maps the finger's x to a time and snaps `scrubDate` to the
+    /// nearest hour. A plain tap clears the line.
+    @ViewBuilder
+    private func scrubOverlay(_ proxy: ChartProxy) -> some View {
+        GeometryReader { geo in
+            Rectangle().fill(Color.clear).contentShape(Rectangle())
+                .gesture(
+                    LongPressGesture(minimumDuration: 0.25)
+                        .sequenced(before: DragGesture(minimumDistance: 0))
+                        .onChanged { value in
+                            if case .second(_, let drag?) = value {
+                                updateScrub(atX: drag.location.x, proxy: proxy, geo: geo)
+                            }
+                        }
+                )
+                .onTapGesture { scrubDate = nil }
+        }
+    }
+
+    private func updateScrub(atX xLocation: CGFloat, proxy: ChartProxy, geo: GeometryProxy) {
+        guard let plotFrame = proxy.plotFrame else { return }
+        let x = xLocation - geo[plotFrame].origin.x
+        guard let date = proxy.value(atX: x, as: Date.self) else { return }
+        // Snap to the nearest forecast hour so the readout matches a real row.
+        scrubDate = series.min {
+            abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
+        }?.date
+    }
+
+    /// A dashed vertical rule at the scrubbed time. Added inside each chart so
+    /// the line spans all panels at the same x. The readout card itself is a
+    /// separate HUD overlay on the temperature chart (so it can't be clipped by
+    /// the plot bounds the way a top-anchored chart annotation would).
+    @ChartContentBuilder
+    private func scrubRule() -> some ChartContent {
+        if let t = scrubDate {
+            RuleMark(x: .value("Scrub", t))
+                .foregroundStyle(axisInk.opacity(0.7))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        }
+    }
+
+    /// Compact "table row" for one hour, shown above the scrub line.
+    private func scrubReadout(_ p: ForecastPoint) -> some View {
+        let unit = useFahrenheit ? "°F" : "°C"
+        let windUnit = useFahrenheit ? "mph" : "kph"
+        return VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 6) {
+                Text(fullTimeLabel(for: p.date)).font(.caption2.weight(.semibold))
+                if let s = p.myFeelsLikeScore {
+                    let clamped = max(ColorScale.minScore, min(ColorScale.maxScore, s))
+                    Text(String(format: "%.0f", clamped))
+                        .font(.caption2.weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(ColorScale.contrastingText(forScore: clamped))
+                        .padding(.horizontal, 4).padding(.vertical, 1)
+                        .background(ColorScale.color(forScore: clamped),
+                                    in: RoundedRectangle(cornerRadius: 3))
+                }
+            }
+            readoutRow("Temp/feels \(unit)",
+                       String(format: "%.1f (%.1f)",
+                              useFahrenheit ? p.temperatureF : p.temperatureC,
+                              useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
+                       .green)
+            readoutRow("Wet bulb \(unit)",
+                       String(format: "%.1f", useFahrenheit ? p.wetBulbF : p.wetBulbC), .blue)
+            readoutRow("Dew pt \(unit)",
+                       String(format: "%.1f", useFahrenheit ? p.dewPointF : p.dewPointC), .red)
+            readoutRow("Wind (gust) \(windUnit)",
+                       String(format: "%.0f (%.0f)",
+                              useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH,
+                              useFahrenheit ? p.windGustMPH : p.windGustKPH), .red)
+            readoutRow("Precip", String(format: "%.1f mm (%.0f%%)",
+                                        p.precipitationMM, p.precipProbability * 100), .blue)
+        }
+        .padding(6)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
+        .fixedSize()
+    }
+
+    private func readoutRow(_ label: String, _ value: String, _ tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            Text(value).font(.caption2.weight(.medium)).monospacedDigit()
+                .foregroundStyle(tint.mix(with: .primary, by: 0.25))
+        }
+    }
+
+    private func fullTimeLabel(for date: Date) -> String {
+        let h = Calendar.current.component(.hour, from: date)
+        if use12Hour {
+            if h == 0 { return "12 am" }
+            if h == 12 { return "noon" }
+            return h < 12 ? "\(h) am" : "\(h - 12) pm"
+        }
+        return String(format: "%02d:00", h)
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -443,10 +558,12 @@ struct HereTodayView: View {
                             .foregroundStyle(.purple).symbolSize(110)
                     }
                 }
+                scrubRule()
             }
             // MyFeelsLike color now lives in its own panel below (see
             // myFeelsLikePanel), matching the 10-day screen's heatmap.
             .chartLegend(.hidden)
+            .chartOverlay { proxy in scrubOverlay(proxy) }
             .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
@@ -474,6 +591,17 @@ struct HereTodayView: View {
                     .foregroundStyle(axisInk)
                     .padding(.leading, 4)
                     .padding(.top, 14)
+            }
+            // Scrub readout HUD — the "table row" for the long-pressed hour.
+            // A plain overlay (not a chart annotation) so it's never clipped by
+            // the plot bounds; a tap anywhere on it dismisses the scrub line.
+            .overlay(alignment: .top) {
+                if let p = scrubPoint {
+                    scrubReadout(p)
+                        .padding(.top, 6)
+                        .transition(.opacity)
+                        .onTapGesture { scrubDate = nil }
+                }
             }
             .frame(height: height - 20)
         }
@@ -538,8 +666,10 @@ struct HereTodayView: View {
                             .foregroundStyle(.red).symbolSize(90)
                     }
                 }
+                scrubRule()
             }
             .chartLegend(.hidden)
+            .chartOverlay { proxy in scrubOverlay(proxy) }
             // Flipped: zero at the top (nearest the color bar), so the wind/rain
             // areas hang downward and this chart shares the hour labels of the
             // temperature chart above rather than repeating its own.

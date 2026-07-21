@@ -24,7 +24,7 @@ struct SettingsView: View {
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
-    @AppStorage(SettingsKey.showTable)       private var showTable     = true
+    @AppStorage(SettingsKey.showTable)       private var showTable     = false
     @AppStorage(SettingsKey.compareName)     private var compareName   = ""
     @AppStorage(SettingsKey.shareForCompare) private var shareForCompare = true
     @AppStorage(SettingsKey.syncAcrossDevices) private var syncAcrossDevices = false
