@@ -151,6 +151,9 @@ struct TenDayView: View {
     private var nowLineDate: Date? { current?.date ?? series.first?.date }
 
     // MARK: Scrubbing (long-press to read a specific hour's values)
+    // Two modes so swiping/scrolling keeps working — see HereTodayView for the
+    // rationale. Long press drops the line at "now"; a drag layer (added only
+    // while scrubbing) then moves it on any touch; ✕ on the readout dismisses.
 
     /// The forecast hour nearest the scrubbed time, if any.
     private var scrubPoint: ForecastPoint? {
@@ -158,23 +161,24 @@ struct TenDayView: View {
         return allPoints.min { abs($0.date.timeIntervalSince(t)) < abs($1.date.timeIntervalSince(t)) }
     }
 
-    /// Transparent overlay that turns a long-press-then-drag into a scrub: it
-    /// maps the finger's x to a time and snaps `scrubDate` to the nearest hour.
-    /// A plain tap clears the line.
+    /// Drop the scrub line at "now" (nearest forecast hour) on long press.
+    private func enterScrub() {
+        guard scrubDate == nil, !allPoints.isEmpty else { return }
+        let target = current?.date ?? allPoints[allPoints.count / 2].date
+        scrubDate = allPoints.min {
+            abs($0.date.timeIntervalSince(target)) < abs($1.date.timeIntervalSince(target))
+        }?.date
+    }
+
+    /// Active only while scrubbing: any touch/drag moves the line to that x.
     @ViewBuilder
-    private func scrubOverlay(_ proxy: ChartProxy) -> some View {
+    private func scrubDragLayer(_ proxy: ChartProxy) -> some View {
         GeometryReader { geo in
             Rectangle().fill(Color.clear).contentShape(Rectangle())
                 .gesture(
-                    LongPressGesture(minimumDuration: 0.25)
-                        .sequenced(before: DragGesture(minimumDistance: 0))
-                        .onChanged { value in
-                            if case .second(_, let drag?) = value {
-                                updateScrub(atX: drag.location.x, proxy: proxy, geo: geo)
-                            }
-                        }
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { updateScrub(atX: $0.location.x, proxy: proxy, geo: geo) }
                 )
-                .onTapGesture { scrubDate = nil }
         }
     }
 
@@ -185,6 +189,15 @@ struct TenDayView: View {
         scrubDate = allPoints.min {
             abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
         }?.date
+    }
+
+    /// Where the line sits across the domain (0 = far left, 1 = far right), so
+    /// the readout can sit on the opposite side and keep the line area visible.
+    private var scrubFraction: Double {
+        guard let t = scrubDate, let dom = dateDomain else { return 0.5 }
+        let total = dom.upperBound.timeIntervalSince(dom.lowerBound)
+        guard total > 0 else { return 0.5 }
+        return min(1, max(0, t.timeIntervalSince(dom.lowerBound) / total))
     }
 
     /// A dashed vertical rule at the scrubbed time (spans both charts).
@@ -228,6 +241,12 @@ struct TenDayView: View {
                         .background(ColorScale.color(forScore: clamped),
                                     in: RoundedRectangle(cornerRadius: 3))
                 }
+                Spacer(minLength: 10)
+                Button { scrubDate = nil } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
             readoutRow("Temp/feels \(unit)",
                        String(format: "%.1f (%.1f)",
@@ -628,7 +647,8 @@ struct TenDayView: View {
                 scrubRule()
             }
             .chartLegend(.hidden)
-            .chartOverlay { proxy in scrubOverlay(proxy) }
+            .onLongPressGesture(minimumDuration: 0.3) { enterScrub() }
+            .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
@@ -656,14 +676,14 @@ struct TenDayView: View {
                     .padding(.leading, 4)
                     .padding(.top, 14)
             }
-            // Scrub readout HUD — the "table row" for the long-pressed hour.
-            // A tap anywhere on it dismisses the scrub line.
-            .overlay(alignment: .top) {
+            // Scrub readout HUD — sits opposite the line so the line area stays
+            // visible; ✕ on the card dismisses.
+            .overlay(alignment: scrubFraction < 0.5 ? .topTrailing : .topLeading) {
                 if let p = scrubPoint {
                     scrubReadout(p)
                         .padding(.top, 6)
+                        .padding(.horizontal, 6)
                         .transition(.opacity)
-                        .onTapGesture { scrubDate = nil }
                 }
             }
             .frame(height: height - 20)
@@ -723,7 +743,8 @@ struct TenDayView: View {
                 scrubRule()
             }
             .chartLegend(.hidden)
-            .chartOverlay { proxy in scrubOverlay(proxy) }
+            .onLongPressGesture(minimumDuration: 0.3) { enterScrub() }
+            .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             // Area mode flips the scale — zero at the top (nearest the heatmap),
             // so the wind/rain areas hang downward and share the day labels
             // above. Lines mode reads the normal way up (zero at the bottom).

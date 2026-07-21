@@ -270,19 +270,21 @@ struct ColorScoreColumn: View {
                             )
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         )
-                        // Ruler gradation down the middle — no numbers, longer
-                        // dashes every 100 score, shorter every 50. Each dash is
-                        // black on the left, white on the right so it stays
+                        // Ruler gradation down the middle — no numbers. A tick
+                        // every 10 score gives a fine ruler feel; longer major
+                        // ticks every 50 with four minor ticks between. Each tick
+                        // is black on the left, white on the right so it stays
                         // legible over any color. Scrolls with the gradient.
                         .overlay(
                             Canvas { ctx, size in
                                 let activeTop = h / 2, activeSpan = 2 * h
                                 let cx = size.width / 2
-                                for s in stride(from: 0, through: 1000, by: 50) {
+                                let thickness: CGFloat = 1.25
+                                for s in stride(from: 0, through: 1000, by: 10) {
                                     let y = activeTop + activeSpan * (1 - CGFloat(s) / 1000)
-                                    let len: CGFloat = (s % 100 == 0) ? 15 : 8
-                                    ctx.fill(Path(CGRect(x: cx - len, y: y - 1, width: len, height: 2.5)), with: .color(.black))
-                                    ctx.fill(Path(CGRect(x: cx, y: y - 1, width: len, height: 2.5)), with: .color(.white))
+                                    let len: CGFloat = (s % 50 == 0) ? 15 : 8
+                                    ctx.fill(Path(CGRect(x: cx - len, y: y - thickness / 2, width: len, height: thickness)), with: .color(.black))
+                                    ctx.fill(Path(CGRect(x: cx, y: y - thickness / 2, width: len, height: thickness)), with: .color(.white))
                                 }
                             }
                             .allowsHitTesting(false)

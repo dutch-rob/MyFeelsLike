@@ -157,6 +157,14 @@ struct HereTodayView: View {
     private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
 
     // MARK: Scrubbing (long-press to read a specific hour's values)
+    //
+    // Two modes so normal swiping/scrolling keeps working:
+    //   • Not scrubbing (scrubDate == nil): only a long-press recognizer is
+    //     attached, which coexists with the tab pager's horizontal swipe and the
+    //     ScrollView's pull-to-refresh. A long press drops the line at "now".
+    //   • Scrubbing (scrubDate != nil): a transparent drag layer is added over
+    //     each plot so *any* touch moves the line (no second long press needed).
+    //     Paging is intentionally suspended until the line is dismissed (✕).
 
     /// The forecast hour nearest the scrubbed time, if any.
     private var scrubPoint: ForecastPoint? {
@@ -164,23 +172,25 @@ struct HereTodayView: View {
         return series.min { abs($0.date.timeIntervalSince(t)) < abs($1.date.timeIntervalSince(t)) }
     }
 
-    /// Transparent overlay for a chart that turns a long-press-then-drag into a
-    /// scrub: it maps the finger's x to a time and snaps `scrubDate` to the
-    /// nearest hour. A plain tap clears the line.
+    /// Drop the scrub line at "now" (nearest forecast hour) when a long press
+    /// begins. Subsequent moves come from `scrubDragLayer`.
+    private func enterScrub() {
+        guard scrubDate == nil, !series.isEmpty else { return }
+        let target = current?.date ?? series[series.count / 2].date
+        scrubDate = series.min {
+            abs($0.date.timeIntervalSince(target)) < abs($1.date.timeIntervalSince(target))
+        }?.date
+    }
+
+    /// Active only while scrubbing: any touch/drag moves the line to that x.
     @ViewBuilder
-    private func scrubOverlay(_ proxy: ChartProxy) -> some View {
+    private func scrubDragLayer(_ proxy: ChartProxy) -> some View {
         GeometryReader { geo in
             Rectangle().fill(Color.clear).contentShape(Rectangle())
                 .gesture(
-                    LongPressGesture(minimumDuration: 0.25)
-                        .sequenced(before: DragGesture(minimumDistance: 0))
-                        .onChanged { value in
-                            if case .second(_, let drag?) = value {
-                                updateScrub(atX: drag.location.x, proxy: proxy, geo: geo)
-                            }
-                        }
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { updateScrub(atX: $0.location.x, proxy: proxy, geo: geo) }
                 )
-                .onTapGesture { scrubDate = nil }
         }
     }
 
@@ -192,6 +202,15 @@ struct HereTodayView: View {
         scrubDate = series.min {
             abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
         }?.date
+    }
+
+    /// Where the line sits across the domain (0 = far left, 1 = far right), so
+    /// the readout can sit on the opposite side and keep the line area visible.
+    private var scrubFraction: Double {
+        guard let t = scrubDate, let dom = dateDomain else { return 0.5 }
+        let total = dom.upperBound.timeIntervalSince(dom.lowerBound)
+        guard total > 0 else { return 0.5 }
+        return min(1, max(0, t.timeIntervalSince(dom.lowerBound) / total))
     }
 
     /// A dashed vertical rule at the scrubbed time. Added inside each chart so
@@ -224,6 +243,12 @@ struct HereTodayView: View {
                         .background(ColorScale.color(forScore: clamped),
                                     in: RoundedRectangle(cornerRadius: 3))
                 }
+                Spacer(minLength: 10)
+                Button { scrubDate = nil } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
             readoutRow("Temp/feels \(unit)",
                        String(format: "%.1f (%.1f)",
@@ -588,7 +613,11 @@ struct HereTodayView: View {
             // MyFeelsLike color now lives in its own panel below (see
             // myFeelsLikePanel), matching the 10-day screen's heatmap.
             .chartLegend(.hidden)
-            .chartOverlay { proxy in scrubOverlay(proxy) }
+            // Long press drops the scrub line; a drag layer (added only while
+            // scrubbing) then moves it on any touch. Keeping the drag layer out
+            // of the idle state leaves swiping and pull-to-refresh working.
+            .onLongPressGesture(minimumDuration: 0.3) { enterScrub() }
+            .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             .chartYScale(domain: dom)
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
@@ -598,10 +627,13 @@ struct HereTodayView: View {
                 }
             }
             .chartXAxis {
+                // Labels sit at their tick (not centered on the 2-hour interval),
+                // so an hour label lines up with the gridline/scrub line at that
+                // exact time rather than reading an hour off.
                 AxisMarks(values: .stride(by: .hour, count: 2)) { value in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
                     AxisTick().foregroundStyle(axisInk.opacity(0.6))
-                    AxisValueLabel(centered: true) {
+                    AxisValueLabel {
                         Text(value.as(Date.self).map { hourLabel(for: $0) } ?? "")
                             .font(.caption).foregroundStyle(axisInk)
                     }
@@ -617,15 +649,16 @@ struct HereTodayView: View {
                     .padding(.leading, 4)
                     .padding(.top, 14)
             }
-            // Scrub readout HUD — the "table row" for the long-pressed hour.
-            // A plain overlay (not a chart annotation) so it's never clipped by
-            // the plot bounds; a tap anywhere on it dismisses the scrub line.
-            .overlay(alignment: .top) {
+            // Scrub readout HUD — the "table row" for the long-pressed hour. It
+            // sits on the side opposite the line so the graph under the line
+            // stays visible, and carries its own ✕ to dismiss. Placed after the
+            // drag layer so its button stays tappable.
+            .overlay(alignment: scrubFraction < 0.5 ? .topTrailing : .topLeading) {
                 if let p = scrubPoint {
                     scrubReadout(p)
                         .padding(.top, 6)
+                        .padding(.horizontal, 6)
                         .transition(.opacity)
-                        .onTapGesture { scrubDate = nil }
                 }
             }
             .frame(height: height - 20)
@@ -703,7 +736,8 @@ struct HereTodayView: View {
                 scrubRule()
             }
             .chartLegend(.hidden)
-            .chartOverlay { proxy in scrubOverlay(proxy) }
+            .onLongPressGesture(minimumDuration: 0.3) { enterScrub() }
+            .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             // Area mode flips the scale — zero at the top (nearest the color
             // bar), so the wind/rain areas hang downward and share the hour
             // labels of the temperature chart above. Lines mode reads the normal
