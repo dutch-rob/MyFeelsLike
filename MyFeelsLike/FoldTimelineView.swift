@@ -48,8 +48,10 @@ struct FoldTimelineView: View {
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
 
-    /// 0 = 24-hour view, 1 = 10-day view. Animated by the segmented control.
+    /// 0 = 24-hour view, 1 = 10-day view. Scrubbed by a horizontal swipe.
     @State private var progress: Double = 0
+    /// Progress captured at the start of the current swipe (nil when not dragging).
+    @State private var dragBase: Double? = nil
 
     private var linesOnly: Bool { chartStyle == .lines }
     private var tempVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
@@ -139,30 +141,57 @@ struct FoldTimelineView: View {
                 ForecastLoadingView(progress: progressLoad, nowTick: nowTick, errorMessage: errorMessage)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
+                // The color band is thin at 24-hour and grows to the full heat map
+                // at 10-day; the space it frees goes to the two graphs. Reserve a
+                // little at the bottom so the legend clears the floating toolbar.
+                let overhead: CGFloat = 40 + 58     // scenario strip + indicator, + toolbar
+                let avail = max(220, h - overhead)
+                let colorH = lerp(avail * 0.10, avail * 0.34, progress)
+                let graphsH = avail - colorH
                 VStack(spacing: 8) {
                     ScenarioStrip(activeFeatures: activeFeatures)
-                    modePicker
-                    if tempVisible { temperatureChart(height: h * 0.42) }
-                    if graphColor { colorPanel(height: h * 0.20) }
-                    if windVisible { precipWindChart(height: h * 0.30) }
+                    modeIndicator
+                    if tempVisible { temperatureChart(height: graphsH * 0.56) }
+                    if graphColor { colorPanel(height: colorH) }
+                    if windVisible { precipWindChart(height: graphsH * 0.44) }
                     if let attribution { WeatherAttributionLink(info: attribution) }
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal)
-                .refreshable { await onRefresh?() }
+                .padding(.bottom, 52)
+                .contentShape(Rectangle())
+                .gesture(scrubGesture(width: geo.size.width))
             }
         }
     }
 
-    private var modePicker: some View {
-        Picker("View", selection: Binding(
-            get: { progress > 0.5 },
-            set: { tenDay in withAnimation(.easeInOut(duration: 1.0)) { progress = tenDay ? 1 : 0 } }
-        )) {
-            Text("24-hour").tag(false)
-            Text("10-day").tag(true)
+    /// Thin swipe hint (replaces the segmented control to give the graphs room).
+    private var modeIndicator: some View {
+        HStack(spacing: 8) {
+            Text("24-hour").fontWeight(progress < 0.5 ? .semibold : .regular)
+                .foregroundStyle(progress < 0.5 ? axisInk : axisInk.opacity(0.5))
+            Image(systemName: "arrow.left.arrow.right").font(.caption2).foregroundStyle(axisInk.opacity(0.5))
+            Text("10-day").fontWeight(progress >= 0.5 ? .semibold : .regular)
+                .foregroundStyle(progress >= 0.5 ? axisInk : axisInk.opacity(0.5))
         }
-        .pickerStyle(.segmented)
+        .font(.subheadline)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func scrubGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { v in
+                guard abs(v.translation.width) > abs(v.translation.height) else { return }
+                if dragBase == nil { dragBase = progress }
+                let span = max(1, width * 0.7)
+                progress = clamp((dragBase ?? progress) - v.translation.width / span, 0, 1)
+            }
+            .onEnded { v in
+                let span = max(1, width * 0.7)
+                let projected = clamp((dragBase ?? progress) - v.predictedEndTranslation.width / span, 0, 1)
+                withAnimation(.easeOut(duration: 0.3)) { progress = projected > 0.5 ? 1 : 0 }
+                dragBase = nil
+            }
     }
 
     // MARK: Temperature
@@ -382,10 +411,19 @@ struct FoldTimelineView: View {
                 AxisValueLabel { Text("00").font(.caption).foregroundStyle(.clear) }
             }
         } else {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 5)) { _ in
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 5)) { value in
                 AxisGridLine().foregroundStyle(axisInk.opacity(0.22))
                 AxisTick().foregroundStyle(axisInk.opacity(0.55))
-                AxisValueLabel().font(.caption).foregroundStyle(axisInk)
+                // A chip behind the number keeps it legible where a filled area
+                // reaches the left edge (e.g. the 24-hour peak near the axis).
+                AxisValueLabel {
+                    if let d = value.as(Double.self) {
+                        Text("\(Int(d.rounded()))")
+                            .font(.caption).foregroundStyle(axisInk)
+                            .padding(.horizontal, 3)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 3))
+                    }
+                }
             }
         }
     }

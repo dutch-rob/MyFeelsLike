@@ -316,9 +316,11 @@ struct ContentView: View {
                 // #10: every graph disabled → only the table screen remains.
                 forecastTableTab(chipFeatures: activeFeatures)
             } else if useFoldTimeline && !useDashboardLayout {
-                // Experimental single morphing timeline in place of the two
-                // paged graph screens (the table, if on, stays a swipe away).
-                if showTable { foldTimelineWithTable } else { foldTimelineTab }
+                // Experimental single morphing timeline in place of the two paged
+                // graph screens. Its own left/right swipe drives the 24h↔10-day
+                // morph, so it takes over paging (the table isn't reachable here
+                // yet — the scrubber readout covers reading exact values).
+                foldTimelineTab
             } else if useDashboardLayout {
                 dashboardLayout
             } else if showTable {
@@ -649,15 +651,6 @@ struct ContentView: View {
     }
 
     private var foldTimelineTab: some View { foldTimelineTab(chipFeatures: activeFeatures) }
-
-    /// Fold timeline with the table one swipe to the right.
-    private var foldTimelineWithTable: some View {
-        TabView(selection: $selectedTab) {
-            foldTimelineTab(chipFeatures: activeFeatures).tag(1)
-            forecastTableTab(chipFeatures: activeFeatures).tag(3)
-        }
-        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-    }
 
     /// Why no personalized model yet (empty once one exists). Shown on the
     /// 10-day heatmap panel while it's gray.
