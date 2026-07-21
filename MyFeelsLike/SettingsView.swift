@@ -50,6 +50,7 @@ struct SettingsView: View {
     @State private var exportError: String? = nil
 
     @State private var showImportPicker = false
+    @State private var showFoldDemo = false   // TEMPORARY: fold-animation preview
     @State private var importMessage: String? = nil
 
     /// Placeholder shown in the compare-name field (the device name).
@@ -110,6 +111,15 @@ struct SettingsView: View {
                 Toggle("Table screen", isOn: $showTable)
             } footer: {
                 Text("When off, swiping only switches between the 24-hour and 10-day graph screens.")
+            }
+
+            // TEMPORARY: experimental preview of the "scripted fold" idea.
+            Section {
+                Button { showFoldDemo = true } label: {
+                    Label("Heat-map fold preview", systemImage: "square.stack.3d.down.forward")
+                }
+            } footer: {
+                Text("Experimental — a look at animating the 24-hour bar folding into the 10-day heat map.")
             }
 
             Section {
@@ -256,6 +266,7 @@ struct SettingsView: View {
                 importRatings(from: url)
             }
         }
+        .sheet(isPresented: $showFoldDemo) { HeatmapFoldDemoView() }   // TEMPORARY
     }
 
     // MARK: - Reset
