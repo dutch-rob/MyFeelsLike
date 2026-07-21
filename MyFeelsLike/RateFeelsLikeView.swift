@@ -37,11 +37,13 @@ struct RateFeelsLikeView: View {
     /// Kept on the API for source compatibility but no longer used in the UI.
     let useFahrenheit: Bool
 
-    // User selections
+    // User selections. The categorical answers start unset (nil): people
+    // easily forget to review a pre-selected default, so Save stays disabled
+    // until each has been chosen deliberately.
     @State private var feelsLikeScore: Double = 500   // middle of [0, 1000]
-    @State private var activity: Int = 1              // Light
-    @State private var dress: Int = 0                 // nice
-    @State private var sun: Int = 0                   // partial
+    @State private var activity: Int? = nil
+    @State private var dress: Int? = nil
+    @State private var sun: Int? = nil
 
     /// Identifies which option's hint popover is currently open (if any).
     @State private var shownHint: HintID? = nil
@@ -52,8 +54,14 @@ struct RateFeelsLikeView: View {
         self.snapshot = snapshot
         self.placeID = placeID
         self.useFahrenheit = useFahrenheit
-        // After sunset there is no meaningful sun/shade distinction; default to shade.
-        _sun = State(initialValue: snapshot.isDaylight ? 0 : -1)
+        // After sunset there is no meaningful sun/shade distinction, so shade
+        // is assumed and counts as answered; daylight requires a choice.
+        _sun = State(initialValue: snapshot.isDaylight ? nil : -1)
+    }
+
+    /// True once every categorical question has an explicit answer.
+    private var allAnswered: Bool {
+        activity != nil && dress != nil && sun != nil
     }
 
     var body: some View {
@@ -84,7 +92,7 @@ struct RateFeelsLikeView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }.bold()
+                    Button("Save") { save() }.bold().disabled(!allAnswered)
                 }
             }
         }
@@ -148,7 +156,7 @@ struct RateFeelsLikeView: View {
     @ViewBuilder
     private func categoricalPicker(
         title: String,
-        value: Binding<Int>,
+        value: Binding<Int?>,
         options: [(Int, String, String?)]
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -198,6 +206,7 @@ struct RateFeelsLikeView: View {
     // MARK: Save
 
     private func save() {
+        guard let activity, let dress, let sun else { return }
         let rating = Rating(
             placeID: placeID,
             feelsLikeScore: feelsLikeScore,
@@ -260,6 +269,23 @@ struct ColorScoreColumn: View {
                                 startPoint: .top, endPoint: .bottom
                             )
                             .clipShape(RoundedRectangle(cornerRadius: 8))
+                        )
+                        // Ruler gradation down the middle — no numbers, longer
+                        // dashes every 100 score, shorter every 50. Each dash is
+                        // black on the left, white on the right so it stays
+                        // legible over any color. Scrolls with the gradient.
+                        .overlay(
+                            Canvas { ctx, size in
+                                let activeTop = h / 2, activeSpan = 2 * h
+                                let cx = size.width / 2
+                                for s in stride(from: 0, through: 1000, by: 50) {
+                                    let y = activeTop + activeSpan * (1 - CGFloat(s) / 1000)
+                                    let len: CGFloat = (s % 100 == 0) ? 15 : 8
+                                    ctx.fill(Path(CGRect(x: cx - len, y: y - 1, width: len, height: 2.5)), with: .color(.black))
+                                    ctx.fill(Path(CGRect(x: cx, y: y - 1, width: len, height: 2.5)), with: .color(.white))
+                                }
+                            }
+                            .allowsHitTesting(false)
                         )
                     }
                     .frame(height: h)
