@@ -49,6 +49,7 @@ struct TenDayView: View {
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.area
+    @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var linesOnly: Bool { chartStyle == .lines }
@@ -667,6 +668,7 @@ struct TenDayView: View {
             }
             .frame(height: height - 20)
         }
+        .saturation(graphPalette.saturation)
     }
 
     @ViewBuilder
@@ -748,5 +750,6 @@ struct TenDayView: View {
             ChartLegendRow(entries: windLegendEntries, ink: axisInk)
                 .padding(.leading, 36)
         }
+        .saturation(graphPalette.saturation)
     }
 }

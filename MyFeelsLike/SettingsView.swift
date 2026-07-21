@@ -30,6 +30,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.syncAcrossDevices) private var syncAcrossDevices = false
     @AppStorage(SettingsKey.sunShadeStyle)   private var sunShadeStyle  = SunShadeStyle.separate
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.area
+    @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -94,10 +95,15 @@ struct SettingsView: View {
                     Text("Lines").tag(ChartSeriesStyle.lines)
                 }
                 .pickerStyle(.segmented)
+                Picker("Colors", selection: $graphPalette) {
+                    Text("Vivid").tag(GraphPalette.vivid)
+                    Text("Muted").tag(GraphPalette.muted)
+                }
+                .pickerStyle(.segmented)
             } header: {
                 Text("Chart style")
             } footer: {
-                Text("Filled draws each series as a colored band from the baseline. Lines draws thin curves only — lighter, more like a classic meteogram — and the precipitation/wind panel then reads bottom-up instead of hanging from the top.")
+                Text("Filled draws each series as a colored band from the baseline. Lines draws thin curves only — lighter, more like a classic meteogram — and the precipitation/wind panel then reads bottom-up instead of hanging from the top. Muted softens the weather-line colors for a gentler look; the MyFeelsLike score colors are unchanged.")
             }
 
             Section {

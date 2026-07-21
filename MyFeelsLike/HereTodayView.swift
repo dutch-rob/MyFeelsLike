@@ -48,6 +48,7 @@ struct HereTodayView: View {
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.area
+    @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var linesOnly: Bool { chartStyle == .lines }
@@ -629,6 +630,7 @@ struct HereTodayView: View {
             }
             .frame(height: height - 20)
         }
+        .saturation(graphPalette.saturation)
     }
 
     @ViewBuilder
@@ -729,6 +731,7 @@ struct HereTodayView: View {
             ChartLegendRow(entries: windLegendEntries, ink: axisInk)
                 .padding(.leading, 36)
         }
+        .saturation(graphPalette.saturation)
     }
 }
 

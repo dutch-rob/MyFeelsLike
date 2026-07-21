@@ -200,6 +200,18 @@ enum SunShadeStyle: String, CaseIterable {
     case gradient
 }
 
+/// Saturation applied to the weather series (temperature bands/lines and the
+/// precip/wind panel). `vivid` is full-strength; `muted` softens them for
+/// people who find the default colors too harsh. The MyFeelsLike score colors
+/// are deliberately left untouched — they carry meaning.
+enum GraphPalette: String, CaseIterable {
+    case vivid
+    case muted
+
+    /// Multiplier for SwiftUI's `.saturation(_:)` on the series panels.
+    var saturation: Double { self == .muted ? 0.55 : 1.0 }
+}
+
 /// How the temperature and precip/wind curves are drawn.
 /// `area` (default) fills each series from the baseline — bold, easy to read at
 /// a glance. `lines` draws thin curves with no fill — less visual weight, closer

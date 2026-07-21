@@ -29,6 +29,10 @@ enum SettingsKey {
     /// value ("area" filled bands, or "lines" — thin curves, no fill; in lines
     /// mode the precip/wind panel reads bottom-up like the temperature panel).
     static let chartSeriesStyle  = "chartSeriesStyle"
+    /// Saturation of the weather series colors: GraphPalette raw value ("vivid"
+    /// full-strength, or "muted" softened for people who find them too harsh).
+    /// Does not touch the MyFeelsLike score colors.
+    static let graphPalette      = "graphPalette"
     /// Publish your model so others can compare with you (default on). Off keeps
     /// you able to see others while withdrawing your own shared model.
     static let shareForCompare   = "shareForCompare"
