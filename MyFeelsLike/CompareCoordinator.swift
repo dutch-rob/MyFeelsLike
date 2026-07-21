@@ -99,8 +99,14 @@ final class CompareCoordinator: ObservableObject {
         }
 
         for p in saved {
-            let result = await CompareShare.fetch(shareID: p.shareID)
             guard let i = loaded.firstIndex(where: { $0.peer.shareID == p.shareID }) else { continue }
+            // Snapshot peers (imported from a QR / texted model) are used as-is —
+            // never fetched or refreshed from CloudKit.
+            if let snapshot = p.embeddedModel {
+                loaded[i].state = .loaded(snapshot)
+                continue
+            }
+            let result = await CompareShare.fetch(shareID: p.shareID)
             switch result {
             case .success(let pm):
                 // Keep the display name fresh from the peer's own record.
@@ -127,11 +133,14 @@ final class CompareCoordinator: ObservableObject {
     /// When `token` is set (opened from a texted invite), also mirror the
     /// acceptance back so the inviter adds us too.
     func add(shareID: String, name: String, token: String? = nil,
+             embeddedModel: RegressionState? = nil,
              myName: String, myModel: RegressionState?) {
-        CompareShare.unrevoke(shareID)
-        ComparePeerStore.add(shareID: shareID, name: name)
+        // A snapshot (QR / texted model) is stored as-is and doesn't participate
+        // in the live CloudKit flow (no unrevoke / acceptance handshake).
+        if embeddedModel == nil { CompareShare.unrevoke(shareID) }
+        ComparePeerStore.add(shareID: shareID, name: name, embeddedModel: embeddedModel)
         Task {
-            if let token { await CompareShare.acceptInvite(token: token, myName: myName) }
+            if embeddedModel == nil, let token { await CompareShare.acceptInvite(token: token, myName: myName) }
             await refresh(myName: myName, myModel: myModel)
         }
     }

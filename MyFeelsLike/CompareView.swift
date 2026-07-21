@@ -14,6 +14,7 @@ import SwiftUI
 import Charts
 import UIKit
 import MessageUI
+import CoreImage.CIFilterBuiltins
 
 // MARK: - Bottom-bar icon
 
@@ -147,6 +148,9 @@ struct CompareView: View {
 
     @State private var showMessageComposer = false
     @State private var inviteCopiedAlert = false
+    @State private var showShareModel = false
+    @State private var showMessageModel = false
+    @State private var modelLinkCopied = false
     /// The invite link for the current "Invite via Text" — generated once on tap
     /// so a single token is minted per invite (not on every sheet re-render).
     @State private var pendingInviteURL: URL?
@@ -294,10 +298,20 @@ struct CompareView: View {
         } message: {
             Text("Messages isn't available here, so the invite link was copied. Paste it into any messaging app to send it.")
         }
+        .sheet(isPresented: $showShareModel) { shareModelSheet }
+        .sheet(isPresented: $showMessageModel) {
+            if let url = myModelURL {
+                MessageComposer(body: "Compare your MyFeelsLike with mine — scan the code or open the link: \(url.absoluteString)",
+                                attachment: Self.qrImage(url.absoluteString)) {
+                    showMessageModel = false
+                }
+                .ignoresSafeArea()
+            }
+        }
         .onChange(of: invite) { _, inv in
             guard let inv else { return }
             coordinator.add(shareID: inv.id, name: inv.name, token: inv.token,
-                            myName: myDisplayName, myModel: ownModel)
+                            embeddedModel: inv.model, myName: myDisplayName, myModel: ownModel)
         }
         .onAppear {
             nearby.startAdvertising()          // discoverable while this screen is open
@@ -420,6 +434,14 @@ struct CompareView: View {
                 .buttonStyle(.plain)
             }
 
+            // Share your model directly (no server): a QR to scan in person, or a
+            // link to text/email. A snapshot — it won't auto-update.
+            Button { showShareModel = true } label: {
+                chip("Share my MyFeelsLike (QR / link)", systemImage: "qrcode")
+            }
+            .buttonStyle(.plain)
+            .disabled(ownModel == nil)
+
             // Add someone by their ID.
             TextField("Paste someone's ID", text: $peerIDDraft)
                 .textFieldStyle(.roundedBorder)
@@ -437,6 +459,75 @@ struct CompareView: View {
             .buttonStyle(.plain)
             .disabled(peerIDDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
+    }
+
+    // MARK: Share my model (QR + link, serverless snapshot)
+
+    /// The deep link that carries my model, or nil if I have no model yet.
+    private var myModelURL: URL? {
+        guard let model = ownModel else { return nil }
+        return CompareShare.modelInviteURL(name: myDisplayName, model: model)
+    }
+
+    @ViewBuilder
+    private var shareModelSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 18) {
+                    Text("A snapshot of your MyFeelsLike model. Someone can scan this (or open the link) to compare with you — no account needed, and it works on Android too. It won't update if you rate more; re-share to send an updated one.")
+                        .font(.callout).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    if let url = myModelURL, let qr = Self.qrImage(url.absoluteString) {
+                        Image(uiImage: qr)
+                            .interpolation(.none).resizable().scaledToFit()
+                            .frame(maxWidth: 260)
+                            .padding(8)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                            .accessibilityLabel("QR code of your MyFeelsLike model")
+
+                        VStack(spacing: 10) {
+                            if MFMessageComposeViewController.canSendText() {
+                                Button {
+                                    showShareModel = false
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showMessageModel = true }
+                                } label: { Label("Send by Message", systemImage: "message").frame(maxWidth: .infinity) }
+                                .buttonStyle(.borderedProminent)
+                            }
+                            Button {
+                                UIPasteboard.general.string = url.absoluteString
+                                modelLinkCopied = true
+                            } label: {
+                                Label(modelLinkCopied ? "Link copied" : "Copy link (to email or paste)",
+                                      systemImage: "doc.on.doc").frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    } else {
+                        Text("Rate a few moments first so there's a model to share.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Share my MyFeelsLike")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { showShareModel = false } }
+            }
+        }
+    }
+
+    /// A crisp QR image for `string` (low error correction to fit our payload).
+    static func qrImage(_ string: String) -> UIImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(string.utf8)
+        filter.correctionLevel = "L"
+        guard let output = filter.outputImage else { return nil }
+        let scaled = output.transformed(by: CGAffineTransform(scaleX: 12, y: 12))
+        let context = CIContext()
+        guard let cg = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+        return UIImage(cgImage: cg)
     }
 
     // MARK: Discovery list
@@ -484,11 +575,15 @@ struct CompareView: View {
 /// sheet full of unrelated apps.
 private struct MessageComposer: UIViewControllerRepresentable {
     let body: String
+    var attachment: UIImage? = nil
     let onFinish: () -> Void
 
     func makeUIViewController(context: Context) -> MFMessageComposeViewController {
         let vc = MFMessageComposeViewController()
         vc.body = body
+        if let png = attachment?.pngData() {
+            vc.addAttachmentData(png, typeIdentifier: "public.png", filename: "MyFeelsLike.png")
+        }
         vc.messageComposeDelegate = context.coordinator
         return vc
     }

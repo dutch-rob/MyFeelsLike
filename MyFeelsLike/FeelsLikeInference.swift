@@ -134,7 +134,7 @@ struct ForecastFeatureSource: FeatureSource {
 
 // MARK: - Persistable regression state
 
-struct RegressionState: Codable {
+struct RegressionState: Codable, Equatable {
     var selectedFeatures: [Feature]   // includes apparentTempC at index 0
     var coefficients: [Double]        // β0 (intercept) + one per selectedFeatures
     var means: [Double]               // means[i] for selectedFeatures[i]

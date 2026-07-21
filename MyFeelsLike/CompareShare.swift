@@ -35,7 +35,13 @@ struct CompareInvite: Equatable {
     let name: String
     /// One-time token from the link, used to mirror the acceptance back.
     let token: String?
+    /// Embedded snapshot model (QR / texted model); nil for a live CloudKit invite.
+    let model: RegressionState?
     let nonce: UUID
+
+    // Each parse gets a fresh nonce, so that alone identifies a distinct invite
+    // (avoids needing RegressionState to be Equatable).
+    static func == (l: CompareInvite, r: CompareInvite) -> Bool { l.nonce == r.nonce }
 }
 
 /// A peer's shared model, reconstructed from their CloudKit record. The full
@@ -140,18 +146,52 @@ enum CompareShare {
         return c.url
     }
 
-    /// Parse an incoming compare deep link into (share ID, sender name, token).
-    /// Returns nil for anything that isn't a compare invite or lacks an id.
-    static func parseInvite(_ url: URL) -> (id: String, name: String, token: String?)? {
+    /// A deep link that carries this install's model *embedded* (a snapshot),
+    /// for sharing via QR code or a texted/emailed link with no server:
+    /// `myfeelslike://compare?m=<payload>&id=<myShareID>`. The recipient imports
+    /// the model as-is (no auto-refresh). `id` keys the peer so re-scanning an
+    /// updated model replaces it rather than adding a duplicate. Encoding the
+    /// deep link (not just the raw payload) means any Camera-app QR scan opens
+    /// the app directly — no in-app scanner needed.
+    static func modelInviteURL(name: String, model: RegressionState) -> URL? {
+        var c = URLComponents()
+        c.scheme = urlScheme
+        c.host   = urlHost
+        c.queryItems = [URLQueryItem(name: "m", value: CompareModelCodec.encodedString(model, name: name)),
+                        URLQueryItem(name: "id", value: myShareID)]
+        return c.url
+    }
+
+    /// An opened compare deep link. `model` is set when the link embeds a
+    /// snapshot (QR / texted model); otherwise it's a live CloudKit invite.
+    struct ParsedInvite {
+        let id: String
+        let name: String
+        let token: String?
+        let model: RegressionState?
+    }
+
+    /// Parse an incoming compare deep link. Returns nil for anything that isn't
+    /// a compare invite or lacks an id.
+    static func parseInvite(_ url: URL) -> ParsedInvite? {
         guard url.scheme?.lowercased() == urlScheme,
               url.host?.lowercased() == urlHost else { return nil }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         guard let id = items.first(where: { $0.name == "id" })?.value?
                 .trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty else { return nil }
-        let name = items.first(where: { $0.name == "name" })?.value ?? ""
+        // Embedded model (snapshot) — name comes from the payload.
+        var model: RegressionState?
+        var embeddedName = ""
+        if let payload = items.first(where: { $0.name == "m" })?.value,
+           let decoded = CompareModelCodec.decodeString(payload) {
+            model = decoded.model
+            embeddedName = decoded.name
+        }
+        let name = items.first(where: { $0.name == "name" })?.value
+            ?? (embeddedName.isEmpty ? "" : embeddedName)
         let token = items.first(where: { $0.name == "t" })?.value?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return (id, name, (token?.isEmpty == false) ? token : nil)
+        return ParsedInvite(id: id, name: name, token: (token?.isEmpty == false) ? token : nil, model: model)
     }
 
     // MARK: Two-way invite (mirror the acceptance back to the inviter)
@@ -314,6 +354,9 @@ struct ComparePeer: Codable, Identifiable, Equatable {
     let shareID: String
     var name: String
     var addedAt: Date
+    /// A snapshot model imported from a QR / texted link. When set, this peer is
+    /// used as-is and never fetched or refreshed from CloudKit.
+    var embeddedModel: RegressionState?
     var id: String { shareID }
 }
 
@@ -337,15 +380,16 @@ enum ComparePeerStore {
     /// Add a peer (or update the stored name if already present). Never adds
     /// yourself. Returns the updated list.
     @discardableResult
-    static func add(shareID: String, name: String) -> [ComparePeer] {
+    static func add(shareID: String, name: String, embeddedModel: RegressionState? = nil) -> [ComparePeer] {
         let cleaned = shareID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !cleaned.isEmpty, cleaned != CompareShare.myShareID else { return load() }
         var peers = load()
         if let i = peers.firstIndex(where: { $0.shareID == cleaned }) {
             if !name.isEmpty { peers[i].name = name }
+            if let embeddedModel { peers[i].embeddedModel = embeddedModel }   // re-scan updates the snapshot
         } else {
             peers.append(ComparePeer(shareID: cleaned, name: name.isEmpty ? "Someone" : name,
-                                     addedAt: Date()))
+                                     addedAt: Date(), embeddedModel: embeddedModel))
         }
         save(peers)
         return peers
