@@ -75,6 +75,30 @@ final class LocationProvider: NSObject, ObservableObject, CLLocationManagerDeleg
 
     func requestLocation() { manager.requestLocation() }
 
+    /// Request a single fresh GPS fix and wait (up to `timeout`) for one newer
+    /// than what we already had. Falls back to the last known location if the
+    /// fix doesn't arrive in time or we're not authorized. Used by
+    /// pull-to-refresh so a moving user (e.g. driving) gets weather for where
+    /// they are now, not where they were when the app last looked.
+    @MainActor
+    func freshLocation(timeout: TimeInterval = 4) async -> CLLocation? {
+        let status = authorizationStatus
+        guard status == .authorizedWhenInUse || status == .authorizedAlways else {
+            return currentLocation
+        }
+        let previous = currentLocation
+        manager.requestLocation()
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            try? await Task.sleep(nanoseconds: 150_000_000)   // 150 ms
+            if let loc = currentLocation,
+               previous == nil || loc.timestamp > previous!.timestamp {
+                return loc
+            }
+        }
+        return currentLocation
+    }
+
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         authorizationStatus = status
         if status == .authorizedWhenInUse || status == .authorizedAlways {

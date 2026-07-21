@@ -215,10 +215,11 @@ struct ContentView: View {
             guard newPhase == .active else { return }
             pushToWatch()    // keep the watch's settings/model current
             // Auto-refresh when returning from background if data is ≥ 30 min old.
+            // Use a fresh fix — the user may have moved while it was backgrounded.
             if let fetched = weather.lastFetchedAt,
                Date().timeIntervalSince(fetched) > 1800,
                !weather.isRefreshing {
-                Task { await loadWeather(preserveData: true) }
+                Task { await loadWeather(preserveData: true, useFreshLocation: true) }
             }
         }
         .task {
@@ -557,9 +558,16 @@ struct ContentView: View {
             places: placeDTOs)
     }
 
-    private func loadWeather(preserveData: Bool = false) async {
+    /// Load weather for the selected place, or the device's location. Set
+    /// `useFreshLocation` for user-initiated refreshes (pull-to-refresh, return
+    /// from background) so a moving user gets a fresh GPS fix rather than the
+    /// last cached one; the first automatic load leaves it off and relies on the
+    /// normal location callback.
+    private func loadWeather(preserveData: Bool = false, useFreshLocation: Bool = false) async {
         if let place = selectedPlace {
             await weather.loadFor(location: place.clLocation, preserveData: preserveData)
+        } else if useFreshLocation, let loc = await locationProvider.freshLocation() {
+            await weather.loadFor(location: loc, preserveData: preserveData)
         } else if let loc = locationProvider.currentLocation {
             await weather.loadFor(location: loc, preserveData: preserveData)
         } else {
@@ -583,7 +591,7 @@ struct ContentView: View {
                 sunset: weather.sunset,
                 errorMessage: weather.lastErrorMessage,
                 attribution: weather.attribution,
-                onRefresh: { await loadWeather(preserveData: true) },
+                onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
                 activeFeatures: chipFeatures,
                 sunFeatureActive: sunFeatureActive,
                 fitsPane: fitsPane
@@ -604,7 +612,7 @@ struct ContentView: View {
                 sunset: weather.sunset,
                 errorMessage: weather.lastErrorMessage,
                 attribution: weather.attribution,
-                onRefresh: { await loadWeather(preserveData: true) },
+                onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
                 activeFeatures: chipFeatures,
                 modelReasons: modelReasons,
                 fitsPane: fitsPane
@@ -624,7 +632,7 @@ struct ContentView: View {
             ForecastTableView(
                 weatherService: weather,
                 nowTick: nowTick,
-                onRefresh: { await loadWeather(preserveData: true) },
+                onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
                 personalize: { self.personalized($0) },
                 activeFeatures: chipFeatures
             )
