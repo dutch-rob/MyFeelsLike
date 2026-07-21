@@ -632,8 +632,9 @@ struct ContentView: View {
     }
 
     private func foldTimelineTab(chipFeatures: Set<Feature>) -> some View {
+        // No tab label — the fold timeline reclaims that row for the graphs; the
+        // 24-hour/10-day indicator inside it already says which view you're on.
         VStack(spacing: 0) {
-            tabLabel("timeline")
             FoldTimelineView(
                 series: weather.isRefreshing ? [] : personalized(weather.series10d, splitSun: sunFeatureActive),
                 historic: weather.isRefreshing ? [] : personalized(weather.historic, splitSun: sunFeatureActive),

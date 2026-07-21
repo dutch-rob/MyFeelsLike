@@ -37,6 +37,10 @@ enum SettingsKey {
     /// timeline that morphs between them (the color band folds into the heat map
     /// while the charts zoom). Off by default.
     static let useFoldTimeline   = "useFoldTimeline"
+    /// Remembers the "Table screen" setting from just before Fold timeline was
+    /// turned on (fold mode force-hides the table), so it can be restored when
+    /// fold mode is turned back off.
+    static let tableBeforeFold   = "tableBeforeFold"
     /// Publish your model so others can compare with you (default on). Off keeps
     /// you able to see others while withdrawing your own shared model.
     static let shareForCompare   = "shareForCompare"

@@ -116,13 +116,23 @@ struct SettingsView: View {
 
             Section {
                 Toggle("Fold timeline", isOn: $useFoldTimeline)
+                    .onChange(of: useFoldTimeline) { _, on in
+                        if on {
+                            // Fold mode owns the swipe, so it can't page to the
+                            // table — hide it, remembering the prior choice.
+                            UserDefaults.standard.set(showTable, forKey: SettingsKey.tableBeforeFold)
+                            showTable = false
+                        } else {
+                            showTable = UserDefaults.standard.bool(forKey: SettingsKey.tableBeforeFold)
+                        }
+                    }
                 Button { showFoldDemo = true } label: {
                     Label("Heat-map fold preview", systemImage: "square.stack.3d.down.forward")
                 }
             } header: {
                 Text("Experimental")
             } footer: {
-                Text("Fold timeline replaces the two graph screens with one continuous timeline: a 24-hour / 10-day switch morphs between them — the color band folds into the heat map while the charts zoom. The preview button shows the fold on its own.")
+                Text("Fold timeline replaces the two graph screens with one continuous timeline: swipe left/right to morph between 24-hour and 10-day — the color band folds into the heat map while the charts zoom. Long-press a graph to read exact values. (The table screen is hidden while this is on.) The preview button shows the fold on its own.")
             }
 
             Section {

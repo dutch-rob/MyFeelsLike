@@ -52,6 +52,9 @@ struct FoldTimelineView: View {
     @State private var progress: Double = 0
     /// Progress captured at the start of the current swipe (nil when not dragging).
     @State private var dragBase: Double? = nil
+    /// The time the user is reading via long-press scrub (nil = not scrubbing).
+    /// While set, the transition swipe is suspended and a readout is shown.
+    @State private var scrubDate: Date? = nil
 
     private var linesOnly: Bool { chartStyle == .lines }
     private var tempVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
@@ -132,6 +135,120 @@ struct FoldTimelineView: View {
     }
     private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
 
+    // MARK: Scrubbing (long-press to read exact values; coexists with the swipe)
+
+    private var scrubPoint: ForecastPoint? {
+        guard let t = scrubDate else { return nil }
+        return allPoints.min { abs($0.date.timeIntervalSince(t)) < abs($1.date.timeIntervalSince(t)) }
+    }
+
+    /// Long press drops the line at the middle of the visible window; the drag
+    /// layer then moves it. (While scrubbing, the transition swipe is suspended.)
+    private func enterScrub() {
+        guard scrubDate == nil, !allPoints.isEmpty else { return }
+        let mid = Date(timeIntervalSinceReferenceDate:
+                        (visLo.timeIntervalSinceReferenceDate + visHi.timeIntervalSinceReferenceDate) / 2)
+        scrubDate = allPoints.min { abs($0.date.timeIntervalSince(mid)) < abs($1.date.timeIntervalSince(mid)) }?.date
+    }
+
+    /// Active only while scrubbing: any touch/drag on a chart moves the line.
+    @ViewBuilder
+    private func scrubDragLayer(_ proxy: ChartProxy) -> some View {
+        GeometryReader { geo in
+            Rectangle().fill(Color.clear).contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { v in
+                            guard let pf = proxy.plotFrame else { return }
+                            let x = v.location.x - geo[pf].origin.x
+                            if let d = proxy.value(atX: x, as: Date.self) {
+                                scrubDate = allPoints.min {
+                                    abs($0.date.timeIntervalSince(d)) < abs($1.date.timeIntervalSince(d))
+                                }?.date
+                            }
+                        }
+                )
+        }
+    }
+
+    @ChartContentBuilder
+    private func scrubRule() -> some ChartContent {
+        if let t = scrubDate {
+            RuleMark(x: .value("scrub", t))
+                .foregroundStyle(axisInk.opacity(0.8))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        }
+    }
+
+    /// 0 = line at far left, 1 = far right (drives which side the readout sits on).
+    private var scrubFraction: Double {
+        guard let t = scrubDate else { return 0.5 }
+        let lo = visLo.timeIntervalSinceReferenceDate, hi = visHi.timeIntervalSinceReferenceDate
+        guard hi > lo else { return 0.5 }
+        return min(1, max(0, (t.timeIntervalSinceReferenceDate - lo) / (hi - lo)))
+    }
+
+    private func scrubReadout(_ p: ForecastPoint) -> some View {
+        let unit = useFahrenheit ? "°F" : "°C"
+        let windUnit = useFahrenheit ? "mph" : "kph"
+        return VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 6) {
+                Text(scrubTimeLabel(p.date)).font(.caption2.weight(.semibold))
+                if let s = p.myFeelsLikeScore {
+                    let c = max(ColorScale.minScore, min(ColorScale.maxScore, s))
+                    Text(String(format: "%.0f", c))
+                        .font(.caption2.weight(.bold)).monospacedDigit()
+                        .foregroundStyle(ColorScale.contrastingText(forScore: c))
+                        .padding(.horizontal, 4).padding(.vertical, 1)
+                        .background(ColorScale.color(forScore: c), in: RoundedRectangle(cornerRadius: 3))
+                }
+                Spacer(minLength: 10)
+                Button { scrubDate = nil } label: {
+                    Image(systemName: "xmark.circle.fill").font(.callout).foregroundStyle(.secondary)
+                }.buttonStyle(.plain)
+            }
+            readoutRow("Temp/feels \(unit)",
+                       String(format: "%.1f (%.1f)",
+                              useFahrenheit ? p.temperatureF : p.temperatureC,
+                              useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC), .green)
+            readoutRow("Wet bulb \(unit)", String(format: "%.1f", useFahrenheit ? p.wetBulbF : p.wetBulbC), .blue)
+            readoutRow("Dew pt \(unit)", String(format: "%.1f", useFahrenheit ? p.dewPointF : p.dewPointC), .red)
+            readoutRow("Wind (gust) \(windUnit)",
+                       String(format: "%.0f (%.0f)",
+                              useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH,
+                              useFahrenheit ? p.windGustMPH : p.windGustKPH), .red)
+            readoutRow("Precip", String(format: "%.1f mm (%.0f%%)", p.precipitationMM, p.precipProbability * 100), .blue)
+        }
+        .padding(6)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
+        .fixedSize()
+    }
+
+    private func readoutRow(_ label: String, _ value: String, _ tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            Text(value).font(.caption2.weight(.medium)).monospacedDigit()
+                .foregroundStyle(tint.mix(with: .primary, by: 0.25))
+        }
+    }
+
+    private func scrubTimeLabel(_ d: Date) -> String {
+        let cal = Calendar.current
+        let h = cal.component(.hour, from: d)
+        let hh: String
+        if use12Hour {
+            if h == 0 { hh = "12 am" } else if h == 12 { hh = "noon" } else { hh = h < 12 ? "\(h) am" : "\(h - 12) pm" }
+        } else { hh = String(format: "%02d:00", h) }
+        // Include the weekday once we're zoomed past a day or so.
+        if visHi.timeIntervalSince(visLo) > 2 * 86400 {
+            let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEE"
+            return "\(f.string(from: d)) \(hh)"
+        }
+        return hh
+    }
+
     // MARK: Body
 
     var body: some View {
@@ -160,6 +277,7 @@ struct FoldTimelineView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 52)
                 .contentShape(Rectangle())
+                .onLongPressGesture(minimumDuration: 0.35) { enterScrub() }
                 .gesture(scrubGesture(width: geo.size.width))
             }
         }
@@ -181,12 +299,14 @@ struct FoldTimelineView: View {
     private func scrubGesture(width: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { v in
+                guard scrubDate == nil else { return }   // scrubbing: line is moved by the chart drag layer
                 guard abs(v.translation.width) > abs(v.translation.height) else { return }
                 if dragBase == nil { dragBase = progress }
                 let span = max(1, width * 0.7)
                 progress = clamp((dragBase ?? progress) - v.translation.width / span, 0, 1)
             }
             .onEnded { v in
+                guard scrubDate == nil else { return }
                 let span = max(1, width * 0.7)
                 let projected = clamp((dragBase ?? progress) - v.predictedEndTranslation.width / span, 0, 1)
                 withAnimation(.easeOut(duration: 0.3)) { progress = projected > 0.5 ? 1 : 0 }
@@ -218,12 +338,19 @@ struct FoldTimelineView: View {
                     }
                 }
                 nowRule
+                scrubRule()
             }
             .chartLegend(.hidden)
             .chartYScale(domain: dom)
             .chartXScale(domain: visDomain)
             .chartYAxis { leadingYAxis(stride: 5) }
             .chartXAxis { xAxis(labels: true) }
+            .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
+            .overlay(alignment: scrubFraction < 0.5 ? .topTrailing : .topLeading) {
+                if let p = scrubPoint {
+                    scrubReadout(p).padding(6).transition(.opacity)
+                }
+            }
             .frame(height: height - 20)
             .saturation(graphPalette.saturation)
         }
@@ -282,12 +409,14 @@ struct FoldTimelineView: View {
                     }
                 }
                 nowRule
+                scrubRule()
             }
             .chartLegend(.hidden)
             .chartYScale(domain: linesOnly ? [0, hi] : [hi, 0])   // area mode hangs downward
             .chartXScale(domain: visDomain)
             .chartYAxis { leadingYAxis(stride: nil) }
             .chartXAxis { xAxis(labels: true) }
+            .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             .frame(height: height - 20)
             .saturation(graphPalette.saturation)
 
@@ -377,6 +506,14 @@ struct FoldTimelineView: View {
                     }
                 }
             }
+            // Scrub line across the band, aligned with the charts above/below.
+            if let t = scrubDate, let sx = proxyX(t, plot: plot) {
+                var line = Path()
+                line.move(to: CGPoint(x: sx, y: plot.minY))
+                line.addLine(to: CGPoint(x: sx, y: plot.maxY))
+                ctx.stroke(line, with: .color(axisInk.opacity(0.8)),
+                           style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            }
         }
     }
 
@@ -414,14 +551,13 @@ struct FoldTimelineView: View {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 5)) { value in
                 AxisGridLine().foregroundStyle(axisInk.opacity(0.22))
                 AxisTick().foregroundStyle(axisInk.opacity(0.55))
-                // A chip behind the number keeps it legible where a filled area
-                // reaches the left edge (e.g. the 24-hour peak near the axis).
+                // Outlined number (contrasting halo, no box) stays legible whether
+                // it sits over the sky or over a filled area reaching the axis.
                 AxisValueLabel {
                     if let d = value.as(Double.self) {
-                        Text("\(Int(d.rounded()))")
-                            .font(.caption).foregroundStyle(axisInk)
-                            .padding(.horizontal, 3)
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 3))
+                        OutlinedNumber(text: "\(Int(d.rounded()))",
+                                       fill: axisInk,
+                                       halo: axisInk == .white ? .black : .white)
                     }
                 }
             }
@@ -451,6 +587,25 @@ struct FoldTimelineView: View {
         }
         let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEE"
         return String(f.string(from: d).prefix(2))
+    }
+}
+
+// MARK: - Outlined axis number (legible over sky or a filled area)
+
+private struct OutlinedNumber: View {
+    let text: String
+    let fill: Color
+    let halo: Color
+    var body: some View {
+        ZStack {
+            ForEach(0..<8, id: \.self) { i in
+                let a = Double(i) / 8 * 2 * .pi
+                Text(text).foregroundStyle(halo)
+                    .offset(x: 1.1 * cos(a), y: 1.1 * sin(a))
+            }
+            Text(text).foregroundStyle(fill)
+        }
+        .font(.caption)
     }
 }
 
