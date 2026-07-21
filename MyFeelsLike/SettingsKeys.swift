@@ -33,6 +33,10 @@ enum SettingsKey {
     /// full-strength, or "muted" softened for people who find them too harsh).
     /// Does not touch the MyFeelsLike score colors.
     static let graphPalette      = "graphPalette"
+    /// Experimental: replace the paged 24h/10-day screens with one continuous
+    /// timeline that morphs between them (the color band folds into the heat map
+    /// while the charts zoom). Off by default.
+    static let useFoldTimeline   = "useFoldTimeline"
     /// Publish your model so others can compare with you (default on). Off keeps
     /// you able to see others while withdrawing your own shared model.
     static let shareForCompare   = "shareForCompare"

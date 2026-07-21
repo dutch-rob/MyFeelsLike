@@ -55,6 +55,7 @@ struct ContentView: View {
     /// #3: when off, the table screen is dropped from the pager so swiping only
     /// cycles between the two graph screens.
     @AppStorage(SettingsKey.showTable)       private var showTable     = false
+    @AppStorage(SettingsKey.useFoldTimeline) private var useFoldTimeline = false
     @Environment(\.scenePhase) private var scenePhase
 
     /// True when at least one forecast graph is enabled. When false, the 24h
@@ -314,6 +315,10 @@ struct ContentView: View {
             if !anyGraphVisible {
                 // #10: every graph disabled → only the table screen remains.
                 forecastTableTab(chipFeatures: activeFeatures)
+            } else if useFoldTimeline && !useDashboardLayout {
+                // Experimental single morphing timeline in place of the two
+                // paged graph screens (the table, if on, stays a swipe away).
+                if showTable { foldTimelineWithTable } else { foldTimelineTab }
             } else if useDashboardLayout {
                 dashboardLayout
             } else if showTable {
@@ -622,6 +627,36 @@ struct ContentView: View {
                 fitsPane: fitsPane
             )
         }
+    }
+
+    private func foldTimelineTab(chipFeatures: Set<Feature>) -> some View {
+        VStack(spacing: 0) {
+            tabLabel("timeline")
+            FoldTimelineView(
+                series: weather.isRefreshing ? [] : personalized(weather.series10d, splitSun: sunFeatureActive),
+                historic: weather.isRefreshing ? [] : personalized(weather.historic, splitSun: sunFeatureActive),
+                current: weather.isRefreshing ? nil : personalized(weather.current),
+                progressLoad: weather.loadProgress,
+                nowTick: nowTick,
+                sunrise: weather.sunrise,
+                sunset: weather.sunset,
+                errorMessage: weather.lastErrorMessage,
+                attribution: weather.attribution,
+                onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
+                activeFeatures: chipFeatures
+            )
+        }
+    }
+
+    private var foldTimelineTab: some View { foldTimelineTab(chipFeatures: activeFeatures) }
+
+    /// Fold timeline with the table one swipe to the right.
+    private var foldTimelineWithTable: some View {
+        TabView(selection: $selectedTab) {
+            foldTimelineTab(chipFeatures: activeFeatures).tag(1)
+            forecastTableTab(chipFeatures: activeFeatures).tag(3)
+        }
+        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
     }
 
     /// Why no personalized model yet (empty once one exists). Shown on the
