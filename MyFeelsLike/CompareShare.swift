@@ -162,6 +162,37 @@ enum CompareShare {
         return c.url
     }
 
+    /// Write this install's model to a temporary `.myfeelslike` file whose
+    /// contents are the same deep link. This is the "no camera needed"
+    /// attachment: texted, emailed or AirDropped, the recipient taps it and —
+    /// because the app registers the document type — it opens straight into a
+    /// comparison. Named after the sender so the recipient sees whose it is.
+    static func modelFileURL(name: String, model: RegressionState) -> URL? {
+        guard let link = modelInviteURL(name: name, model: model) else { return nil }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "/", with: "-")
+        let base = trimmed.isEmpty ? "MyFeelsLike" : trimmed
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(base).myfeelslike")
+        do {
+            try Data(link.absoluteString.utf8).write(to: url, options: .atomic)
+            return url
+        } catch {
+            log.error("Could not write compare file: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    /// Parse a `.myfeelslike` file opened from an attachment. Its contents are
+    /// the same deep link, so we reuse `parseInvite`.
+    static func parseImportedFile(_ fileURL: URL) -> ParsedInvite? {
+        let scoped = fileURL.startAccessingSecurityScopedResource()
+        defer { if scoped { fileURL.stopAccessingSecurityScopedResource() } }
+        guard let text = try? String(contentsOf: fileURL, encoding: .utf8),
+              let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)) else { return nil }
+        return parseInvite(url)
+    }
+
     /// An opened compare deep link. `model` is set when the link embeds a
     /// snapshot (QR / texted model); otherwise it's a live CloudKit invite.
     struct ParsedInvite {

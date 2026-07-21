@@ -194,7 +194,11 @@ struct ContentView: View {
             WelcomeSheet(isUpdate: !lastSeenVersion.isEmpty) { wantsGuide = true }
         }
         .onOpenURL { url in
-            guard let inv = CompareShare.parseInvite(url) else { return }
+            // A tapped `.myfeelslike` attachment arrives as a file URL; a scanned
+            // QR or texted link as a myfeelslike:// URL. Both resolve to the same
+            // ParsedInvite.
+            guard let inv = url.isFileURL ? CompareShare.parseImportedFile(url)
+                                          : CompareShare.parseInvite(url) else { return }
             // Persist immediately so it's there when Compare appears, then jump
             // to the Compare screen (CompareView also reacts to `incomingInvite`
             // if it's already open). `model` present ⇒ a scanned/texted snapshot.

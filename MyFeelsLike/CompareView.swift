@@ -149,8 +149,9 @@ struct CompareView: View {
     @State private var showMessageComposer = false
     @State private var inviteCopiedAlert = false
     @State private var showShareModel = false
-    @State private var showMessageModel = false
     @State private var modelLinkCopied = false
+    /// The `.myfeelslike` file for the current share sheet, written on open.
+    @State private var modelFileURL: URL?
     /// The invite link for the current "Invite via Text" — generated once on tap
     /// so a single token is minted per invite (not on every sheet re-render).
     @State private var pendingInviteURL: URL?
@@ -299,15 +300,6 @@ struct CompareView: View {
             Text("Messages isn't available here, so the invite link was copied. Paste it into any messaging app to send it.")
         }
         .sheet(isPresented: $showShareModel) { shareModelSheet }
-        .sheet(isPresented: $showMessageModel) {
-            if let url = myModelURL {
-                MessageComposer(body: "Compare your MyFeelsLike with mine — scan the code or open the link: \(url.absoluteString)",
-                                attachment: Self.qrImage(url.absoluteString)) {
-                    showMessageModel = false
-                }
-                .ignoresSafeArea()
-            }
-        }
         .onChange(of: invite) { _, inv in
             guard let inv else { return }
             coordinator.add(shareID: inv.id, name: inv.name, token: inv.token,
@@ -461,7 +453,7 @@ struct CompareView: View {
         }
     }
 
-    // MARK: Share my model (QR + link, serverless snapshot)
+    // MARK: Share my model (file / QR / link, serverless snapshot)
 
     /// The deep link that carries my model, or nil if I have no model yet.
     private var myModelURL: URL? {
@@ -474,35 +466,54 @@ struct CompareView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
-                    Text("A snapshot of your MyFeelsLike model. Someone can scan this (or open the link) to compare with you — no account needed, and it works on Android too. It won't update if you rate more; re-share to send an updated one.")
+                    Text("A snapshot of your MyFeelsLike model. No account needed, and it works on Android too. It won't update if you rate more — re-share to send an updated one.")
                         .font(.callout).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
 
-                    if let url = myModelURL, let qr = Self.qrImage(url.absoluteString) {
-                        Image(uiImage: qr)
-                            .interpolation(.none).resizable().scaledToFit()
-                            .frame(maxWidth: 260)
-                            .padding(8)
-                            .background(.white, in: RoundedRectangle(cornerRadius: 12))
-                            .accessibilityLabel("QR code of your MyFeelsLike model")
-
-                        VStack(spacing: 10) {
-                            if MFMessageComposeViewController.canSendText() {
-                                Button {
-                                    showShareModel = false
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showMessageModel = true }
-                                } label: { Label("Send by Message", systemImage: "message").frame(maxWidth: .infinity) }
+                    if let url = myModelURL {
+                        // Primary: send the model as a small file. The recipient
+                        // taps the attachment and it opens straight into the app —
+                        // no camera, no scanning. Works over Message, Mail,
+                        // AirDrop or Files.
+                        VStack(spacing: 6) {
+                            if let file = modelFileURL {
+                                ShareLink(item: file,
+                                          preview: SharePreview("\(myDisplayName.isEmpty ? "MyFeelsLike" : myDisplayName) — MyFeelsLike")) {
+                                    Label("Send as a file (Message, Mail, AirDrop…)", systemImage: "square.and.arrow.up")
+                                        .frame(maxWidth: .infinity)
+                                }
                                 .buttonStyle(.borderedProminent)
                             }
-                            Button {
-                                UIPasteboard.general.string = url.absoluteString
-                                modelLinkCopied = true
-                            } label: {
-                                Label(modelLinkCopied ? "Link copied" : "Copy link (to email or paste)",
-                                      systemImage: "doc.on.doc").frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
+                            Text("The recipient taps the attachment to open it in MyFeelsLike — no camera needed.")
+                                .font(.caption2).foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
+
+                        Divider()
+
+                        // Secondary: a QR to scan in person (when you're together),
+                        // and a copyable link to paste anywhere.
+                        if let qr = Self.qrImage(url.absoluteString) {
+                            Text("Or scan in person")
+                                .font(.subheadline.weight(.semibold))
+                            Image(uiImage: qr)
+                                .interpolation(.none).resizable().scaledToFit()
+                                .frame(maxWidth: 220)
+                                .padding(8)
+                                .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                                .accessibilityLabel("QR code of your MyFeelsLike model")
+                            Text("Point the other phone's camera at this code. (A QR is no use inside a text message — send the file for that.)")
+                                .font(.caption2).foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        Button {
+                            UIPasteboard.general.string = url.absoluteString
+                            modelLinkCopied = true
+                        } label: {
+                            Label(modelLinkCopied ? "Link copied" : "Copy link",
+                                  systemImage: "doc.on.doc").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
                     } else {
                         Text("Rate a few moments first so there's a model to share.")
                             .font(.footnote).foregroundStyle(.secondary)
@@ -514,6 +525,12 @@ struct CompareView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { showShareModel = false } }
+            }
+            // Write the shareable file once when the sheet opens.
+            .onAppear {
+                if let model = ownModel {
+                    modelFileURL = CompareShare.modelFileURL(name: myDisplayName, model: model)
+                }
             }
         }
     }
