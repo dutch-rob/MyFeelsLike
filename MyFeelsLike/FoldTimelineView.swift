@@ -55,9 +55,6 @@ struct FoldTimelineView: View {
     /// The time the user is reading via long-press scrub (nil = not scrubbing).
     /// While set, the transition swipe is suspended and a readout is shown.
     @State private var scrubDate: Date? = nil
-    /// Last touch-down x, recorded passively so a long press can drop the scrub
-    /// line under the finger (LongPressGesture doesn't report a location).
-    @State private var lastTouchX: CGFloat? = nil
 
     private var linesOnly: Bool { chartStyle == .lines }
     private var tempVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
@@ -207,10 +204,10 @@ struct FoldTimelineView: View {
         return min(1, max(0, (t.timeIntervalSinceReferenceDate - lo) / (hi - lo)))
     }
 
-    private func scrubReadout(_ p: ForecastPoint) -> some View {
+    /// Values that belong to the temperature panel (shown over it).
+    private func scrubReadoutTop(_ p: ForecastPoint) -> some View {
         let unit = useFahrenheit ? "°F" : "°C"
-        let windUnit = useFahrenheit ? "mph" : "kph"
-        return VStack(alignment: .leading, spacing: 1) {
+        return readoutCard {
             HStack(spacing: 6) {
                 Text(scrubTimeLabel(p.date)).font(.caption2.weight(.semibold))
                 Image(systemName: p.symbolName).font(.caption2)
@@ -233,20 +230,32 @@ struct FoldTimelineView: View {
                               useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC), .green)
             readoutRow("Wet bulb \(unit)", String(format: "%.1f", useFahrenheit ? p.wetBulbF : p.wetBulbC), .blue)
             readoutRow("Dew pt \(unit)", String(format: "%.1f", useFahrenheit ? p.dewPointF : p.dewPointC), .red)
-            readoutRow("Wind (gust) \(windUnit)",
-                       String(format: "%.0f (%.0f)",
-                              useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH,
-                              useFahrenheit ? p.windGustMPH : p.windGustKPH), .red)
-            readoutRow("Precip", String(format: "%.1f mm (%.0f%%)", p.precipitationMM, p.precipProbability * 100), .blue)
             readoutRow("UV", String(format: "%.0f", p.uvIndex), .orange)
             readoutRow("Cloud %", String(format: "%.0f (l:%.0f m:%.0f h:%.0f)",
                                          p.cloudCover * 100, p.cloudCoverLow * 100,
                                          p.cloudCoverMedium * 100, p.cloudCoverHigh * 100), .secondary)
         }
-        .padding(6)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
-        .fixedSize()
+    }
+
+    /// Values that belong to the precip/wind panel (shown over it).
+    private func scrubReadoutBottom(_ p: ForecastPoint) -> some View {
+        let windUnit = useFahrenheit ? "mph" : "kph"
+        return readoutCard {
+            readoutRow("Wind (gust) \(windUnit)",
+                       String(format: "%.0f (%.0f)",
+                              useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH,
+                              useFahrenheit ? p.windGustMPH : p.windGustKPH), .red)
+            readoutRow("Precip", String(format: "%.1f mm (%.0f%%)",
+                                        p.precipitationMM, p.precipProbability * 100), .blue)
+        }
+    }
+
+    private func readoutCard<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 1) { content() }
+            .padding(6)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.quaternary))
+            .fixedSize()
     }
 
     private func readoutRow(_ label: String, _ value: String, _ tint: Color) -> some View {
@@ -301,13 +310,13 @@ struct FoldTimelineView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 52)
                 .contentShape(Rectangle())
-                // Passive recorder: notes where a touch starts without consuming
-                // it, so the long press below can place the line under the finger.
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0).onChanged { lastTouchX = $0.location.x }
-                )
+                // NOTE: do not add another touch recogniser here. A
+                // simultaneousGesture(DragGesture(minimumDistance: 0)) — tried in
+                // order to capture the press location — claims the touch on
+                // touch-down and killed both the transition swipe and the long
+                // press. The line therefore starts mid-window; a tap moves it.
                 .onLongPressGesture(minimumDuration: 0.35) {
-                    enterScrub(atX: lastTouchX, width: geo.size.width)
+                    enterScrub(atX: nil, width: geo.size.width)
                 }
                 .gesture(scrubGesture(width: geo.size.width))
             }
@@ -382,7 +391,7 @@ struct FoldTimelineView: View {
             }
             .overlay(alignment: scrubFraction < 0.5 ? .topTrailing : .topLeading) {
                 if let p = scrubPoint {
-                    scrubReadout(p).padding(6).transition(.opacity)
+                    scrubReadoutTop(p).padding(6).transition(.opacity)
                 }
             }
             .frame(height: height - 20)
@@ -453,6 +462,12 @@ struct FoldTimelineView: View {
             .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             .chartOverlay { proxy in
                 yAxisLabels(proxy, ticks: yTicks(0, hi, step: hi > 60 ? 20 : 10))
+            }
+            // Wind/precip values sit over their own panel.
+            .overlay(alignment: scrubFraction < 0.5 ? .topTrailing : .topLeading) {
+                if let p = scrubPoint {
+                    scrubReadoutBottom(p).padding(6).transition(.opacity)
+                }
             }
             .frame(height: height - 20)
             .saturation(graphPalette.saturation)
