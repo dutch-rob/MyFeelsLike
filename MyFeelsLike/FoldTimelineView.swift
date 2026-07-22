@@ -526,6 +526,9 @@ struct FoldTimelineView: View {
     private func foldCanvas(cols: [DayCol], total: Int, plot: CGRect) -> some View {
         let cal = Calendar.current
         return Canvas { ctx, _ in
+            // During the first layout pass (and while panels resize) the plot can
+            // be empty or non-finite; drawing then feeds NaN to CoreGraphics.
+            guard plot.isFinite, plot.width > 0, plot.height > 0 else { return }
             ctx.clip(to: Path(plot))   // keep the fold inside the plot area
             let midY = plot.midY
             let bandH = plot.height * 0.92
@@ -545,6 +548,7 @@ struct FoldTimelineView: View {
                 let length = lerp(colW, bandH, f)
                 let cross = lerp(barTh, colW, f)
                 let cellW = length / 24
+                guard colCenterX.isFinite, length.isFinite, cross > 0, cellW > 0 else { continue }
 
                 ctx.drawLayer { layer in
                     // Keep each day's fold inside its own column so half-folded
@@ -556,12 +560,13 @@ struct FoldTimelineView: View {
                         let localX = (CGFloat(h) + 0.5 - 12) * cellW
                         let color = col.scores[h].map { ColorScale.color(forScore: $0) } ?? Color.gray.opacity(0.4)
                         let rect = CGRect(x: localX - cellW / 2, y: -cross / 2, width: cellW + 0.5, height: cross)
+                        guard rect.isFinite else { continue }
                         layer.fill(Path(rect), with: .color(color))
                     }
                 }
             }
             // Scrub line across the band, aligned with the charts above/below.
-            if let t = scrubDate, let sx = proxyX(t, plot: plot) {
+            if let t = scrubDate, let sx = proxyX(t, plot: plot), sx.isFinite {
                 var line = Path()
                 line.move(to: CGPoint(x: sx, y: plot.minY))
                 line.addLine(to: CGPoint(x: sx, y: plot.maxY))
@@ -572,12 +577,15 @@ struct FoldTimelineView: View {
     }
 
     /// Map a date to an absolute x within the overlay, using the shared x-scale.
+    /// Returns nil rather than a non-finite value, which CoreGraphics rejects.
     private func proxyX(_ date: Date, plot: CGRect) -> CGFloat? {
         let lo = visLo.timeIntervalSinceReferenceDate
         let hi = visHi.timeIntervalSinceReferenceDate
-        guard hi > lo else { return nil }
+        guard hi > lo, plot.isFinite else { return nil }
         let f = (date.timeIntervalSinceReferenceDate - lo) / (hi - lo)
-        return plot.minX + CGFloat(f) * plot.width
+        guard f.isFinite else { return nil }
+        let x = plot.minX + CGFloat(f) * plot.width
+        return x.isFinite ? x : nil
     }
 
     // MARK: Shared chart pieces
@@ -619,12 +627,14 @@ struct FoldTimelineView: View {
         GeometryReader { geo in
             if let anchor = proxy.plotFrame {
                 let plot = geo[anchor]
-                ForEach(ticks, id: \.self) { v in
-                    if let y = proxy.position(forY: v) {
-                        OutlinedNumber(text: "\(Int(v.rounded()))",
-                                       fill: axisInk,
-                                       halo: axisInk == .white ? .black : .white)
-                            .position(x: plot.minX + 14, y: plot.minY + y)
+                if plot.isFinite, plot.height > 0 {
+                    ForEach(ticks.filter { $0.isFinite }, id: \.self) { v in
+                        if let y = proxy.position(forY: v), y.isFinite {
+                            OutlinedNumber(text: "\(Int(v.rounded()))",
+                                           fill: axisInk,
+                                           halo: axisInk == .white ? .black : .white)
+                                .position(x: plot.minX + 14, y: plot.minY + y)
+                        }
                     }
                 }
             }
@@ -680,6 +690,14 @@ private struct OutlinedNumber: View {
 }
 
 // MARK: - helpers
+
+private extension CGRect {
+    /// CoreGraphics rejects NaN/infinite geometry (and logs about it), which can
+    /// otherwise slip in from a zero-size layout pass.
+    var isFinite: Bool {
+        origin.x.isFinite && origin.y.isFinite && size.width.isFinite && size.height.isFinite
+    }
+}
 
 private func lerp(_ a: CGFloat, _ b: CGFloat, _ t: Double) -> CGFloat { a + (b - a) * CGFloat(t) }
 private func clamp(_ x: Double, _ lo: Double, _ hi: Double) -> Double { min(hi, max(lo, x)) }
