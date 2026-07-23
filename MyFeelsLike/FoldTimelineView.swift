@@ -20,6 +20,36 @@
 
 import SwiftUI
 import Charts
+import UIKit
+
+/// A transparent layer whose UIKit long-press reports the touch *location* (which
+/// SwiftUI's LongPressGesture does not). It fails on movement, so a swipe passes
+/// through, and it recognises simultaneously with other gestures.
+private struct LongPressLocator: UIViewRepresentable {
+    var minimumDuration: Double = 0.35
+    var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
+
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView()
+        v.backgroundColor = .clear
+        let lp = UILongPressGestureRecognizer(target: context.coordinator,
+                                              action: #selector(Coordinator.handle(_:)))
+        lp.minimumPressDuration = minimumDuration
+        lp.delegate = context.coordinator
+        v.addGestureRecognizer(lp)
+        return v
+    }
+    func updateUIView(_ v: UIView, context: Context) { context.coordinator.onEvent = onEvent }
+    func makeCoordinator() -> Coordinator { Coordinator(onEvent) }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
+        init(_ onEvent: @escaping (CGPoint, UIGestureRecognizer.State) -> Void) { self.onEvent = onEvent }
+        @objc func handle(_ g: UILongPressGestureRecognizer) { onEvent(g.location(in: g.view), g.state) }
+        func gestureRecognizer(_ g: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    }
+}
 
 struct FoldTimelineView: View {
     var series: [ForecastPoint]          // 10-day, personalized
@@ -142,27 +172,30 @@ struct FoldTimelineView: View {
         return allPoints.min { abs($0.date.timeIntervalSince(t)) < abs($1.date.timeIntervalSince(t)) }
     }
 
-    /// Long press drops the line where the finger is (the last touch recorded by
-    /// the passive recogniser), falling back to the middle of the window. The
-    /// drag layer then moves it. While scrubbing, the transition swipe is off.
-    private func enterScrub(atX x: CGFloat?, width: CGFloat) {
-        guard scrubDate == nil, !allPoints.isEmpty else { return }
-        let lo = visLo.timeIntervalSinceReferenceDate
-        let hi = visHi.timeIntervalSinceReferenceDate
-        let frac: Double
-        if let x {
-            // Approximate plot bounds: horizontal padding + the y-axis gutter.
-            let left: CGFloat = 46, right = max(left + 1, width - 16)
-            frac = Double(min(1, max(0, (x - left) / (right - left))))
-        } else {
-            frac = 0.5
-        }
-        let target = Date(timeIntervalSinceReferenceDate: lo + frac * (hi - lo))
-        scrubDate = allPoints.min { abs($0.date.timeIntervalSince(target)) < abs($1.date.timeIntervalSince(target)) }?.date
+
+    /// Snap a plot-relative x (via a chart proxy) to the nearest forecast hour.
+    private func snapDate(atX x: CGFloat, proxy: ChartProxy) -> Date? {
+        guard let d = proxy.value(atX: x, as: Date.self) else { return nil }
+        return allPoints.min { abs($0.date.timeIntervalSince(d)) < abs($1.date.timeIntervalSince(d)) }?.date
     }
 
-    /// Active only while scrubbing: any touch/drag on a panel moves the line, and
-    /// a tap (press with no movement) dismisses it.
+    /// Always present: a UIKit long-press drops the scrub line exactly where the
+    /// finger is (and moves it if you keep holding and dragging).
+    @ViewBuilder
+    private func scrubEntry(_ proxy: ChartProxy) -> some View {
+        GeometryReader { geo in
+            LongPressLocator { loc, state in
+                guard let pf = proxy.plotFrame else { return }
+                let x = loc.x - geo[pf].origin.x
+                if (state == .began || state == .changed), let d = snapDate(atX: x, proxy: proxy) {
+                    scrubDate = d
+                }
+            }
+        }
+    }
+
+    /// Active only while scrubbing: a drag moves the line; a tap (no movement)
+    /// dismisses it without first nudging the line.
     @ViewBuilder
     private func scrubDragLayer(_ proxy: ChartProxy) -> some View {
         GeometryReader { geo in
@@ -170,16 +203,16 @@ struct FoldTimelineView: View {
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { v in
+                            // Ignore the tiny jitter of a tap so it doesn't move
+                            // the line before it dismisses.
+                            guard abs(v.translation.width) > 4 || abs(v.translation.height) > 4 else { return }
                             guard let pf = proxy.plotFrame else { return }
-                            let x = v.location.x - geo[pf].origin.x
-                            if let d = proxy.value(atX: x, as: Date.self) {
-                                scrubDate = allPoints.min {
-                                    abs($0.date.timeIntervalSince(d)) < abs($1.date.timeIntervalSince(d))
-                                }?.date
+                            if let d = snapDate(atX: v.location.x - geo[pf].origin.x, proxy: proxy) {
+                                scrubDate = d
                             }
                         }
                         .onEnded { v in
-                            if abs(v.translation.width) < 6 && abs(v.translation.height) < 6 {
+                            if abs(v.translation.width) < 5 && abs(v.translation.height) < 5 {
                                 scrubDate = nil     // tap to finish scrubbing
                             }
                         }
@@ -310,14 +343,8 @@ struct FoldTimelineView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 52)
                 .contentShape(Rectangle())
-                // NOTE: do not add another touch recogniser here. A
-                // simultaneousGesture(DragGesture(minimumDistance: 0)) — tried in
-                // order to capture the press location — claims the touch on
-                // touch-down and killed both the transition swipe and the long
-                // press. The line therefore starts mid-window; a tap moves it.
-                .onLongPressGesture(minimumDuration: 0.35) {
-                    enterScrub(atX: nil, width: geo.size.width)
-                }
+                // Scrub entry lives on each chart (via a UIKit long-press that
+                // reports its location); the swipe drives the 24h↔10-day morph.
                 .gesture(scrubGesture(width: geo.size.width))
             }
         }
@@ -385,6 +412,7 @@ struct FoldTimelineView: View {
             .chartXScale(domain: visDomain)
             .chartYAxis { gridYAxis() }
             .chartXAxis { xAxis(labels: true) }
+            .chartOverlay { proxy in scrubEntry(proxy) }
             .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             .chartOverlay { proxy in
                 yAxisLabels(proxy, ticks: yTicks(dom.lowerBound, dom.upperBound, step: 5))
@@ -459,6 +487,7 @@ struct FoldTimelineView: View {
             .chartXScale(domain: visDomain)
             .chartYAxis { gridYAxis() }
             .chartXAxis { xAxis(labels: true) }
+            .chartOverlay { proxy in scrubEntry(proxy) }
             .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             .chartOverlay { proxy in
                 yAxisLabels(proxy, ticks: yTicks(0, hi, step: hi > 60 ? 20 : 10))
@@ -512,7 +541,8 @@ struct FoldTimelineView: View {
                             }
                         }
                     }
-                    // Dragging on the color band moves the scrub line too.
+                    // Long-press / drag on the color band scrubs it too.
+                    .chartOverlay { proxy in scrubEntry(proxy) }
                     .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
                     .frame(height: height)
             } else {
