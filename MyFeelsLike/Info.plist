@@ -61,5 +61,10 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Required because CFBundleDocumentTypes is declared: the app opens a
+	     .myfeelslike file in place (it reads it once via a security-scoped URL);
+	     it does not use a document browser. -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>
