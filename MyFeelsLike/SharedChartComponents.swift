@@ -10,6 +10,49 @@
 //
 
 import SwiftUI
+import UIKit
+
+// MARK: - Long-press location (for the graph scrubber)
+
+/// A transparent layer whose UIKit long-press reports the touch *location* (which
+/// SwiftUI's LongPressGesture does not). It fails on movement, so a swipe passes
+/// through, and it recognises simultaneously with other gestures. Used to drop
+/// the scrubber line exactly under the finger.
+struct LongPressLocator: UIViewRepresentable {
+    var minimumDuration: Double = 0.35
+    /// Report the location in the window (global) instead of the layer's bounds.
+    var inWindow: Bool = false
+    var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
+
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView()
+        v.backgroundColor = .clear
+        let lp = UILongPressGestureRecognizer(target: context.coordinator,
+                                              action: #selector(Coordinator.handle(_:)))
+        lp.minimumPressDuration = minimumDuration
+        lp.delegate = context.coordinator
+        v.addGestureRecognizer(lp)
+        return v
+    }
+    func updateUIView(_ v: UIView, context: Context) {
+        context.coordinator.onEvent = onEvent
+        context.coordinator.inWindow = inWindow
+    }
+    func makeCoordinator() -> Coordinator { Coordinator(onEvent, inWindow) }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
+        var inWindow: Bool
+        init(_ onEvent: @escaping (CGPoint, UIGestureRecognizer.State) -> Void, _ inWindow: Bool) {
+            self.onEvent = onEvent; self.inWindow = inWindow
+        }
+        @objc func handle(_ g: UILongPressGestureRecognizer) {
+            onEvent(g.location(in: inWindow ? nil : g.view), g.state)
+        }
+        func gestureRecognizer(_ g: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    }
+}
 
 // MARK: - Shared components
 

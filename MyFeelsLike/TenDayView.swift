@@ -58,6 +58,8 @@ struct TenDayView: View {
     /// vertical line is drawn at this time across every panel, and a readout card
     /// (the "table row" for that hour) is shown. nil = not scrubbing.
     @State private var scrubDate: Date? = nil
+    /// Plots' on-screen (global) x-range, so a long press between panels maps too.
+    @State private var plotXRange: ClosedRange<CGFloat>? = nil
 
     private var tempPanelVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
     private var colorPanelVisible: Bool { graphColor }
@@ -161,13 +163,39 @@ struct TenDayView: View {
         return allPoints.min { abs($0.date.timeIntervalSince(t)) < abs($1.date.timeIntervalSince(t)) }
     }
 
-    /// Drop the scrub line at "now" (nearest forecast hour) on long press.
-    private func enterScrub() {
-        guard scrubDate == nil, !allPoints.isEmpty else { return }
-        let target = current?.date ?? allPoints[allPoints.count / 2].date
-        scrubDate = allPoints.min {
-            abs($0.date.timeIntervalSince(target)) < abs($1.date.timeIntervalSince(target))
-        }?.date
+    /// Always present: a UIKit long-press drops the scrub line exactly where the
+    /// finger is (and moves it while holding + dragging), and records the plot's
+    /// global x-range so presses in the gaps between panels map too.
+    @ViewBuilder
+    private func scrubEntry(_ proxy: ChartProxy) -> some View {
+        GeometryReader { geo in
+            let plot = proxy.plotFrame.map { geo[$0] }
+            LongPressLocator { loc, state in
+                guard plot != nil else { return }
+                if state == .began || state == .changed {
+                    updateScrub(atX: loc.x, proxy: proxy, geo: geo)
+                }
+            }
+            .onAppear { recordPlotX(plot, geo: geo) }
+            .onChange(of: geo.frame(in: .global)) { _, _ in recordPlotX(plot, geo: geo) }
+        }
+    }
+
+    private func recordPlotX(_ plot: CGRect?, geo: GeometryProxy) {
+        guard let plot else { return }
+        let originX = geo.frame(in: .global).minX
+        plotXRange = (originX + plot.minX)...(originX + plot.minX + plot.width)
+    }
+
+    /// A background layer so a long press *between* panels also scrubs.
+    private var scrubGapEntry: some View {
+        LongPressLocator(inWindow: true) { loc, state in
+            guard state == .began || state == .changed,
+                  let r = plotXRange, r.upperBound > r.lowerBound, let dom = dateDomain else { return }
+            let frac = min(1, max(0, (loc.x - r.lowerBound) / (r.upperBound - r.lowerBound)))
+            let t = dom.lowerBound.addingTimeInterval(Double(frac) * dom.upperBound.timeIntervalSince(dom.lowerBound))
+            scrubDate = allPoints.min { abs($0.date.timeIntervalSince(t)) < abs($1.date.timeIntervalSince(t)) }?.date
+        }
     }
 
     /// Active only while scrubbing: any touch/drag moves the line to that x.
@@ -613,6 +641,8 @@ struct TenDayView: View {
                     }
                     .padding(.horizontal)
                     .frame(minHeight: h)
+                    // A long press between panels scrubs too.
+                    .background(scrubGapEntry)
                 }
             }
             .refreshable { await onRefresh?() }
@@ -647,7 +677,7 @@ struct TenDayView: View {
                 scrubRule()
             }
             .chartLegend(.hidden)
-            .onLongPressGesture(minimumDuration: 0.3) { enterScrub() }
+            .chartOverlay { proxy in scrubEntry(proxy) }
             .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             .chartYScale(domain: dom)
             .chartYAxis {
@@ -743,7 +773,7 @@ struct TenDayView: View {
                 scrubRule()
             }
             .chartLegend(.hidden)
-            .onLongPressGesture(minimumDuration: 0.3) { enterScrub() }
+            .chartOverlay { proxy in scrubEntry(proxy) }
             .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
             // Area mode flips the scale — zero at the top (nearest the heatmap),
             // so the wind/rain areas hang downward and share the day labels

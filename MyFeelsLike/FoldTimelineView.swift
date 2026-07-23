@@ -20,36 +20,6 @@
 
 import SwiftUI
 import Charts
-import UIKit
-
-/// A transparent layer whose UIKit long-press reports the touch *location* (which
-/// SwiftUI's LongPressGesture does not). It fails on movement, so a swipe passes
-/// through, and it recognises simultaneously with other gestures.
-private struct LongPressLocator: UIViewRepresentable {
-    var minimumDuration: Double = 0.35
-    var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
-
-    func makeUIView(context: Context) -> UIView {
-        let v = UIView()
-        v.backgroundColor = .clear
-        let lp = UILongPressGestureRecognizer(target: context.coordinator,
-                                              action: #selector(Coordinator.handle(_:)))
-        lp.minimumPressDuration = minimumDuration
-        lp.delegate = context.coordinator
-        v.addGestureRecognizer(lp)
-        return v
-    }
-    func updateUIView(_ v: UIView, context: Context) { context.coordinator.onEvent = onEvent }
-    func makeCoordinator() -> Coordinator { Coordinator(onEvent) }
-
-    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
-        init(_ onEvent: @escaping (CGPoint, UIGestureRecognizer.State) -> Void) { self.onEvent = onEvent }
-        @objc func handle(_ g: UILongPressGestureRecognizer) { onEvent(g.location(in: g.view), g.state) }
-        func gestureRecognizer(_ g: UIGestureRecognizer,
-                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
-    }
-}
 
 struct FoldTimelineView: View {
     var series: [ForecastPoint]          // 10-day, personalized
@@ -85,6 +55,9 @@ struct FoldTimelineView: View {
     /// The time the user is reading via long-press scrub (nil = not scrubbing).
     /// While set, the transition swipe is suspended and a readout is shown.
     @State private var scrubDate: Date? = nil
+    /// The plots' on-screen (global) x-range, so a long press in the gaps between
+    /// panels can be mapped to a time too.
+    @State private var plotXRange: ClosedRange<CGFloat>? = nil
 
     private var linesOnly: Bool { chartStyle == .lines }
     private var tempVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
@@ -180,16 +153,46 @@ struct FoldTimelineView: View {
     }
 
     /// Always present: a UIKit long-press drops the scrub line exactly where the
-    /// finger is (and moves it if you keep holding and dragging).
+    /// finger is (and moves it if you keep holding and dragging). Also records the
+    /// plot's global x-range so presses in the gaps between panels can map too.
     @ViewBuilder
     private func scrubEntry(_ proxy: ChartProxy) -> some View {
         GeometryReader { geo in
+            let plot = proxy.plotFrame.map { geo[$0] }
             LongPressLocator { loc, state in
-                guard let pf = proxy.plotFrame else { return }
-                let x = loc.x - geo[pf].origin.x
+                guard let plot else { return }
+                let x = loc.x - plot.origin.x
                 if (state == .began || state == .changed), let d = snapDate(atX: x, proxy: proxy) {
                     scrubDate = d
                 }
+            }
+            .onAppear { recordPlotX(plot, geo: geo) }
+            .onChange(of: geo.frame(in: .global)) { _, _ in recordPlotX(plot, geo: geo) }
+        }
+    }
+
+    private func recordPlotX(_ plot: CGRect?, geo: GeometryProxy) {
+        guard let plot else { return }
+        let originX = geo.frame(in: .global).minX
+        plotXRange = (originX + plot.minX)...(originX + plot.minX + plot.width)
+    }
+
+    /// Nearest forecast hour for a global (window) x — used by the long press in
+    /// the gaps between panels.
+    private func snapDate(globalX x: CGFloat) -> Date? {
+        guard let r = plotXRange, r.upperBound > r.lowerBound else { return nil }
+        let frac = min(1, max(0, (x - r.lowerBound) / (r.upperBound - r.lowerBound)))
+        let lo = visLo.timeIntervalSinceReferenceDate, hi = visHi.timeIntervalSinceReferenceDate
+        let t = Date(timeIntervalSinceReferenceDate: lo + Double(frac) * (hi - lo))
+        return allPoints.min { abs($0.date.timeIntervalSince(t)) < abs($1.date.timeIntervalSince(t)) }?.date
+    }
+
+    /// A background layer over the whole view so a long press *between* panels
+    /// (or on a label/legend) also starts the scrubber.
+    private var scrubGapEntry: some View {
+        LongPressLocator(inWindow: true) { loc, state in
+            if (state == .began || state == .changed), let d = snapDate(globalX: loc.x) {
+                scrubDate = d
             }
         }
     }
@@ -343,8 +346,10 @@ struct FoldTimelineView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 52)
                 .contentShape(Rectangle())
-                // Scrub entry lives on each chart (via a UIKit long-press that
-                // reports its location); the swipe drives the 24h↔10-day morph.
+                // Behind everything: catches a long press in the gaps between
+                // panels. Presses on a panel are caught by its own scrubEntry in
+                // front. The swipe drives the 24h↔10-day morph.
+                .background(scrubGapEntry)
                 .gesture(scrubGesture(width: geo.size.width))
             }
         }
