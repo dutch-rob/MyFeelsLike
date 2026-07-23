@@ -51,7 +51,6 @@ struct SettingsView: View {
     @State private var exportError: String? = nil
 
     @State private var showImportPicker = false
-    @State private var showFoldDemo = false   // TEMPORARY: fold-animation preview
     @State private var importMessage: String? = nil
 
     /// Placeholder shown in the compare-name field (the device name).
@@ -126,13 +125,10 @@ struct SettingsView: View {
                             showTable = UserDefaults.standard.bool(forKey: SettingsKey.tableBeforeFold)
                         }
                     }
-                Button { showFoldDemo = true } label: {
-                    Label("Heat-map fold preview", systemImage: "square.stack.3d.down.forward")
-                }
             } header: {
                 Text("Experimental")
             } footer: {
-                Text("Fold timeline replaces the two graph screens with one continuous timeline: swipe left/right to morph between 24-hour and 10-day — the color band folds into the heat map while the charts zoom. Long-press a graph to read exact values. (The table screen is hidden while this is on.) The preview button shows the fold on its own.")
+                Text("Fold timeline replaces the two graph screens with one continuous timeline: swipe left/right to morph between 24-hour and 10-day — the color band folds into the heat map while the charts zoom. Long-press a graph to read exact values. (The table screen is hidden while this is on.)")
             }
 
             Section {
@@ -279,7 +275,6 @@ struct SettingsView: View {
                 importRatings(from: url)
             }
         }
-        .sheet(isPresented: $showFoldDemo) { HeatmapFoldDemoView() }   // TEMPORARY
     }
 
     // MARK: - Reset

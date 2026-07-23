@@ -14,6 +14,7 @@ different people.
 - [Rating how it feels](#rating-how-it-feels) — the few taps that teach the app
 - [The 24-hour screen](#the-24-hour-screen) — hourly bands and your comfort band
 - [The 10-day screen](#the-10-day-screen) — the trend and a time-of-day heatmap
+- [Reading exact values](#reading-exact-values) — long-press a graph
 - [The table](#the-table) — every number, if you want it
 - [Scenarios](#scenarios) — activity, clothing, sun or shade
 - [Comparing with others](#comparing-with-others) — nearby, live
@@ -30,26 +31,37 @@ until you've given the app enough ratings to estimate your MyFeelsLike — usual
 at least 5.
 
 ## Rating how it feels
-Tap **Rate Feels Like** and place how it feels on the color scale, with optional
-notes on your activity, how you're dressed, and sun or shade. A handful of
+Tap **Rate Feels Like** and place how it feels on the color scale, choosing your
+activity, how you're dressed, and sun or shade for that moment — you set each one
+deliberately, so nothing is left at a default you didn't mean. A handful of
 ratings across different conditions is enough to get started; more ratings sharpen
 it over time.
 
 ## The 24-hour screen
-Filled bands show temperature, wet-bulb, and dew point, with the standard
-apparent-temperature ("Feels like") line on top. Below them, a thin **MyFeelsLike**
-band shows your predicted comfort hour by hour — split into in-sun and in-shade
-once the app has learned that sun makes a difference for you.
+The temperature panel shows the outdoor temperature and the standard
+apparent-temperature ("Feels like") as lines; you can add wet-bulb and dew point,
+and switch between light **lines** and bold **filled bands**, in Settings. Below it
+a thin **MyFeelsLike** band shows your predicted comfort hour by hour — split into
+in-sun and in-shade once the app has learned that sun makes a difference for you —
+followed by a precipitation and wind panel.
 
 ## The 10-day screen
-The same temperature bands stretched over ten days (with the recent past drawn
+The same temperature panel stretched over ten days (with the recent past drawn
 dashed), plus a MyFeelsLike heatmap: one column per day, hour-of-day up the side,
 so the comfortable times of day stand out.
 
+## Reading exact values
+**Long-press any graph** to drop a line you can drag along the timeline. A small
+card shows every value for that moment — your MyFeelsLike score, temperature and
+feels-like, wet-bulb, dew point, wind and gusts, precipitation, cloud, and UV.
+Tap to dismiss it. Because this gives you the exact numbers wherever you point,
+the full table screen is optional.
+
 ## The table
-Every forecast number in one place — temperature, feels-like, wet-bulb, dew point,
-wind and gusts, precipitation, cloud, and UV — hour by hour. The MyFeelsLike score
-is also shown as a number here, mainly as a check for those who like exact figures.
+Turned off by default (the long-press readout usually covers it), but you can
+switch it on in Settings: every forecast number in one scrollable place —
+temperature, feels-like, wet-bulb, dew point, wind and gusts, precipitation,
+cloud, and UV — hour by hour, with the MyFeelsLike score shown as a number too.
 
 ## Scenarios
 Your comfort depends on what you're doing. Chips let you set your activity, how
@@ -57,11 +69,13 @@ you're dressed, and sun or shade, and the forecast colors update to match. Only
 the chips the app has actually learned to use for *you* are shown.
 
 ## Comparing with others
-Compare your MyFeelsLike with people near you. Open **Compare**, tap **Connect
-Nearby**, and invite someone — or accept their invite — for one hour or until one
-of you cancels. Your models are exchanged directly between the two devices and
-shown as side-by-side color bands for the same weather, so you can see how
-differently the same day feels to each of you.
+Compare your MyFeelsLike with other people. When you're together, **Connect
+Nearby** exchanges your models directly between the two devices for a live
+comparison. To share with someone who isn't nearby, send them a snapshot of your
+model — as a link, a small file attachment, or a QR code they scan — with no
+account or server involved (it even works to an Android device). Either way, the
+comparison shows as side-by-side color bands for the same weather, so you can see
+how differently the same day feels to each of you.
 
 ## Apple Watch and complications
 The watch app shows the same 24-hour and 10-day views, and a complication puts
@@ -69,9 +83,13 @@ your current MyFeelsLike color — split into sun and shade when known — right
 your watch face.
 
 ## Settings and units
-Choose °C or °F, 12- or 24-hour time, which graphs to show, the weather-sky
-background, your compare name, and whether to share anonymous data with the
-developer.
+Choose °C or °F, 12- or 24-hour time, and which forecast series to show.
+**Chart style** switches the graphs between light lines and filled bands, and
+**muted** softens the colors for a gentler look. You can show or hide the
+**table** screen, pick the weather-sky background, set your compare name, and
+choose whether to share anonymous data with the developer. An experimental
+**Fold timeline** replaces the two graph screens with a single one you swipe to
+morph from the 24-hour view into the 10-day heat map.
 
 ## Your data
 Your ratings and your personal model stay on your device. They are **not** synced

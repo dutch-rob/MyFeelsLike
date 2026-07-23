@@ -21,6 +21,7 @@ struct InfoView: View {
                         Button { withAnimation { proxy.scrollTo("rating-how-it-feels", anchor: .top) } } label: { Text("Rating how it feels — the few taps that teach the app").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("the-24-hour-screen", anchor: .top) } } label: { Text("The 24-hour screen — hourly bands and your comfort band").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("the-10-day-screen", anchor: .top) } } label: { Text("The 10-day screen — the trend and a time-of-day heatmap").frame(maxWidth: .infinity, alignment: .leading) }
+                        Button { withAnimation { proxy.scrollTo("reading-exact-values", anchor: .top) } } label: { Text("Reading exact values — long-press a graph").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("the-table", anchor: .top) } } label: { Text("The table — every number, if you want it").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("scenarios", anchor: .top) } } label: { Text("Scenarios — activity, clothing, sun or shade").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("comparing-with-others", anchor: .top) } } label: { Text("Comparing with others — nearby, live").frame(maxWidth: .infinity, alignment: .leading) }
@@ -38,22 +39,27 @@ struct InfoView: View {
 
                 Group {
                     Text("Rating how it feels").font(.headline).id("rating-how-it-feels")
-                    Text("Tap **Rate Feels Like** and place how it feels on the color scale, with optional notes on your activity, how you're dressed, and sun or shade. A handful of ratings across different conditions is enough to get started; more ratings sharpen it over time.")
+                    Text("Tap **Rate Feels Like** and place how it feels on the color scale, choosing your activity, how you're dressed, and sun or shade for that moment — you set each one deliberately, so nothing is left at a default you didn't mean. A handful of ratings across different conditions is enough to get started; more ratings sharpen it over time.")
                 }
 
                 Group {
                     Text("The 24-hour screen").font(.headline).id("the-24-hour-screen")
-                    Text("Filled bands show temperature, wet-bulb, and dew point, with the standard apparent-temperature (\"Feels like\") line on top. Below them, a thin **MyFeelsLike** band shows your predicted comfort hour by hour — split into in-sun and in-shade once the app has learned that sun makes a difference for you.")
+                    Text("The temperature panel shows the outdoor temperature and the standard apparent-temperature (\"Feels like\") as lines; you can add wet-bulb and dew point, and switch between light **lines** and bold **filled bands**, in Settings. Below it a thin **MyFeelsLike** band shows your predicted comfort hour by hour — split into in-sun and in-shade once the app has learned that sun makes a difference for you — followed by a precipitation and wind panel.")
                 }
 
                 Group {
                     Text("The 10-day screen").font(.headline).id("the-10-day-screen")
-                    Text("The same temperature bands stretched over ten days (with the recent past drawn dashed), plus a MyFeelsLike heatmap: one column per day, hour-of-day up the side, so the comfortable times of day stand out.")
+                    Text("The same temperature panel stretched over ten days (with the recent past drawn dashed), plus a MyFeelsLike heatmap: one column per day, hour-of-day up the side, so the comfortable times of day stand out.")
+                }
+
+                Group {
+                    Text("Reading exact values").font(.headline).id("reading-exact-values")
+                    Text("**Long-press any graph** to drop a line you can drag along the timeline. A small card shows every value for that moment — your MyFeelsLike score, temperature and feels-like, wet-bulb, dew point, wind and gusts, precipitation, cloud, and UV. Tap to dismiss it. Because this gives you the exact numbers wherever you point, the full table screen is optional.")
                 }
 
                 Group {
                     Text("The table").font(.headline).id("the-table")
-                    Text("Every forecast number in one place — temperature, feels-like, wet-bulb, dew point, wind and gusts, precipitation, cloud, and UV — hour by hour. The MyFeelsLike score is also shown as a number here, mainly as a check for those who like exact figures.")
+                    Text("Turned off by default (the long-press readout usually covers it), but you can switch it on in Settings: every forecast number in one scrollable place — temperature, feels-like, wet-bulb, dew point, wind and gusts, precipitation, cloud, and UV — hour by hour, with the MyFeelsLike score shown as a number too.")
                 }
 
                 Group {
@@ -63,7 +69,7 @@ struct InfoView: View {
 
                 Group {
                     Text("Comparing with others").font(.headline).id("comparing-with-others")
-                    Text("Compare your MyFeelsLike with people near you. Open **Compare**, tap **Connect Nearby**, and invite someone — or accept their invite — for one hour or until one of you cancels. Your models are exchanged directly between the two devices and shown as side-by-side color bands for the same weather, so you can see how differently the same day feels to each of you.")
+                    Text("Compare your MyFeelsLike with other people. When you're together, **Connect Nearby** exchanges your models directly between the two devices for a live comparison. To share with someone who isn't nearby, send them a snapshot of your model — as a link, a small file attachment, or a QR code they scan — with no account or server involved (it even works to an Android device). Either way, the comparison shows as side-by-side color bands for the same weather, so you can see how differently the same day feels to each of you.")
                 }
 
                 Group {
@@ -73,7 +79,7 @@ struct InfoView: View {
 
                 Group {
                     Text("Settings and units").font(.headline).id("settings-and-units")
-                    Text("Choose °C or °F, 12- or 24-hour time, which graphs to show, the weather-sky background, your compare name, and whether to share anonymous data with the developer.")
+                    Text("Choose °C or °F, 12- or 24-hour time, and which forecast series to show. **Chart style** switches the graphs between light lines and filled bands, and **muted** softens the colors for a gentler look. You can show or hide the **table** screen, pick the weather-sky background, set your compare name, and choose whether to share anonymous data with the developer. An experimental **Fold timeline** replaces the two graph screens with a single one you swipe to morph from the 24-hour view into the 10-day heat map.")
                 }
 
                 Group {
