@@ -131,7 +131,7 @@ enum FeelsLikeRegression {
         }
         let tSpread = apparentSpread(ratings)
         if tSpread < minApparentSpreadC {
-            return ["Your \(n) ratings were all taken in a narrow temperature range (about \(Int(tSpread.rounded())) °C apart), so the app can't yet tell how much of the difference came from the temperature rather than from sun, activity or clothing. Rate again when it's clearly cooler."]
+            return ["Your \(n) ratings span only about \(Int(tSpread.rounded())) °C, so the app can't yet tell how much of the difference came from the temperature rather than from sun, activity or clothing. Rate across a wider range of temperatures — clearly cooler or clearly warmer than you have so far."]
         }
         if fit(ratings: ratings) == nil {
             // Distinguish "not enough signal yet" from "the ratings disagree with

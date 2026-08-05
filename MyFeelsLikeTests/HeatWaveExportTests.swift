@@ -74,10 +74,10 @@ struct HeatWaveExportTests {
     }
 
     /// And the user is told something they can act on, not just "no color yet".
-    @Test func testerIsToldToRateInCoolerWeather() {
+    @Test func testerIsToldToRateAcrossMoreTemperatures() {
         let reasons = FeelsLikeRegression.readinessReasons(ratings: ratings())
         #expect(reasons.count == 1)
-        #expect(reasons[0].contains("cooler"))
+        #expect(reasons[0].contains("wider range"))
     }
 
     /// The published model's own numbers, re-checked through the guardrail: a

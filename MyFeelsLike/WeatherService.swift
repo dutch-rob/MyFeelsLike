@@ -80,9 +80,21 @@ final class LocationProvider: NSObject, ObservableObject, CLLocationManagerDeleg
     /// fix doesn't arrive in time or we're not authorized. Used by
     /// pull-to-refresh so a moving user (e.g. driving) gets weather for where
     /// they are now, not where they were when the app last looked.
+    ///
+    /// The timeout is generous on purpose: a fix after the app has been idle,
+    /// indoors, or in a moving car routinely takes longer than a few seconds,
+    /// and timing out means we silently refetch the weather for the *old*
+    /// place — which reads as "it refreshed but didn't notice I'd moved".
+    /// `didGetFreshFix` reports whether we actually got a new one.
     @MainActor
-    func freshLocation(timeout: TimeInterval = 4) async -> CLLocation? {
-        let status = authorizationStatus
+    private(set) var didGetFreshFix = false
+
+    @MainActor
+    func freshLocation(timeout: TimeInterval = 12) async -> CLLocation? {
+        didGetFreshFix = false
+        // Read the manager directly: the published copy is only set once the
+        // delegate has fired, so early on it can still say .notDetermined.
+        let status = manager.authorizationStatus
         guard status == .authorizedWhenInUse || status == .authorizedAlways else {
             return currentLocation
         }
@@ -93,9 +105,11 @@ final class LocationProvider: NSObject, ObservableObject, CLLocationManagerDeleg
             try? await Task.sleep(nanoseconds: 150_000_000)   // 150 ms
             if let loc = currentLocation,
                previous == nil || loc.timestamp > previous!.timestamp {
+                didGetFreshFix = true
                 return loc
             }
         }
+        log.notice("No fresh GPS fix within \(Int(timeout), privacy: .public)s; using the last known location.")
         return currentLocation
     }
 
