@@ -520,14 +520,19 @@ struct ContentView: View {
         RegressionStateStore.save(new)
         pushToWatch()
         nearby.updateLocalModel(new)   // live-update any compare peers
-        syncDeveloperData()            // upload new rating + model if opted in
+        // Pass the fresh model explicitly: `regressionState` is @State, and
+        // reading it back in the same call isn't guaranteed to see the value we
+        // just wrote — which silently uploaded ratings with no SharedModel.
+        syncDeveloperData(model: new)
     }
 
     /// Upload anonymised ratings + model to CloudKit when the user has opted in
     /// (or delete them when they opt out). Never runs for demo/screenshot data.
-    private func syncDeveloperData() {
+    /// `model` defaults to the current state for callers outside a refit.
+    private func syncDeveloperData(model: RegressionState? = nil) {
         guard !DemoMode.isActive else { return }
-        DeveloperDataSync.sync(consent: shareData, ratings: ratings, model: regressionState)
+        DeveloperDataSync.sync(consent: shareData, ratings: ratings,
+                               model: model ?? regressionState)
     }
 
     /// Navigate to a specific screen for App Store screenshot capture, driven by
