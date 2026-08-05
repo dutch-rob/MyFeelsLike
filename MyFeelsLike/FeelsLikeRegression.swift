@@ -27,6 +27,9 @@
 //
 
 import Foundation
+import OSLog
+
+private let fitLog = Logger(subsystem: "robotex.MyFeelsLike", category: "Regression")
 
 // Feature, FeatureSource, Scenario, ForecastFeatureSource and RegressionState
 // now live in FeelsLikeInference.swift (shared with the watch app). This file
@@ -110,6 +113,11 @@ enum FeelsLikeRegression {
             return ["Your \(n) ratings cover only about \(pct)% of the feels-like color range; at least ~\(needPct)% is needed. Rate some conditions that feel clearly cooler or warmer than the ones you've rated so far."]
         }
         if fit(ratings: ratings) == nil {
+            // Distinguish "not enough signal yet" from "the ratings disagree with
+            // physics", which needs different advice from the user.
+            if let bad = rejection(ratings: ratings), case .coolerWhenWarmer = bad {
+                return ["Your ratings so far say the weather feels *cooler* as it gets warmer, so a personalized color would be misleading. This usually means a few ratings were placed on the wrong end of the color scale — check your ratings, and rate a clearly hot moment and a clearly cold one."]
+            }
             return ["A model couldn't be fit from these \(n) ratings yet — rating across more varied weather should help."]
         }
         return []
@@ -125,10 +133,15 @@ enum FeelsLikeRegression {
         // Always start with the anchor.
         var selected: [Feature] = [.apparentTempC]
         guard var bestState = fitOLS(ratings: ratings, features: selected) else { return nil }
+        // Each accepted step, simplest first, so an implausible rich model can
+        // fall back to the best simpler one instead of being thrown away.
+        var chain: [RegressionState] = [bestState]
 
-        // Forward stepwise: add up to `budget` more features.
-        // Candidate pool is n-aware: hinges unlock at 25, interactions at 40.
-        var remaining = Set(Feature.candidates(for: n))
+        // Forward stepwise: add up to `budget` more features. Candidate pool is
+        // n-aware (hinges unlock at 25, interactions at 40) and additionally
+        // limited to predictors that actually varied across the ratings — a
+        // near-constant one only adds extrapolation risk (ModelPlausibility).
+        var remaining = Set(ModelPlausibility.eligible(Feature.candidates(for: n), ratings: ratings))
         for _ in 0..<budget {
             var bestNext: (Feature, RegressionState)? = nil
             for f in remaining {
@@ -144,12 +157,32 @@ enum FeelsLikeRegression {
                 selected.append(pick.0)
                 remaining.remove(pick.0)
                 bestState = pick.1
+                chain.append(pick.1)
             } else {
                 break
             }
         }
 
-        return bestState
+        // Physical sanity: take the richest model that behaves believably. If
+        // even the anchor-only model does not (e.g. the user's ratings say it
+        // feels colder as it gets hotter), publish no personal model rather than
+        // a confidently wrong one — the app then shows the generic forecast.
+        for state in chain.reversed() {
+            if let bad = ModelPlausibility.check(state, ratings: ratings) {
+                fitLog.notice("Rejected \(state.selectedFeatures.count, privacy: .public)-feature model: \(bad.reason, privacy: .public)")
+                continue
+            }
+            return state
+        }
+        return nil
+    }
+
+    /// Why the fitted model was rejected as implausible, if it was. Used by the
+    /// UI to explain the missing personal color instead of silently showing none.
+    static func rejection(ratings: [Rating]) -> ModelPlausibility.Rejection? {
+        guard canFit(ratings: ratings),
+              let anchor = fitOLS(ratings: ratings, features: [.apparentTempC]) else { return nil }
+        return ModelPlausibility.check(anchor, ratings: ratings)
     }
 
     /// Fit OLS for a specific feature set. Returns nil if X'X is singular.
