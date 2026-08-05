@@ -245,12 +245,12 @@ struct FoldTimelineView: View {
         let unit = useFahrenheit ? "°F" : "°C"
         return readoutCard {
             HStack(spacing: 6) {
-                Text(scrubTimeLabel(p.date)).font(.caption2.weight(.semibold))
-                Image(systemName: p.symbolName).font(.caption2)
+                Text(scrubTimeLabel(p.date)).font(.subheadline.weight(.semibold))
+                Image(systemName: p.symbolName).font(.subheadline)
                 if let s = p.myFeelsLikeScore {
                     let c = max(ColorScale.minScore, min(ColorScale.maxScore, s))
                     Text(String(format: "%.0f", c))
-                        .font(.caption2.weight(.bold)).monospacedDigit()
+                        .font(.subheadline.weight(.bold)).monospacedDigit()
                         .foregroundStyle(ColorScale.contrastingText(forScore: c))
                         .padding(.horizontal, 4).padding(.vertical, 1)
                         .background(ColorScale.color(forScore: c), in: RoundedRectangle(cornerRadius: 3))
@@ -296,9 +296,9 @@ struct FoldTimelineView: View {
 
     private func readoutRow(_ label: String, _ value: String, _ tint: Color) -> some View {
         HStack(spacing: 6) {
-            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Text(label).font(.footnote).foregroundStyle(.secondary)
             Spacer(minLength: 8)
-            Text(value).font(.caption2.weight(.medium)).monospacedDigit()
+            Text(value).font(.footnote.weight(.medium)).monospacedDigit()
                 .foregroundStyle(tint.mix(with: .primary, by: 0.25))
         }
     }
@@ -334,23 +334,31 @@ struct FoldTimelineView: View {
                 let avail = max(220, h - overhead)
                 let colorH = lerp(avail * 0.10, avail * 0.34, progress)
                 let graphsH = avail - colorH
-                VStack(spacing: 8) {
-                    ScenarioStrip(activeFeatures: activeFeatures)
-                    modeIndicator
-                    if tempVisible { temperatureChart(height: graphsH * 0.56) }
-                    if graphColor { colorPanel(height: colorH) }
-                    if windVisible { precipWindChart(height: graphsH * 0.44) }
-                    if let attribution { WeatherAttributionLink(info: attribution) }
-                    Spacer(minLength: 0)
+                // A ScrollView sized to exactly one screen: it never actually
+                // scrolls, but it restores pull-to-refresh (.refreshable only
+                // works inside a scroll view) without disturbing the horizontal
+                // morph swipe.
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ScenarioStrip(activeFeatures: activeFeatures)
+                        modeIndicator
+                        if tempVisible { temperatureChart(height: graphsH * 0.56) }
+                        if graphColor { colorPanel(height: colorH) }
+                        if windVisible { precipWindChart(height: graphsH * 0.44) }
+                        if let attribution { WeatherAttributionLink(info: attribution) }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 52)
+                    .frame(minHeight: h - 4)
+                    .contentShape(Rectangle())
+                    // Behind everything: catches a long press in the gaps between
+                    // panels. Presses on a panel are caught by its own scrubEntry in
+                    // front. The swipe drives the 24h↔10-day morph.
+                    .background(scrubGapEntry)
+                    .gesture(scrubGesture(width: geo.size.width))
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 52)
-                .contentShape(Rectangle())
-                // Behind everything: catches a long press in the gaps between
-                // panels. Presses on a panel are caught by its own scrubEntry in
-                // front. The swipe drives the 24h↔10-day morph.
-                .background(scrubGapEntry)
-                .gesture(scrubGesture(width: geo.size.width))
+                .refreshable { await onRefresh?() }
             }
         }
     }

@@ -259,11 +259,11 @@ struct HereTodayView: View {
         let windUnit = useFahrenheit ? "mph" : "kph"
         return VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 6) {
-                Text(fullTimeLabel(for: p.date)).font(.caption2.weight(.semibold))
+                Text(fullTimeLabel(for: p.date)).font(.subheadline.weight(.semibold))
                 if let s = p.myFeelsLikeScore {
                     let clamped = max(ColorScale.minScore, min(ColorScale.maxScore, s))
                     Text(String(format: "%.0f", clamped))
-                        .font(.caption2.weight(.bold))
+                        .font(.subheadline.weight(.bold))
                         .monospacedDigit()
                         .foregroundStyle(ColorScale.contrastingText(forScore: clamped))
                         .padding(.horizontal, 4).padding(.vertical, 1)
@@ -301,9 +301,9 @@ struct HereTodayView: View {
 
     private func readoutRow(_ label: String, _ value: String, _ tint: Color) -> some View {
         HStack(spacing: 6) {
-            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Text(label).font(.footnote).foregroundStyle(.secondary)
             Spacer(minLength: 8)
-            Text(value).font(.caption2.weight(.medium)).monospacedDigit()
+            Text(value).font(.footnote.weight(.medium)).monospacedDigit()
                 .foregroundStyle(tint.mix(with: .primary, by: 0.25))
         }
     }
