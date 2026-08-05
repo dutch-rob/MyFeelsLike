@@ -23,8 +23,8 @@ func mkForecastPoint(
     date: Date = Date(),
     tempC: Double = 0, apparentC: Double = 0, wetBulbC: Double = 0, dewC: Double = 0,
     humidity: Double = 0.5, windKPH: Double = 0, uv: Double = 0,
-    cloud: Double = 0, stationPa: Double = 100_000, isDaylight: Bool = true,
-    score: Double? = nil
+    cloud: Double = 0, cloudLow: Double = 0, stationPa: Double = 100_000,
+    isDaylight: Bool = true, score: Double? = nil
 ) -> ForecastPoint {
     ForecastPoint(
         date: date, symbolName: "sun.max", isDaylight: isDaylight, uvIndex: uv,
@@ -35,7 +35,7 @@ func mkForecastPoint(
         precipProbability: 0, precipitationMM: 0,
         windSpeedMPH: windKPH / 1.60934, windSpeedKPH: windKPH,
         windGustMPH: 0, windGustKPH: 0,
-        cloudCover: cloud, cloudCoverLow: 0, cloudCoverMedium: 0, cloudCoverHigh: 0,
+        cloudCover: cloud, cloudCoverLow: cloudLow, cloudCoverMedium: 0, cloudCoverHigh: 0,
         humidity: humidity, stationPressurePa: stationPa,
         myFeelsLikeScore: score)
 }

@@ -81,13 +81,30 @@ enum FeelsLikeRegression {
     /// a model triggers with fewer varied ratings.
     static let minScoreSpread: Double = 50.0
 
-    /// Trigger threshold: at least 5 ratings AND ≥ `minScoreSpread` spread of
-    /// user-reported feels-like scores.
+    /// Minimum spread of apparent temperature (°C) across the ratings before a
+    /// temperature response can be estimated at all. Rating only within a narrow
+    /// band — e.g. eleven ratings taken during one heat wave, all between 28 and
+    /// 32 °C — leaves the anchor's slope to absorb score differences that were
+    /// really caused by sun/activity/clothing, producing an enormous (and often
+    /// wrong-signed) °C coefficient that explodes outside that band.
+    static let minApparentSpreadC: Double = 6.0
+
+    /// Trigger threshold: at least 5 ratings, ≥ `minScoreSpread` spread of
+    /// user-reported feels-like scores, and enough temperature variation to
+    /// actually estimate a temperature response.
     static func canFit(ratings: [Rating]) -> Bool {
         guard ratings.count >= 5 else { return false }
         let ys = ratings.map { $0.feelsLikeScore }
         guard let lo = ys.min(), let hi = ys.max() else { return false }
-        return (hi - lo) >= minScoreSpread
+        guard (hi - lo) >= minScoreSpread else { return false }
+        return apparentSpread(ratings) >= minApparentSpreadC
+    }
+
+    /// Observed spread of apparent temperature (°C) across the ratings.
+    static func apparentSpread(_ ratings: [Rating]) -> Double {
+        let ts = ratings.map { $0.apparentTemperatureC }
+        guard let lo = ts.min(), let hi = ts.max() else { return 0 }
+        return hi - lo
     }
 
     /// How many extra (beyond apparent) features the budget allows.
@@ -111,6 +128,10 @@ enum FeelsLikeRegression {
             let pct = max(1, Int((spread / 10).rounded()))
             let needPct = Int((minScoreSpread / 10).rounded())
             return ["Your \(n) ratings cover only about \(pct)% of the feels-like color range; at least ~\(needPct)% is needed. Rate some conditions that feel clearly cooler or warmer than the ones you've rated so far."]
+        }
+        let tSpread = apparentSpread(ratings)
+        if tSpread < minApparentSpreadC {
+            return ["Your \(n) ratings were all taken in a narrow temperature range (about \(Int(tSpread.rounded())) °C apart), so the app can't yet tell how much of the difference came from the temperature rather than from sun, activity or clothing. Rate again when it's clearly cooler."]
         }
         if fit(ratings: ratings) == nil {
             // Distinguish "not enough signal yet" from "the ratings disagree with
