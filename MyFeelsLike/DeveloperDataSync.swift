@@ -196,6 +196,10 @@ private struct RatingLite {
     let id: String
     let timestamp: Date
     let score: Double
+    /// The score as originally given on the previous color scale, when this
+    /// rating predates the scale redesign (nil otherwise). A new field rather
+    /// than a changed one: CloudKit schemas can gain fields but not rename them.
+    let score1: Double?
     let activity, dress, sun: Int
     let tempC, apparentC, wetBulbC, dewC, humidity, pressurePa, windKPH: Double
     let precipProb, precipMM, cloud, cloudLow, cloudMed, cloudHigh, uv: Double
@@ -205,6 +209,7 @@ private struct RatingLite {
         id = r.id.uuidString
         timestamp = r.timestamp
         score = r.feelsLikeScore
+        score1 = r.feelsLikeScore1
         activity = r.activity; dress = r.dress; sun = r.sun
         tempC = r.temperatureC; apparentC = r.apparentTemperatureC
         wetBulbC = r.wetBulbC; dewC = r.dewPointC; humidity = r.humidity
@@ -222,6 +227,7 @@ private struct RatingLite {
         rec["install"]    = install
         rec["ts"]         = timestamp
         rec["score"]      = score
+        if let score1 { rec["score1"] = score1 }
         rec["activity"]   = activity
         rec["dress"]      = dress
         rec["sun"]        = sun

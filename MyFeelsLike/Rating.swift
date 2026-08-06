@@ -21,6 +21,13 @@ final class Rating {
     /// units exposed to the user). 0 = coldest end of the color bar,
     /// 1000 = hottest end. This is the regression target.
     var feelsLikeScore: Double = 500
+    /// The score exactly as the user originally gave it on the *previous* color
+    /// scale, kept when `feelsLikeScore` was converted to the redesigned scale
+    /// (see ScoreScaleMigration). nil for ratings given on the current scale.
+    /// Never used for fitting — it exists so the original input is not lost and
+    /// a future re-conversion can start from the source rather than from an
+    /// already-converted value.
+    var feelsLikeScore1: Double?
     var activity: Int = 1               // 0 Not active / 1 Light / 2 Moderate / 3 Vigorous
     var dress: Int = 0                  // -2 very cold … 0 nice … +2 very warm
     var sun: Int = 0                    // +1 full sun / 0 partial / -1 shade

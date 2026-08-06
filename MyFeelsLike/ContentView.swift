@@ -101,6 +101,9 @@ struct ContentView: View {
     /// state, which was trained against feelsLikeC) are discarded so the
     /// fresh score-based model can be built from new data.
     @AppStorage(SettingsKey.didWipeForScoreV1) private var didWipeForScoreV1: Bool = false
+    /// One-shot: convert ratings from the previous color scale (see
+    /// ScoreScaleMigration).
+    @AppStorage(SettingsKey.didMigrateScoreScaleV2) private var didMigrateScoreScaleV2: Bool = false
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -246,6 +249,15 @@ struct ContentView: View {
                 RegressionStateStore.save(nil)
                 regressionState = nil
                 didWipeForScoreV1 = true
+            }
+            // Ratings given on the previous color scale are converted once, so
+            // upgrading testers keep them instead of mixing two scales in one
+            // model. A fresh install has nothing to convert and just sets the
+            // flag. refitRegression() below then refits on the new targets.
+            if !DemoMode.isActive && !didMigrateScoreScaleV2 {
+                let n = ScoreScaleMigration.migrate(ratings)
+                if n > 0 { try? modelContext.save() }
+                didMigrateScoreScaleV2 = true
             }
             refitRegression()
             // Welcome on first launch; "what's new" after an update.

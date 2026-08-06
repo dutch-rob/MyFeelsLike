@@ -55,7 +55,7 @@ struct InfoView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("You must set each of the three choices deliberately; nothing is pre-filled, because a default left untouched would teach the app something you did not mean.")
                             Text("Variety matters far more than quantity. Ten ratings all taken in the same hot week teach the app very little, because it cannot tell what came from the temperature and what came from sun, activity or clothing. A handful of ratings across clearly cooler *and* clearly warmer weather is worth much more.")
-                            Text("While testing, the rating column shows the new colors on its left half and the previous ones on its right, so you can tell us which you prefer.")
+                            Text("The color scale was redesigned during testing. Ratings you gave on the earlier scale were converted automatically, keeping the color you originally picked, so you can carry straight on rather than starting over.")
                             Spacer(minLength: 0)
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }

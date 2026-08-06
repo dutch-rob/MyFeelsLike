@@ -263,18 +263,10 @@ struct ColorScoreColumn: View {
                             Color.clear.frame(height: contentHeight / 2 - 0.5)
                         }
                         .frame(height: contentHeight)
-                        // While testers compare the palettes: the new colors fill
-                        // the left half of the column, the previous ones the
-                        // right. Both use the same score positions, so a given
-                        // height means the same score on either side.
                         .background(
-                            HStack(spacing: 0) {
-                                LinearGradient(gradient: Self.paddedScoreGradient(),
-                                               startPoint: .top, endPoint: .bottom)
-                                LinearGradient(gradient: Self.paddedScoreGradient(legacy: true),
-                                               startPoint: .top, endPoint: .bottom)
-                            }
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            LinearGradient(gradient: Self.paddedScoreGradient(),
+                                           startPoint: .top, endPoint: .bottom)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                         )
                         // Ruler gradation down the middle — no numbers. A tick
                         // every 10 score gives a fine ruler feel; longer major

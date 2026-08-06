@@ -57,4 +57,8 @@ enum SettingsKey {
     static let shareDataWithDevs = "shareDataWithDevs"
     /// One-shot flag: ratings/model were wiped for the 0–1000 score migration.
     static let didWipeForScoreV1 = "didWipeForScoreV1"
+    /// One-shot flag: existing ratings were converted from the previous color
+    /// scale to the redesigned one (see ScoreScaleMigration). Set for fresh
+    /// installs too, so a new user never runs the conversion.
+    static let didMigrateScoreScaleV2 = "didMigrateScoreScaleV2"
 }

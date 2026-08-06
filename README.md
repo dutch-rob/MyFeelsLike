@@ -54,8 +54,9 @@ week teach the app very little, because it cannot tell what came from the
 temperature and what came from sun, activity or clothing. A handful of ratings
 across clearly cooler *and* clearly warmer weather is worth much more.
 
-While testing, the rating column shows the new colors on its left half and the
-previous ones on its right, so you can tell us which you prefer.
+The color scale was redesigned during testing. Ratings you gave on the earlier
+scale were converted automatically, keeping the color you originally picked, so
+you can carry straight on rather than starting over.
 
 ## The 24-hour screen
 The temperature panel shows the outdoor temperature and the standard
