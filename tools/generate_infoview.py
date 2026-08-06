@@ -77,11 +77,22 @@ def parse_items(section: str) -> list:
             items.append((DETAIL, line[4:].strip(), 0))
             continue
 
-        # Illustration: ![alt](asset:AssetName)
-        m = re.match(r'^\s*!\[([^\]]*)\]\(asset:([A-Za-z0-9_]+)\)\s*$', line)
+        # Illustration. Written as an ordinary relative path so GitHub renders
+        # it in the README; the asset-catalog name is taken from the enclosing
+        # ".imageset" folder. "asset:Name" is still accepted.
+        m = re.match(r'^\s*!\[([^\]]*)\]\(([^)]+)\)\s*$', line)
         if m:
             flush()
-            items.append((IMAGE, f"{m.group(2)}|{m.group(1)}", 0))
+            alt, target = m.group(1).strip(), m.group(2).strip()
+            if target.startswith("asset:"):
+                name = target[len("asset:"):]
+            else:
+                m2 = re.search(r'([^/]+)\.imageset/', target)
+                if not m2:
+                    sys.exit(f"ERROR: image {target!r} is not inside an .imageset folder, "
+                             "so its asset name can't be derived")
+                name = m2.group(1)
+            items.append((IMAGE, f"{name}|{alt}", 0))
             continue
 
         # ## Heading
@@ -229,7 +240,7 @@ def generate(items: list) -> str:
                 # Everything up to the next DETAIL/HEADING goes inside a
                 # collapsed DisclosureGroup, giving the two-level structure:
                 # skim the sections, expand only what you want in depth.
-                out.append(f'{L5}DisclosureGroup("{esc(content)}") {{')
+                out.append(f'{L5}DisclosureGroup("Show more — {esc(content)}") {{')
                 out.append(f'{L6}VStack(alignment: .leading, spacing: 10) {{')
                 j = i + 1
                 while j < len(group) and group[j][0] not in (DETAIL, HEADING):

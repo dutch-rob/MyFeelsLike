@@ -9,8 +9,7 @@ shown as *your* colors — on iPhone and Apple Watch.
 **In short:** rate how it feels ▸ the app fits a small personal model ▸ the
 forecast is colored by your comfort ▸ a thin band means "don't trust this yet".
 
-Each section below is a short summary. Tap **Show more** inside a section for
-the detail.
+Each section below is a short summary, followed by the detail.
 
 ## Contents
 - [The colors](#the-colors) — comfort as a color, not a number
@@ -31,7 +30,7 @@ Comfort is shown as a color — white and blue when it feels cold, green in the
 middle, yellow through red as it gets hot — so you can read the forecast at a
 glance without thinking in degrees.
 
-### Show more — how the scale works
+### How the scale works
 The colors are not tied to fixed temperatures. They are whatever *you* rated as
 comfortable or not, so the same green can mean 18 °C for one person and 24 °C
 for another.
@@ -44,9 +43,9 @@ Tap **Rate Feels Like**, scroll the color column until the strip across the
 middle shows how this moment feels, then set your activity, clothing and
 sun/shade. Save.
 
-![The rating column, with the ruler marks and the indicator across the middle](asset:InfoRatingColumn)
+![The rating column, with the ruler marks and the indicator across the middle](MyFeelsLike/Assets.xcassets/InfoRatingColumn.imageset/InfoRatingColumn.png)
 
-### Show more — getting a good model quickly
+### Getting a good model quickly
 You must set each of the three choices deliberately; nothing is pre-filled,
 because a default left untouched would teach the app something you did not mean.
 
@@ -63,7 +62,7 @@ The temperature panel shows the outdoor temperature and the standard
 "feels like" as lines. Below it, a band shows your predicted comfort hour by
 hour; below that, precipitation and wind.
 
-### Show more — what else is on this screen
+### What else is on this screen
 You can add wet-bulb and dew point, and switch between light **lines** and bold
 **filled bands**, in Settings.
 
@@ -82,7 +81,7 @@ shows every value for that moment — your comfort score, temperature and feels
 like, wet bulb, dew point, wind and gusts, precipitation, cloud and UV. Tap to
 dismiss.
 
-### Show more — and the table screen
+### And the table screen
 Because the long-press readout gives you the exact numbers anywhere you point,
 the full table screen is switched off by default. You can turn it back on in
 Settings if you like scrolling a full table.
@@ -91,7 +90,7 @@ Settings if you like scrolling a full table.
 A thin comfort band means the app is *not confident* about that hour, and a
 short label says why — for example "colder than you've rated".
 
-### Show more — why the app holds back
+### Why the app holds back
 Your model only knows the conditions you have actually rated in. A forecast well
 outside them is guesswork, so instead of showing a confident color the band
 narrows to a sliver.
@@ -112,7 +111,7 @@ the app has actually learned to use for *you* are shown.
 ## Comparing with others
 Compare your colors with other people, for the same weather.
 
-### Show more — three ways to share
+### Three ways to share
 When you are together, **Connect Nearby** exchanges models directly between the
 two devices for a live comparison.
 
@@ -132,7 +131,7 @@ your current color — split into sun and shade when known — on your watch fac
 Choose °C or °F and 12- or 24-hour time, pick which series the graphs show, and
 switch the chart style between lines and filled bands.
 
-### Show more — the rest of Settings
+### The rest of Settings
 **Muted colors** softens the weather lines for a gentler look. You can show or
 hide the **table** screen, turn the weather-sky background on or off, set the
 name others see when comparing, and choose whether to share anonymous data with
@@ -144,7 +143,7 @@ single one you swipe to morph from the 24-hour view into the 10-day heat map.
 ## Your data
 Your ratings and your personal model stay on your device.
 
-### Show more — exactly what goes where
+### Exactly what goes where
 They are **not** synced across your devices — each iPhone or iPad keeps its own
 ratings and its own model.
 
