@@ -55,6 +55,40 @@ struct ComplicationWriterTests {
         }
     }
 
+    /// The ring shows the range of the *whole* day, so hours already past must
+    /// count. Without `historic`, "today" only spanned now->midnight and the
+    /// ring showed the remainder of the day.
+    @Test func dayRangeCoversTheWholeDayNotJustWhatIsLeft() {
+        let cal = Calendar.current
+        // Midday, so there is a meaningful morning to miss.
+        let noon = cal.date(bySettingHour: 12, minute: 0, second: 0, of: Date())!
+        let cur = fp(noon, tempC: 20, score: 500)
+        // Afternoon: mild. Morning (historic): the day's true extremes.
+        let afternoon = (1...10).map { h in
+            fp(noon.addingTimeInterval(Double(h) * 3600), tempC: 20, score: 500)
+        }
+        let morning = (1...6).map { h in
+            fp(noon.addingTimeInterval(Double(-h) * 3600), tempC: 5, score: 100)
+        }
+
+        let withoutPast = WatchComplicationWriter.build(
+            current: cur, series10d: afternoon,
+            hasModel: true, useFahrenheit: false, now: noon)!
+        let withPast = WatchComplicationWriter.build(
+            current: cur, series10d: afternoon, historic: morning,
+            hasModel: true, useFahrenheit: false, now: noon)!
+
+        let a = withoutPast.frames.first!, b = withPast.frames.first!
+        // The morning's colder extreme only shows once history is included.
+        #expect(a.todayTempMinC > 10)
+        #expect(abs(b.todayTempMinC - 5) < 1e-6)
+        #expect(abs(b.feelsMin - 100) < 1e-6)
+        // The frames themselves still start at "now" - history informs the
+        // range, it does not add past entries to the timeline.
+        #expect(b.date == noon)
+        #expect(withPast.frames.allSatisfy { $0.date >= noon })
+    }
+
     @Test func noModelUsesMidpointFeels() {
         let now = Date(timeIntervalSince1970: 2_000_000)
         let cur = fp(now, tempC: 18, score: nil)

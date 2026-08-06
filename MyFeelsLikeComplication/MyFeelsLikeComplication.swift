@@ -50,20 +50,44 @@ struct FeelsProvider: TimelineProvider {
             return
         }
         let now = Date()
-        var entries = snap.frames.map { f in
+        let sorted = snap.frames.sorted { $0.date < $1.date }
+
+        // Frames older than the current hour are dropped, keeping the one that
+        // covers now as the first entry. Emitting them made the complication
+        // freeze: once every frame was in the past, WidgetKit had nothing newer
+        // to advance to and just kept redrawing the last one — the right weather
+        // for a time hours ago — and `.atEnd` never fired again to ask for more.
+        // The snapshot has run out: even its newest frame is in the past, so the
+        // watch app hasn't fetched for a long time. Show the placeholder rather
+        // than confidently stale data, and ask again soon so it recovers.
+        if let newest = sorted.last, newest.date < now.addingTimeInterval(-3600) {
+            completion(Timeline(entries: [placeholder(in: context)],
+                                policy: .after(now.addingTimeInterval(20 * 60))))
+            return
+        }
+
+        let currentIdx = sorted.lastIndex { $0.date <= now }
+        let usable = currentIdx.map { Array(sorted[$0...]) } ?? sorted
+
+        var entries = usable.map { f in
             FeelsEntry(date: f.date, frame: f,
                        useFahrenheit: snap.useFahrenheit, hasModel: snap.hasModel,
                        sunSplit: snap.sunSplit ?? false)
         }
-        // Make sure something is valid right now (first frame may be future).
-        if let first = entries.first, first.date > now {
-            entries.insert(FeelsEntry(date: now, frame: snap.frames.first,
+        // The first frame may still be in the future (fresh snapshot); make sure
+        // something is valid right now.
+        if let f = entries.first, f.date > now {
+            entries.insert(FeelsEntry(date: now, frame: f.frame,
                                       useFahrenheit: snap.useFahrenheit,
                                       hasModel: snap.hasModel,
                                       sunSplit: snap.sunSplit ?? false), at: 0)
         }
-        // .atEnd asks for a fresh timeline once the hourly entries run out.
-        completion(Timeline(entries: entries, policy: .atEnd))
+        // Ask for a fresh timeline when the hourly entries run out — but no
+        // later than a couple of hours, so a stale snapshot is noticed even
+        // while old frames technically still cover the clock.
+        let horizon = min(entries.last?.date ?? now.addingTimeInterval(3600),
+                          now.addingTimeInterval(2 * 3600))
+        completion(Timeline(entries: entries, policy: .after(horizon)))
     }
 }
 

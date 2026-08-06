@@ -51,7 +51,11 @@ enum BackgroundWeatherRefresh {
             let useF = payload?.useFahrenheit ?? false
 
             let sunSplit = state?.selectedFeatures.contains(.sun) ?? false
-            let s10 = WeatherMapping.mapPoints(from: hours, start: now,
+            // Start at midnight rather than "now" so today's already-past hours
+            // are available for the complication's whole-day range. They are
+            // filtered out of the timeline frames themselves.
+            let s10 = WeatherMapping.mapPoints(from: hours,
+                                               start: Calendar.current.startOfDay(for: now),
                                                end: now.addingTimeInterval(240 * 3600),
                                                location: loc)
                 .map { var p = $0

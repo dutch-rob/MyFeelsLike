@@ -52,6 +52,12 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
     func refresh(force: Bool = false) {
         if !force, !series10d.isEmpty, let last = lastLoadedAt,
            Date().timeIntervalSince(last) < Self.freshWindow {
+            // Skipping the fetch, but still rewrite the complication snapshot:
+            // its frames are dropped as they age, so a complication that had
+            // gone stale is only fixed by a rewrite. Opening the app used to
+            // leave it stale exactly because this path returned silently.
+            let state = WatchSyncReceiver.shared.payload?.regressionState
+            writeSnapshot(sunSplit: state?.selectedFeatures.contains(.sun) ?? false)
             return
         }
         isLoading = true
@@ -159,6 +165,7 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
         WatchComplicationWriter.write(
             current: current,
             series10d: series10d,
+            historic: historic,        // so a day's range covers the whole day
             hasModel: WatchSyncReceiver.shared.payload?.regressionState != nil,
             useFahrenheit: WatchSyncReceiver.shared.payload?.useFahrenheit ?? false,
             sunSplit: sunSplit)

@@ -14,8 +14,9 @@ import WidgetKit
 enum WatchComplicationWriter {
 
     static func write(current: ForecastPoint?, series10d: [ForecastPoint],
+                      historic: [ForecastPoint] = [],
                       hasModel: Bool, useFahrenheit: Bool, sunSplit: Bool) {
-        guard let snap = build(current: current, series10d: series10d,
+        guard let snap = build(current: current, series10d: series10d, historic: historic,
                                hasModel: hasModel, useFahrenheit: useFahrenheit,
                                sunSplit: sunSplit) else { return }
         snap.save()
@@ -24,7 +25,13 @@ enum WatchComplicationWriter {
 
     /// "now" + forecast hours up to +48 h, each tagged with its day's range.
     /// `now` is injectable so tests are deterministic.
+    ///
+    /// The day range spans the *whole* calendar day, so `historic` is folded in
+    /// alongside the forecast: without the hours already past, "today" would
+    /// only cover now→midnight and the complication's ring would show the
+    /// remainder of the day rather than the day.
     static func build(current: ForecastPoint?, series10d: [ForecastPoint],
+                      historic: [ForecastPoint] = [],
                       hasModel: Bool, useFahrenheit: Bool, sunSplit: Bool = false,
                       now: Date = Date()) -> ComplicationSnapshot? {
         let cal = Calendar.current
@@ -32,7 +39,7 @@ enum WatchComplicationWriter {
 
         var dTempMin: [Date: Double] = [:], dTempMax: [Date: Double] = [:]
         var dFeelMin: [Date: Double] = [:], dFeelMax: [Date: Double] = [:]
-        for p in series10d {
+        for p in historic + (current.map { [$0] } ?? []) + series10d {
             let k = dayKey(p.date)
             dTempMin[k] = min(dTempMin[k] ?? .greatestFiniteMagnitude, p.temperatureC)
             dTempMax[k] = max(dTempMax[k] ?? -.greatestFiniteMagnitude, p.temperatureC)
