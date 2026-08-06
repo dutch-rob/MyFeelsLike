@@ -76,11 +76,15 @@ The same temperature panel stretched over ten days (the recent past drawn
 dashed), plus a heatmap of your comfort: one column per day, hour-of-day up the
 side, so the good times of day stand out.
 
+![The 10-day heat map: one column per day, hours of the day up the side](MyFeelsLike/Assets.xcassets/InfoHeatmap.imageset/InfoHeatmap.png)
+
 ## Reading exact values
 **Long-press any graph** to drop a line you can drag along the timeline. A card
 shows every value for that moment — your comfort score, temperature and feels
 like, wet bulb, dew point, wind and gusts, precipitation, cloud and UV. Tap to
 dismiss.
+
+![The long-press readout, with the dashed line marking the hour it describes](MyFeelsLike/Assets.xcassets/InfoScrubberReadout.imageset/InfoScrubberReadout.png)
 
 ### And the table screen
 Because the long-press readout gives you the exact numbers anywhere you point,
@@ -90,6 +94,8 @@ Settings if you like scrolling a full table.
 ## When the band goes thin
 A thin comfort band means the app is *not confident* about that hour, and a
 short label says why — for example "colder than you've rated".
+
+![A narrowed comfort band labelled with the reason it is narrow](MyFeelsLike/Assets.xcassets/InfoThinBand.imageset/InfoThinBand.png)
 
 ### Why the app holds back
 Your model only knows the conditions you have actually rated in. A forecast well

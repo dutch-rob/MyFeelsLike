@@ -168,8 +168,11 @@ def swift_toc(content: str) -> str:
 
 def swift_image(content: str) -> str:
     name, alt = (content.split("|", 1) + [""])[:2]
+    # Portrait crops (e.g. the rating column) need more height than a wide
+    # strip, or scaledToFit shrinks them to an illegible sliver.
+    cap = 380 if "Column" in name else 240
     return (f'Image("{esc(name)}").resizable().scaledToFit()'
-            f'.frame(maxWidth: .infinity).frame(maxHeight: 240)'
+            f'.frame(maxWidth: .infinity).frame(maxHeight: {cap})'
             f'.clipShape(RoundedRectangle(cornerRadius: 8))'
             f'.overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary))'
             f'.accessibilityLabel("{esc(alt)}")')

@@ -50,7 +50,7 @@ struct InfoView: View {
                 Group {
                     Text("Rating how it feels").font(.headline).id("rating-how-it-feels")
                     Text("Tap **Rate Feels Like**, scroll the color column until the strip across the middle shows how this moment feels, then set your activity, clothing and sun/shade. Save.")
-                    Image("InfoRatingColumn").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The rating column, with the ruler marks and the indicator across the middle")
+                    Image("InfoRatingColumn").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 380).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The rating column, with the ruler marks and the indicator across the middle")
                     DisclosureGroup("Show more — Getting a good model quickly") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("You must set each of the three choices deliberately; nothing is pre-filled, because a default left untouched would teach the app something you did not mean.")
@@ -78,11 +78,13 @@ struct InfoView: View {
                 Group {
                     Text("The 10-day screen").font(.headline).id("the-10-day-screen")
                     Text("The same temperature panel stretched over ten days (the recent past drawn dashed), plus a heatmap of your comfort: one column per day, hour-of-day up the side, so the good times of day stand out.")
+                    Image("InfoHeatmap").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The 10-day heat map: one column per day, hours of the day up the side")
                 }
 
                 Group {
                     Text("Reading exact values").font(.headline).id("reading-exact-values")
                     Text("**Long-press any graph** to drop a line you can drag along the timeline. A card shows every value for that moment — your comfort score, temperature and feels like, wet bulb, dew point, wind and gusts, precipitation, cloud and UV. Tap to dismiss.")
+                    Image("InfoScrubberReadout").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The long-press readout, with the dashed line marking the hour it describes")
                     DisclosureGroup("Show more — And the table screen") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Because the long-press readout gives you the exact numbers anywhere you point, the full table screen is switched off by default. You can turn it back on in Settings if you like scrolling a full table.")
@@ -95,6 +97,7 @@ struct InfoView: View {
                 Group {
                     Text("When the band goes thin").font(.headline).id("when-the-band-goes-thin")
                     Text("A thin comfort band means the app is *not confident* about that hour, and a short label says why — for example \"colder than you've rated\".")
+                    Image("InfoThinBand").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("A narrowed comfort band labelled with the reason it is narrow")
                     DisclosureGroup("Show more — Why the app holds back") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Your model only knows the conditions you have actually rated in. A forecast well outside them is guesswork, so instead of showing a confident color the band narrows to a sliver.")
