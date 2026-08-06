@@ -432,4 +432,63 @@ struct RegressionState: Codable, Equatable {
         min(min(predictionOpacity(src), inModelRangeWidth(src)),
             min(notInModelRangeWidth(physical), scoreRangeWidth(predicted)))
     }
+
+    /// Which check narrowed the band the most, in words the user can act on
+    /// ("colder than you've rated"), or nil when nothing is narrowing it.
+    /// Used to label a stretch of narrowed band on the 24-hour screen.
+    func limitingFactor(features src: FeatureSource, physical: PhysicalSource,
+                        predicted: Double) -> String? {
+        var worst = 1.0
+        var label: String? = nil
+        func consider(_ w: Double, _ text: @autoclosure () -> String) {
+            if w < worst { worst = w; label = text() }
+        }
+        consider(predictionOpacity(src), "unusual combination of conditions")
+        consider(scoreRangeWidth(predicted), "outside the comfort range you've rated")
+
+        // In-model features: name the specific one that is furthest outside.
+        if let ranges = featureRanges {
+            for f in selectedFeatures {
+                guard let r = ranges[f.rawValue] else { continue }
+                let v = src.value(for: f)
+                let outside = r.distanceOutside(v)
+                guard outside > 0 else { continue }
+                consider(rampWidth(outside, scale: r.length, free: 0, full: 1),
+                         phrase(for: f.parentVars.first, higher: v > r.hi))
+            }
+        }
+        // Observations the model doesn't use.
+        if let ranges = observationRanges {
+            let covered = Set(selectedFeatures.flatMap { $0.parentVars })
+            for v in PhysicalVar.allCases where !covered.contains(v) {
+                guard let r = ranges[v.rawValue] else { continue }
+                let value = physical.observation(v)
+                let outside = r.distanceOutside(value)
+                guard outside > 0 else { continue }
+                consider(rampWidth(outside, scale: max(r.length, v.rangeFloor),
+                                   free: 0.5, full: v.notInModelFactor),
+                         phrase(for: v, higher: value > r.hi))
+            }
+        }
+        return label
+    }
+
+    private func phrase(for v: PhysicalVar?, higher: Bool) -> String {
+        guard let v else { return "conditions you haven't rated" }
+        switch v {
+        case .apparentC, .tempC, .wetBulbC, .dewC:
+            return higher ? "warmer than you've rated" : "colder than you've rated"
+        case .humidity:   return higher ? "more humid than you've rated" : "drier than you've rated"
+        case .windKPH:    return higher ? "windier than you've rated" : "calmer than you've rated"
+        case .uv:         return higher ? "stronger sun than you've rated" : "weaker sun than you've rated"
+        case .cloud, .cloudLow, .cloudMed, .cloudHigh:
+            return higher ? "cloudier than you've rated" : "clearer than you've rated"
+        case .precipMM, .precipProb:
+            return higher ? "wetter than you've rated" : "drier than you've rated"
+        case .pressurePa: return "air pressure you haven't rated in"
+        case .activity:   return "an activity level you haven't rated"
+        case .dress:      return "clothing you haven't rated"
+        case .sun:        return "a sun/shade setting you haven't rated"
+        }
+    }
 }

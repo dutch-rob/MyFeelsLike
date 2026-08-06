@@ -61,12 +61,28 @@ struct ForecastLoadingView: View {
     var nowTick: Date
     var errorMessage: String?
 
+    /// What the app is actually waiting for right now, so the screen says
+    /// "Waiting for location update" rather than a generic "Loading…".
+    private var headline: String {
+        func running(_ s: LoadStep) -> Bool {
+            if case .inProgress = (progress.steps[s] ?? .pending) { return true }
+            return false
+        }
+        if running(.location) { return "Waiting for location update…" }
+        if running(.weather)  { return "Waiting for latest weather data…" }
+        if running(.geocode)  { return "Looking up the name of this place…" }
+        // Nothing in flight: either just starting, or everything finished and
+        // we're waiting on the data to arrive.
+        return progress.steps.isEmpty ? "Starting…" : "Loading forecast…"
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text("Loading forecast…")
+            Text(headline)
                 .foregroundStyle(.secondary)
                 .font(.callout)
+                .multilineTextAlignment(.center)
 
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(LoadStep.allCases) { step in

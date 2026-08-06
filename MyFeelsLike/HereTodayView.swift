@@ -429,7 +429,53 @@ struct HereTodayView: View {
         }
         .chartXAxis(.hidden)
         .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        // Explain the narrowing, in the space the narrowing itself frees up.
+        .chartOverlay { proxy in limitLabel(proxy) }
         .frame(height: height)
+    }
+
+    /// The longest run of hours narrowed to the minimum for the same reason, so
+    /// the band can say *why* it is thin rather than leaving the user guessing.
+    /// Only runs longer than two hours are labelled, and only the longest one.
+    private var dominantLimit: (reason: String, start: Date, end: Date)? {
+        var best: (String, Date, Date, Int)? = nil
+        var i = 0
+        while i < series.count {
+            guard let reason = series[i].myFeelsLikeLimit else { i += 1; continue }
+            var j = i
+            while j + 1 < series.count, series[j + 1].myFeelsLikeLimit == reason { j += 1 }
+            let count = j - i + 1
+            if best == nil || count > best!.3 {
+                best = (reason, series[i].date.addingTimeInterval(-3600), series[j].date, count)
+            }
+            i = j + 1
+        }
+        guard let b = best, b.3 > 2 else { return nil }
+        return (b.0, b.1, b.2)
+    }
+
+    @ViewBuilder
+    private func limitLabel(_ proxy: ChartProxy) -> some View {
+        if let lim = dominantLimit {
+            GeometryReader { geo in
+                if let anchor = proxy.plotFrame {
+                    let plot = geo[anchor]
+                    let x0 = proxy.position(forX: lim.start) ?? 0
+                    let x1 = proxy.position(forX: lim.end) ?? plot.width
+                    let mid = plot.minX + (x0 + x1) / 2
+                    Text(lim.reason)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(axisInk)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .padding(.horizontal, 3)
+                        .fixedSize()
+                        .position(x: min(max(mid, plot.minX + 40), plot.maxX - 40),
+                                  y: plot.midY)
+                }
+            }
+            .allowsHitTesting(false)
+        }
     }
 
     /// Gradient band: each hour cell runs in-shade (top) → in-sun (bottom) — one

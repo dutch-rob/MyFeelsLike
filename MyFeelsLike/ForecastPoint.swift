@@ -52,6 +52,9 @@ struct ForecastPoint: Identifiable, Codable {
     /// Used by the chart background and the table cell to fade the color
     /// where the model becomes unreliable.
     var myFeelsLikeOpacity: Double = 0.0
+    /// Why the band is narrow here (nil when it isn't). Shown once across the
+    /// longest narrowed stretch on the 24-hour screen.
+    var myFeelsLikeLimit: String? = nil
 
     /// Sun/shade split of the personalized score (for the 24h color band): the
     /// same prediction evaluated with sun forced to full-sun (+1) and to shade
@@ -74,8 +77,13 @@ struct ForecastPoint: Identifiable, Codable {
         // Reliability is the narrowest of leverage and the three range checks,
         // so a forecast outside the conditions the user rated in reads as a thin
         // band rather than a confident color.
-        myFeelsLikeOpacity = Self.finiteOpacity(
+        let w = Self.finiteOpacity(
             state.reliabilityWidth(features: src, physical: src, predicted: raw))
+        myFeelsLikeOpacity = w
+        // Only name a reason where the band is as narrow as it gets.
+        myFeelsLikeLimit = w <= RegressionState.minWidth + 0.001
+            ? state.limitingFactor(features: src, physical: src, predicted: raw)
+            : nil
     }
 
     /// There is no sun at night, so a night hour is always "in shade" regardless
