@@ -17,11 +17,21 @@ struct ColorScaleTests {
         return (Double(r), Double(g), Double(b))
     }
 
-    @Test func endpointsAreWhiteAndBlack() {
+    @Test func endpointsAreWhiteAndDarkRed() {
         let (r0, g0, b0) = rgb(ColorScale.color(forScore: ColorScale.minScore))
         #expect(r0 > 0.95 && g0 > 0.95 && b0 > 0.95)   // coldest = white
+        // Hottest is a dark red (halfway to black), not black: testers found the
+        // old black/purple end hard to read.
         let (r1, g1, b1) = rgb(ColorScale.color(forScore: ColorScale.maxScore))
-        #expect(r1 < 0.05 && g1 < 0.05 && b1 < 0.05)   // hottest = black
+        #expect(r1 > 0.3 && r1 < 0.6)
+        #expect(g1 < 0.05 && b1 < 0.05)
+    }
+
+    /// Green sits in the middle of the scale, as the redesign intends.
+    @Test func greenSitsMidScale() {
+        let (r, g, b) = rgb(ColorScale.color(forScore: 500))
+        #expect(g > 0.7)
+        #expect(r < 0.1 && b < 0.1)
     }
 
     @Test func scoreClampsOutsideRange() {
@@ -78,9 +88,13 @@ struct ColorScaleTests {
     /// Guards the direction of the fix: a mid-scale score must render warmer
     /// (more red, less blue) than a low score — i.e. the old cool-shift is gone.
     @Test func higherScoresRenderWarmerThanLowerScores() {
-        let (rHi, _, bHi) = rgb(ColorScale.color(forScore: 500))
-        let (rLo, _, bLo) = rgb(ColorScale.color(forScore: 200))
-        #expect(rHi > rLo)   // warmer = more red
-        #expect(bHi < bLo)   // warmer = less blue
+        // Compare across the warm half, where "warmer = redder" holds.
+        let (rHi, _, _) = rgb(ColorScale.color(forScore: 880))
+        let (rLo, _, _) = rgb(ColorScale.color(forScore: 600))
+        #expect(rHi > rLo)
+        // And the cold half loses blue as it warms toward green.
+        let (_, _, bCold) = rgb(ColorScale.color(forScore: 250))
+        let (_, _, bMid)  = rgb(ColorScale.color(forScore: 500))
+        #expect(bMid < bCold)
     }
 }

@@ -41,9 +41,16 @@ func mkForecastPoint(
 }
 
 /// Build a synthetic Rating. `feelsLike` is the 0…1000 target score.
+///
+/// The temperature family moves together (dry bulb = apparent, wet bulb 3 °C
+/// below, dew point 6 °C below) so the *difference* features are constant and
+/// therefore ineligible. Leaving tempC at 0 made `apparentMinusTemp` an exact
+/// duplicate of `apparentTempC`, and selection could pick either.
 func mkRating(apparent: Double, humidity: Double = 0.5, wind: Double = 0,
               activity: Int = 1, dress: Int = 0, sun: Int = 0,
               feelsLike: Double) -> Rating {
     Rating(feelsLikeScore: feelsLike, activity: activity, dress: dress, sun: sun,
-           snapshot: mkForecastPoint(apparentC: apparent, humidity: humidity, windKPH: wind))
+           snapshot: mkForecastPoint(tempC: apparent, apparentC: apparent,
+                                     wetBulbC: apparent - 3, dewC: apparent - 6,
+                                     humidity: humidity, windKPH: wind))
 }

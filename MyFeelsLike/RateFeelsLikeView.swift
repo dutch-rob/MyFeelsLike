@@ -263,18 +263,23 @@ struct ColorScoreColumn: View {
                             Color.clear.frame(height: contentHeight / 2 - 0.5)
                         }
                         .frame(height: contentHeight)
+                        // While testers compare the palettes: the new colors fill
+                        // the left half of the column, the previous ones the
+                        // right. Both use the same score positions, so a given
+                        // height means the same score on either side.
                         .background(
-                            LinearGradient(
-                                gradient: Self.paddedScoreGradient(),
-                                startPoint: .top, endPoint: .bottom
-                            )
+                            HStack(spacing: 0) {
+                                LinearGradient(gradient: Self.paddedScoreGradient(),
+                                               startPoint: .top, endPoint: .bottom)
+                                LinearGradient(gradient: Self.paddedScoreGradient(legacy: true),
+                                               startPoint: .top, endPoint: .bottom)
+                            }
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         )
                         // Ruler gradation down the middle — no numbers. A tick
                         // every 10 score gives a fine ruler feel; longer major
-                        // ticks every 50 with four minor ticks between. Each tick
-                        // is black on the left, white on the right so it stays
-                        // legible over any color. Scrolls with the gradient.
+                        // ticks every 50 with four minor ticks between. All black,
+                        // which reads on both palettes.
                         .overlay(
                             Canvas { ctx, size in
                                 let activeTop = h / 2, activeSpan = 2 * h
@@ -283,8 +288,9 @@ struct ColorScoreColumn: View {
                                 for s in stride(from: 0, through: 1000, by: 10) {
                                     let y = activeTop + activeSpan * (1 - CGFloat(s) / 1000)
                                     let len: CGFloat = (s % 50 == 0) ? 15 : 8
-                                    ctx.fill(Path(CGRect(x: cx - len, y: y - thickness / 2, width: len, height: thickness)), with: .color(.black))
-                                    ctx.fill(Path(CGRect(x: cx, y: y - thickness / 2, width: len, height: thickness)), with: .color(.white))
+                                    ctx.fill(Path(CGRect(x: cx - len, y: y - thickness / 2,
+                                                         width: 2 * len, height: thickness)),
+                                             with: .color(.black))
                                 }
                             }
                             .allowsHitTesting(false)
@@ -342,26 +348,29 @@ struct ColorScoreColumn: View {
     ///
     /// A power curve (exponent 0.6) is applied so that dark color transitions
     /// (black → purple near the top) get proportionally more visible space.
-    static func paddedScoreGradient() -> Gradient {
-        let reversed = Array(ColorScale.anchors.reversed())
-        let cold = reversed.last!.color
+    /// `legacy` builds the previous palette instead, so testers can compare the
+    /// two side by side on the rating column.
+    static func paddedScoreGradient(legacy: Bool = false) -> Gradient {
         let padFrac: Double = 1.0 / 6.0          // (h/2) / (3h)
         let activeRange = 1.0 - 2.0 * padFrac    // 2/3
         let eps: Double = 0.0005
 
-        // Top padding: transparent up to just before the active area starts.
+        // Score 1000 sits at the top of the active area, 0 at the bottom.
+        // Sampling the shared color function keeps the column and the forecast
+        // colors identical by construction.
         var stops: [Gradient.Stop] = [
             .init(color: .clear, location: 0.0),
             .init(color: .clear, location: padFrac - eps)
         ]
-        // Active color range — first anchor (hot) at padFrac, last (cold) at 1-padFrac.
-        let n = reversed.count
-        for (i, a) in reversed.enumerated() {
-            let t    = Double(i) / Double(n - 1)
-            let frac = pow(t, ColorScale.scoreGradientExponent)
-            stops.append(.init(color: a.color, location: padFrac + activeRange * frac))
+        let steps = 48
+        for i in 0...steps {
+            let f = Double(i) / Double(steps)                 // 0 = top = hottest
+            let score = ColorScale.maxScore * (1 - f)
+            let c = legacy ? ColorScale.legacyColor(forScore: score)
+                           : ColorScale.color(forScore: score)
+            stops.append(.init(color: c, location: padFrac + activeRange * f))
         }
-        // Bottom padding: hard cut from cold back to transparent.
+        let cold = legacy ? ColorScale.legacyColor(forScore: 0) : ColorScale.color(forScore: 0)
         stops.append(.init(color: cold, location: 1.0 - padFrac + eps))
         stops.append(.init(color: .clear, location: 1.0 - padFrac + 2 * eps))
         stops.append(.init(color: .clear, location: 1.0))

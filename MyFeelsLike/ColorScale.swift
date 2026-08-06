@@ -90,21 +90,54 @@ enum ColorScale {
     static let minScore: Double = 0
     static let maxScore: Double = 1000
 
-    /// Power-curve exponent that spaces the color anchors on the Rate Feels
-    /// Like column (RateFeelsLikeView.paddedScoreGradient), giving the dark
-    /// black→purple end more room. `color(forScore:)` applies the identical
-    /// warp so the color shown for a forecast score is exactly the color the
-    /// user saw under the indicator when they recorded that score. Shared here
-    /// so the two mappings can't drift apart.
+    /// Power-curve exponent for the *legacy* score scale (see legacyColor).
     static let scoreGradientExponent: Double = 0.6
 
-    /// Color at an arbitrary score (clamped to [0, 1000]).
-    ///
-    /// Must match the rating column: there the anchors run hot→cold top→bottom
-    /// (score 1000 = black at the top, 0 = white at the bottom) and are spaced
-    /// by `scoreGradientExponent`, with the gradient interpolating linearly in
-    /// position between adjacent anchors. We reproduce that placement exactly.
+    // MARK: The score palette
+    //
+    // Redesigned from tester feedback: fewer, more distinguishable colors, with
+    // green in the middle of the scale rather than low on it. Cold→hot runs
+    // white → blue → green → yellow → red → dark red, and because the anchors
+    // carry explicit score positions there is no power warp to keep in sync —
+    // the rating column and the forecast colors read straight off this list.
+
+    struct ScoreAnchor {
+        let score: Double
+        let color: Color
+    }
+
+    static let scoreAnchors: [ScoreAnchor] = [
+        ScoreAnchor(score:    0, color: Color(red: 1.00, green: 1.00, blue: 1.00)),  // white
+        ScoreAnchor(score:  250, color: Color(red: 0.00, green: 0.00, blue: 1.00)),  // blue
+        ScoreAnchor(score:  500, color: Color(red: 0.00, green: 0.85, blue: 0.00)),  // green
+        ScoreAnchor(score:  690, color: Color(red: 1.00, green: 1.00, blue: 0.00)),  // yellow
+        ScoreAnchor(score:  880, color: Color(red: 1.00, green: 0.00, blue: 0.00)),  // red
+        ScoreAnchor(score: 1000, color: Color(red: 0.45, green: 0.00, blue: 0.00))   // dark red
+    ]
+
+    /// Color at an arbitrary score (clamped to [0, 1000]), interpolating between
+    /// the `scoreAnchors`. This is the single source for every MyFeelsLike color
+    /// — band, heatmap, complication and the rating column alike.
     static func color(forScore score: Double) -> Color {
+        let s = score.isFinite ? max(minScore, min(maxScore, score)) : minScore
+        // Find the bracketing anchors by score position.
+        guard let hiIdx = scoreAnchors.firstIndex(where: { $0.score >= s }) else {
+            return scoreAnchors.last!.color
+        }
+        if hiIdx == 0 { return scoreAnchors.first!.color }
+        let lo = scoreAnchors[hiIdx - 1], hi = scoreAnchors[hiIdx]
+        let span = hi.score - lo.score
+        let t = span > 0 ? (s - lo.score) / span : 0
+        let (r1, g1, b1) = rgb(lo.color)
+        let (r2, g2, b2) = rgb(hi.color)
+        return Color(red:   r1 + (r2 - r1) * t,
+                     green: g1 + (g2 - g1) * t,
+                     blue:  b1 + (b2 - b1) * t)
+    }
+
+    /// The previous palette, kept only so the rating column can show old and new
+    /// side by side while testers compare them. Remove with that comparison.
+    static func legacyColor(forScore score: Double) -> Color {
         let m = Double(anchors.count - 1)
         // A non-finite score (from a degenerate fit) would otherwise propagate
         // NaN into the returned Color and on into CoreGraphics.

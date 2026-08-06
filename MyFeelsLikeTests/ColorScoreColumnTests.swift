@@ -82,7 +82,7 @@ struct ColorScoreColumnTests {
     @Test func gradientTopMatchesHottestAnchorBottomMatchesColdest() {
         let stops = ColorScoreColumn.paddedScoreGradient().stops
         let opaque = stops.filter { rgb($0.color).3 > 0 }
-        #expect(rgb(opaque.first!.color) == rgb(ColorScale.anchors.last!.color))  // hottest
-        #expect(rgb(opaque.last!.color)  == rgb(ColorScale.anchors.first!.color)) // coldest
+        #expect(rgb(opaque.first!.color) == rgb(ColorScale.color(forScore: ColorScale.maxScore)))
+        #expect(rgb(opaque.last!.color)  == rgb(ColorScale.color(forScore: ColorScale.minScore)))
     }
 }
