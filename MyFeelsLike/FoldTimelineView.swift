@@ -69,20 +69,29 @@ struct FoldTimelineView: View {
         (historic + (current.map { [$0] } ?? []) + series).sorted { $0.date < $1.date }
     }
 
-    /// One calendar day of hourly scores (nil where no point/no model).
-    private struct DayCol { let start: Date; let scores: [Double?] }
+    /// One calendar day of hourly scores (nil where no point/no model), with the
+    /// reliability width for each hour so the fold can narrow uncertain hours
+    /// exactly like the paged screens do.
+    private struct DayCol {
+        let start: Date
+        let scores: [Double?]
+        let widths: [Double]
+    }
 
     private var dayCols: [DayCol] {
         let cal = Calendar.current
-        var byDay: [Date: [Int: Double]] = [:]
+        var byDay: [Date: [Int: (Double, Double)]] = [:]
         for p in allPoints {
             guard let s = p.myFeelsLikeScore else { continue }
             let d = cal.startOfDay(for: p.date)
             let h = cal.component(.hour, from: p.date)
-            byDay[d, default: [:]][h] = s
+            byDay[d, default: [:]][h] = (s, myFeelsLikeReliability(p))
         }
         return byDay.keys.sorted().map { d in
-            DayCol(start: d, scores: (0..<24).map { byDay[d]?[$0] })
+            let row = byDay[d]
+            return DayCol(start: d,
+                          scores: (0..<24).map { row?[$0]?.0 },
+                          widths: (0..<24).map { row?[$0]?.1 ?? 1 })
         }
     }
 
@@ -364,16 +373,34 @@ struct FoldTimelineView: View {
     }
 
     /// Thin swipe hint (replaces the segmented control to give the graphs room).
+    /// Since the swipe can now rest anywhere, an end label is only emphasised
+    /// when the view is actually at that end; in between, both are dimmed and a
+    /// span readout says how much of the forecast is on screen.
     private var modeIndicator: some View {
-        HStack(spacing: 8) {
-            Text("24-hour").fontWeight(progress < 0.5 ? .semibold : .regular)
-                .foregroundStyle(progress < 0.5 ? axisInk : axisInk.opacity(0.5))
-            Image(systemName: "arrow.left.arrow.right").font(.caption2).foregroundStyle(axisInk.opacity(0.5))
-            Text("10-day").fontWeight(progress >= 0.5 ? .semibold : .regular)
-                .foregroundStyle(progress >= 0.5 ? axisInk : axisInk.opacity(0.5))
+        let atStart = progress < 0.05, atEnd = progress > 0.95
+        return HStack(spacing: 8) {
+            Text("24-hour").fontWeight(atStart ? .semibold : .regular)
+                .foregroundStyle(atStart ? axisInk : axisInk.opacity(0.5))
+            if atStart || atEnd {
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.caption2).foregroundStyle(axisInk.opacity(0.5))
+            } else {
+                Text(spanLabel)
+                    .font(.caption2).foregroundStyle(axisInk.opacity(0.75))
+                    .monospacedDigit()
+            }
+            Text("10-day").fontWeight(atEnd ? .semibold : .regular)
+                .foregroundStyle(atEnd ? axisInk : axisInk.opacity(0.5))
         }
         .font(.subheadline)
         .frame(maxWidth: .infinity)
+    }
+
+    /// How much time the visible window covers, for intermediate zoom levels.
+    private var spanLabel: String {
+        let hours = visHi.timeIntervalSince(visLo) / 3600
+        if hours < 48 { return "\(Int(hours.rounded())) h" }
+        return "\(Int((hours / 24).rounded())) days"
     }
 
     private func scrubGesture(width: CGFloat) -> some Gesture {
@@ -388,8 +415,12 @@ struct FoldTimelineView: View {
             .onEnded { v in
                 guard scrubDate == nil else { return }
                 let span = max(1, width * 0.7)
+                // Rest wherever the swipe lands (with a little momentum) rather
+                // than snapping to 24-hour or 10-day, so any intermediate zoom
+                // is a resting state. Snapping back is a one-line change if the
+                // in-between views don't read well.
                 let projected = clamp((dragBase ?? progress) - v.predictedEndTranslation.width / span, 0, 1)
-                withAnimation(.easeOut(duration: 0.3)) { progress = projected > 0.5 ? 1 : 0 }
+                withAnimation(.easeOut(duration: 0.25)) { progress = projected }
                 dragBase = nil
             }
     }
@@ -602,8 +633,14 @@ struct FoldTimelineView: View {
                     for h in 0..<24 {
                         let localX = (CGFloat(h) + 0.5 - 12) * cellW
                         let color = col.scores[h].map { ColorScale.color(forScore: $0) } ?? Color.gray.opacity(0.4)
-                        let rect = CGRect(x: localX - cellW / 2, y: -cross / 2, width: cellW + 0.5, height: cross)
-                        guard rect.isFinite else { continue }
+                        // Reliability shrinks the cell across the strip. Because
+                        // the strip rotates, that is the band's thickness at
+                        // 24-hour and the cell's width inside its day column at
+                        // 10-day — matching the paged screens at both ends.
+                        let thick = cross * col.widths[h]
+                        let rect = CGRect(x: localX - cellW / 2, y: -thick / 2,
+                                          width: cellW + 0.5, height: thick)
+                        guard rect.isFinite, thick > 0 else { continue }
                         layer.fill(Path(rect), with: .color(color))
                     }
                 }
