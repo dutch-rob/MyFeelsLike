@@ -197,6 +197,25 @@ struct WeatherAttributionLink: View {
     }
 }
 
+// MARK: - Scrubber readout formatting
+
+/// Shared number formatting for the long-press readout. Kept narrow on purpose:
+/// the card sits on the graph, and at a larger font a wide card was covering the
+/// scrub line for hours near the middle of the x-axis. Paired values use a slash
+/// rather than parentheses (matching the "Temp/feels" label), and cloud's
+/// by-altitude breakdown moves to its own row.
+enum ScrubFormat {
+    /// "53.2/48.5" — one decimal each, no brackets or spaces.
+    static func pair(_ a: Double, _ b: Double) -> String {
+        String(format: "%.1f/%.1f", a, b)
+    }
+    /// "11/72/41" — low/medium/high cloud, percent, no labels.
+    static func cloudParts(_ p: ForecastPoint) -> String {
+        String(format: "%.0f/%.0f/%.0f",
+               p.cloudCoverLow * 100, p.cloudCoverMedium * 100, p.cloudCoverHigh * 100)
+    }
+}
+
 // MARK: - Clock format
 
 /// Compact hour-of-day label. 24-hour → "00"…"23". 12-hour → 1…12 with the

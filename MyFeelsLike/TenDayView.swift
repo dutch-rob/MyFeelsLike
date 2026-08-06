@@ -276,21 +276,22 @@ struct TenDayView: View {
                 }
                 .buttonStyle(.plain)
             }
-            readoutRow("Temp/feels \(unit)",
-                       String(format: "%.1f (%.1f)",
-                              useFahrenheit ? p.temperatureF : p.temperatureC,
-                              useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
-                       .green)
+            readoutRow("Temp/feels \(unit)", ScrubFormat.pair(
+                useFahrenheit ? p.temperatureF : p.temperatureC,
+                useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC), .green)
             readoutRow("Wet bulb \(unit)",
                        String(format: "%.1f", useFahrenheit ? p.wetBulbF : p.wetBulbC), .blue)
             readoutRow("Dew pt \(unit)",
                        String(format: "%.1f", useFahrenheit ? p.dewPointF : p.dewPointC), .red)
-            readoutRow("Wind (gust) \(windUnit)",
-                       String(format: "%.0f (%.0f)",
-                              useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH,
-                              useFahrenheit ? p.windGustMPH : p.windGustKPH), .red)
-            readoutRow("Precip", String(format: "%.1f mm (%.0f%%)",
-                                        p.precipitationMM, p.precipProbability * 100), .blue)
+            readoutRow("Wind \(windUnit)",
+                       String(format: "%.0f", useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH), .red)
+            readoutRow("Gust \(windUnit)",
+                       String(format: "%.0f", useFahrenheit ? p.windGustMPH : p.windGustKPH), .red)
+            readoutRow("Precip mm", String(format: "%.1f", p.precipitationMM), .blue)
+            readoutRow("Precip %", String(format: "%.0f", p.precipProbability * 100), .blue)
+            readoutRow("UV", String(format: "%.0f", p.uvIndex), .orange)
+            readoutRow("Cloud %", String(format: "%.0f", p.cloudCover * 100), .secondary)
+            readoutRow("  low/mid/high", ScrubFormat.cloudParts(p), .secondary)
         }
         .padding(6)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
@@ -301,7 +302,7 @@ struct TenDayView: View {
     private func readoutRow(_ label: String, _ value: String, _ tint: Color) -> some View {
         HStack(spacing: 6) {
             Text(label).font(.footnote).foregroundStyle(.secondary)
-            Spacer(minLength: 8)
+            Spacer(minLength: 6)
             Text(value).font(.footnote.weight(.medium)).monospacedDigit()
                 .foregroundStyle(tint.mix(with: .primary, by: 0.25))
         }
