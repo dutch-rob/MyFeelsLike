@@ -37,6 +37,30 @@ private let fitLog = Logger(subsystem: "robotex.MyFeelsLike", category: "Regress
 
 // MARK: - Feature extraction (training side: Rating → features)
 
+extension Rating: PhysicalSource {
+    func observation(_ v: PhysicalVar) -> Double {
+        switch v {
+        case .apparentC:  return apparentTemperatureC
+        case .tempC:      return temperatureC
+        case .wetBulbC:   return wetBulbC
+        case .dewC:       return dewPointC
+        case .humidity:   return humidity
+        case .pressurePa: return stationPressurePa
+        case .windKPH:    return windSpeedKPH
+        case .uv:         return uvIndex
+        case .precipProb: return precipProbability
+        case .precipMM:   return precipitationMM
+        case .cloud:      return cloudCover
+        case .cloudLow:   return cloudCoverLow
+        case .cloudMed:   return cloudCoverMedium
+        case .cloudHigh:  return cloudCoverHigh
+        case .activity:   return Double(activity)
+        case .dress:      return Double(dress)
+        case .sun:        return Double(sun)
+        }
+    }
+}
+
 extension Rating: FeatureSource {
     func value(for f: Feature) -> Double {
         switch f {
@@ -107,13 +131,11 @@ enum FeelsLikeRegression {
         return hi - lo
     }
 
-    /// How many extra (beyond apparent) features the budget allows.
-    /// k=0 for n=5..9, k=1 for n=10..14, … capped to keep n/p ≥ 3.
-    static func featureBudget(n: Int) -> Int {
-        let raw = (n - 5) / 5
-        let stabilityCap = max(0, (n - 2) / 3 - 1)   // -1 because anchor counts
-        return max(0, min(raw, stabilityCap))
-    }
+    /// Total number of coefficients the ratings can support: one per five
+    /// ratings. There is no mandatory anchor — apparentTempC competes for a slot
+    /// like everything else, so someone who rated across a narrow temperature
+    /// band can still get a useful model from sun/activity/clothing.
+    static func featureBudget(n: Int) -> Int { max(0, n / 5) }
 
     /// Plain-language reasons a personalized model can't be fit yet (empty when
     /// one can). Used by the UI to explain the absence of personalized color.
@@ -129,73 +151,99 @@ enum FeelsLikeRegression {
             let needPct = Int((minScoreSpread / 10).rounded())
             return ["Your \(n) ratings cover only about \(pct)% of the feels-like color range; at least ~\(needPct)% is needed. Rate some conditions that feel clearly cooler or warmer than the ones you've rated so far."]
         }
-        let tSpread = apparentSpread(ratings)
-        if tSpread < minApparentSpreadC {
-            return ["Your \(n) ratings span only about \(Int(tSpread.rounded())) °C, so the app can't yet tell how much of the difference came from the temperature rather than from sun, activity or clothing. Rate across a wider range of temperatures — clearly cooler or clearly warmer than you have so far."]
-        }
         if fit(ratings: ratings) == nil {
-            // Distinguish "not enough signal yet" from "the ratings disagree with
-            // physics", which needs different advice from the user.
+            // Give the most actionable reason. A narrow temperature band is the
+            // usual root cause — it leaves nothing to separate the temperature's
+            // effect from sun/activity/clothing — so mention it first.
+            let tSpread = apparentSpread(ratings)
+            if tSpread < minApparentSpreadC {
+                return ["Your \(n) ratings span only about \(Int(tSpread.rounded())) °C, so the app can't yet tell how much of the difference came from the temperature rather than from sun, activity or clothing. Rate across a wider range of temperatures — clearly cooler or clearly warmer than you have so far."]
+            }
             if let bad = rejection(ratings: ratings), case .coolerWhenWarmer = bad {
                 return ["Your ratings so far say the weather feels *cooler* as it gets warmer, so a personalized color would be misleading. This usually means a few ratings were placed on the wrong end of the color scale — check your ratings, and rate a clearly hot moment and a clearly cold one."]
             }
-            return ["A model couldn't be fit from these \(n) ratings yet — rating across more varied weather should help."]
+            return ["Nothing in these \(n) ratings yet explains your comfort better than simply averaging them, so a personalized color would be guesswork. Rating across more varied weather should help."]
         }
         return []
     }
 
-    /// Refit the model from scratch.  Returns nil if the trigger condition
-    /// isn't met yet.
+    /// Refit the model from scratch. Returns nil when the ratings can't support
+    /// a believable model.
+    ///
+    /// Forward stepwise on AICc, but a candidate must *earn* its slot: at every
+    /// step the model that would result is probed for physical sanity, so a
+    /// feature that would make the model read cooler-when-warmer (or warmer in
+    /// the wind, or cooler when more active) is simply not available at that
+    /// step, and the next-best candidate can take the slot instead. That is
+    /// strictly better than fitting first and rejecting afterwards, which threw
+    /// away the whole model rather than the offending term.
     static func fit(ratings: [Rating]) -> RegressionState? {
         guard canFit(ratings: ratings) else { return nil }
         let n = ratings.count
         let budget = featureBudget(n: n)
+        guard budget > 0 else { return nil }
 
-        // Always start with the anchor.
-        var selected: [Feature] = [.apparentTempC]
-        guard var bestState = fitOLS(ratings: ratings, features: selected) else { return nil }
-        // Each accepted step, simplest first, so an implausible rich model can
-        // fall back to the best simpler one instead of being thrown away.
-        var chain: [RegressionState] = [bestState]
+        // No mandatory anchor: everything competes, including apparentTempC.
+        // Pool is n-aware (hinges from 25, interactions from 40) and limited to
+        // predictors that actually varied across the ratings.
+        var remaining = Set(ModelPlausibility.eligible(Feature.allCases.filter { n >= $0.minimumN },
+                                                       ratings: ratings))
+        var selected: [Feature] = []
+        // Baseline: the intercept-only model ("your comfort is just its average").
+        // Starting from it means the ≥2 AICc margin applies to the *first*
+        // feature too — a feature that barely beats predicting the mean has not
+        // earned a slot, and picking the best of several near-tied weak
+        // candidates would just be fitting noise.
+        var bestState = fitOLS(ratings: ratings, features: [])
 
-        // Forward stepwise: add up to `budget` more features. Candidate pool is
-        // n-aware (hinges unlock at 25, interactions at 40) and additionally
-        // limited to predictors that actually varied across the ratings — a
-        // near-constant one only adds extrapolation risk (ModelPlausibility).
-        var remaining = Set(ModelPlausibility.eligible(Feature.candidates(for: n), ratings: ratings))
         for _ in 0..<budget {
             var bestNext: (Feature, RegressionState)? = nil
             for f in remaining {
-                let trial = selected + [f]
-                guard let st = fitOLS(ratings: ratings, features: trial) else { continue }
-                if bestNext == nil || st.aicc < bestNext!.1.aicc {
-                    bestNext = (f, st)
+                guard let st = fitOLS(ratings: ratings, features: selected + [f]) else { continue }
+                // Eligibility at this step: the resulting model must be plausible.
+                if let bad = ModelPlausibility.check(st, ratings: ratings) {
+                    fitLog.debug("\(f.rawValue, privacy: .public) not eligible: \(bad.reason, privacy: .public)")
+                    continue
                 }
+                if bestNext == nil || st.aicc < bestNext!.1.aicc { bestNext = (f, st) }
             }
             guard let pick = bestNext else { break }
-            // Accept only if AICc improvement ≥ 2 (stop early otherwise).
-            if pick.1.aicc + 2.0 < bestState.aicc {
-                selected.append(pick.0)
-                remaining.remove(pick.0)
-                bestState = pick.1
-                chain.append(pick.1)
-            } else {
-                break
-            }
+            // Must beat the current model (starting from intercept-only) by 2.
+            if let current = bestState, !(pick.1.aicc + 2.0 < current.aicc) { break }
+            selected.append(pick.0)
+            remaining.remove(pick.0)
+            bestState = pick.1
         }
 
-        // Physical sanity: take the richest model that behaves believably. If
-        // even the anchor-only model does not (e.g. the user's ratings say it
-        // feels colder as it gets hotter), publish no personal model rather than
-        // a confidently wrong one — the app then shows the generic forecast.
-        for state in chain.reversed() {
-            if let bad = ModelPlausibility.check(state, ratings: ratings) {
-                fitLog.notice("Rejected \(state.selectedFeatures.count, privacy: .public)-feature model: \(bad.reason, privacy: .public)")
-                continue
+        // At least one coefficient, or there is no personal model to show (an
+        // intercept-only fit would paint one flat color over every hour).
+        guard var state = bestState, !selected.isEmpty else { return nil }
+        attachRanges(&state, ratings: ratings)
+        return state
+    }
+
+    /// Record the conditions the user actually rated in, so reliability can
+    /// narrow the band outside them (see RegressionState.reliabilityWidth).
+    private static func attachRanges(_ state: inout RegressionState, ratings: [Rating]) {
+        var featureRanges: [String: RangeBox] = [:]
+        for f in state.selectedFeatures {
+            let vs = ratings.map { $0.value(for: f) }
+            if let lo = vs.min(), let hi = vs.max() {
+                featureRanges[f.rawValue] = RangeBox(lo: lo, hi: hi)
             }
-            return state
         }
-        return nil
+        var observationRanges: [String: RangeBox] = [:]
+        for v in PhysicalVar.allCases {
+            if let r = ModelPlausibility.range(v, in: ratings) {
+                observationRanges[v.rawValue] = r
+            }
+        }
+        let scores = ratings.map { $0.feelsLikeScore }
+        state.featureRanges = featureRanges
+        state.observationRanges = observationRanges
+        if let lo = scores.min(), let hi = scores.max() {
+            state.scoreRange = RangeBox(lo: lo, hi: hi)
+        }
     }
 
     /// Why the fitted model was rejected as implausible, if it was. Used by the

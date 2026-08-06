@@ -66,6 +66,21 @@ struct ModelPlausibilityTests {
         #expect(reasons[0].contains("cooler"))
     }
 
+    /// More activity must read *warmer*, not cooler — the direction the tester's
+    /// own data shows (same weather, activity 0 -> 498, activity 1 -> 875).
+    @Test func moreActivityMayReadWarmer() {
+        var rs = sensibleRatings()
+        rs += stride(from: 0.0, through: 35.0, by: 5.0).map {
+            rating(apparent: $0, score: min(1000, 150 + 20 * $0 + 120), activity: 3)
+        }
+        guard let state = FeelsLikeRegression.fit(ratings: rs) else {
+            Issue.record("expected a model"); return
+        }
+        // Whatever features it picked, the model must not have been rejected for
+        // an activity term that reads warmer.
+        #expect(ModelPlausibility.check(state, ratings: rs) == nil)
+    }
+
     /// The tester's cloud cover ran 0.00…0.07. Standardising a near-constant
     /// predictor turns noise into a huge coefficient that explodes when the
     /// forecast leaves that range, so it must not be eligible at all.

@@ -69,8 +69,13 @@ struct ForecastPoint: Identifiable, Codable {
             return
         }
         let src = ForecastFeatureSource(p: self, scenario: nightAdjusted(scenario))
-        myFeelsLikeScore   = Self.finiteScore(state.predict(src))
-        myFeelsLikeOpacity = Self.finiteOpacity(state.predictionOpacity(src))
+        let raw = state.predict(src)
+        myFeelsLikeScore   = Self.finiteScore(raw)
+        // Reliability is the narrowest of leverage and the three range checks,
+        // so a forecast outside the conditions the user rated in reads as a thin
+        // band rather than a confident color.
+        myFeelsLikeOpacity = Self.finiteOpacity(
+            state.reliabilityWidth(features: src, physical: src, predicted: raw))
     }
 
     /// There is no sun at night, so a night hour is always "in shade" regardless
@@ -101,9 +106,12 @@ struct ForecastPoint: Identifiable, Codable {
         var shadeScenario = scenario; shadeScenario.sun = -1
         let sunSrc = ForecastFeatureSource(p: self, scenario: sunScenario)
         let shadeSrc = ForecastFeatureSource(p: self, scenario: shadeScenario)
-        myFeelsLikeSunScore     = Self.finiteScore(state.predict(sunSrc))
-        myFeelsLikeSunOpacity   = Self.finiteOpacity(state.predictionOpacity(sunSrc))
-        myFeelsLikeShadeScore   = Self.finiteScore(state.predict(shadeSrc))
-        myFeelsLikeShadeOpacity = Self.finiteOpacity(state.predictionOpacity(shadeSrc))
+        let sunRaw = state.predict(sunSrc), shadeRaw = state.predict(shadeSrc)
+        myFeelsLikeSunScore     = Self.finiteScore(sunRaw)
+        myFeelsLikeSunOpacity   = Self.finiteOpacity(
+            state.reliabilityWidth(features: sunSrc, physical: sunSrc, predicted: sunRaw))
+        myFeelsLikeShadeScore   = Self.finiteScore(shadeRaw)
+        myFeelsLikeShadeOpacity = Self.finiteOpacity(
+            state.reliabilityWidth(features: shadeSrc, physical: shadeSrc, predicted: shadeRaw))
     }
 }

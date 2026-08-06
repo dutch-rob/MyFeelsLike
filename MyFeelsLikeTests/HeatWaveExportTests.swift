@@ -53,6 +53,8 @@ struct HeatWaveExportTests {
     /// app falls back to the generic forecast instead of painting a heat wave
     /// white.
     @Test func realHeatWaveExportProducesNoModel() {
+        // Nothing in these ratings beats simply averaging them by the AICc
+        // margin, so no personal model is published.
         #expect(FeelsLikeRegression.fit(ratings: ratings()) == nil)
     }
 
@@ -65,15 +67,22 @@ struct HeatWaveExportTests {
         #expect(!ModelPlausibility.eligible([.cloudCoverLow], ratings: rs).contains(.cloudCoverLow))
     }
 
-    /// Cause 2: every rating came from one heat wave — under 4 °C apart — so the
-    /// anchor's slope had to absorb differences that were really sun/activity.
+    /// Cause 2: every rating came from one heat wave — under 4 °C apart. That no
+    /// longer blocks a model outright; instead apparentTempC can't earn a slot
+    /// (its response would be wrong-signed), and the not-in-model range check
+    /// narrows the band once the forecast leaves that band.
     @Test func allRatingsCameFromOneNarrowTemperatureBand() {
-        let rs = ratings()
-        #expect(FeelsLikeRegression.apparentSpread(rs) < 4.0)
-        #expect(!FeelsLikeRegression.canFit(ratings: rs))
+        #expect(FeelsLikeRegression.apparentSpread(ratings()) < 4.0)
     }
 
-    /// And the user is told something they can act on, not just "no color yet".
+    /// Temperature must not win a slot on this data.
+    @Test func temperatureCannotEarnASlot() {
+        let rs = ratings()
+        guard let state = FeelsLikeRegression.fit(ratings: rs) else { return }  // no model is also fine
+        #expect(!state.selectedFeatures.contains(.apparentTempC))
+    }
+
+    /// And the advice names the root cause: everything was rated in one band.
     @Test func testerIsToldToRateAcrossMoreTemperatures() {
         let reasons = FeelsLikeRegression.readinessReasons(ratings: ratings())
         #expect(reasons.count == 1)

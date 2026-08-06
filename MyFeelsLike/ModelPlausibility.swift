@@ -95,36 +95,15 @@ enum ModelPlausibility {
     // at all isn't a "feels like" model.
     /// Upper bound on |dScore/d°C| before we call a model implausible.
     static let maxScorePerDegreeC = 60.0
-    /// The response must be at least this positive: warmer has to read warmer.
-    static let minScorePerDegreeC = 1.0
+    /// Warmer must never read cooler. Zero is allowed: a model built only from
+    /// self-report features (sun/activity/clothing) has no temperature response
+    /// at all, which is legitimate for someone who has rated across a narrow
+    /// temperature band — the not-in-model range check keeps it honest outside
+    /// the conditions they rated in.
+    static let minScorePerDegreeC = 0.0
     /// Tolerances for the weaker priors (allow small wrong-signed wobble).
     static let windTolerance = 25.0      // score units per +10 kph
     static let activityTolerance = 25.0  // score units per +1 activity step
-
-    /// How much a predictor must actually vary across the user's ratings before
-    /// it may enter the model. Below this it is effectively a constant, and
-    /// standardising it turns noise into a huge, extrapolating coefficient.
-    /// nil = no spread requirement (self-report features the user sets directly).
-    static func minimumSpread(_ f: Feature) -> Double? {
-        switch f {
-        case .apparentTempC, .hinge_cold_10, .hinge_warm_18, .hinge_hot_26:
-            return 2.0            // °C
-        case .apparentMinusTemp, .tempMinusWetBulb, .wetBulbMinusDewPoint:
-            return 1.0            // °C
-        case .humidity:           return 0.10      // 10 percentage points
-        case .cloudCover, .cloudCoverLow, .cloudCoverMedium, .cloudCoverHigh:
-            return 0.20           // 20 percentage points (the "0…0.07" case)
-        case .precipProbability:  return 0.20
-        case .precipitationMM:    return 0.5
-        case .windSpeedKPH, .hinge_wind_15: return 5.0     // kph
-        case .uvIndex, .hinge_uv_4: return 2.0
-        case .stationPressurePa:  return 500.0    // Pa
-        case .isDaylight:         return 0.5      // needs both day and night
-        case .activity, .dress, .sun: return nil  // ordinal self-reports
-        case .ix_apparent_humidity, .ix_apparent_uv, .ix_apparent_activity:
-            return nil            // judged through their parents
-        }
-    }
 
     /// Observed spread (max − min) of a feature over the ratings.
     static func spread(_ f: Feature, in ratings: [Rating]) -> Double {
@@ -133,11 +112,43 @@ enum ModelPlausibility {
         return hi - lo
     }
 
+    /// Observed range of a raw observation over the ratings.
+    static func range(_ v: PhysicalVar, in ratings: [Rating]) -> RangeBox? {
+        let vs = ratings.map { $0.observation(v) }
+        guard let lo = vs.min(), let hi = vs.max() else { return nil }
+        return RangeBox(lo: lo, hi: hi)
+    }
+
     /// Candidates the data actually supports — drops near-constant predictors.
+    /// Interactions are gated on their parents instead of on the product, whose
+    /// units make a single threshold meaningless.
     static func eligible(_ features: [Feature], ratings: [Rating]) -> [Feature] {
         features.filter { f in
-            guard let need = minimumSpread(f) else { return true }
-            return spread(f, in: ratings) >= need
+            switch f {
+            case .ix_apparent_humidity, .ix_apparent_uv, .ix_apparent_activity:
+                return f.parentVars.allSatisfy { parent in
+                    guard let r = range(parent, in: ratings) else { return false }
+                    return r.length >= parentSpreadRequirement(parent)
+                }
+            default:
+                return spread(f, in: ratings) >= f.minimumSpreadForInclusion
+            }
+        }
+    }
+
+    /// The inclusion threshold expressed on a raw observation (for gating the
+    /// interaction terms through their parents).
+    private static func parentSpreadRequirement(_ v: PhysicalVar) -> Double {
+        switch v {
+        case .apparentC, .tempC, .wetBulbC, .dewC: return 3
+        case .humidity: return 0.1
+        case .windKPH:  return 5
+        case .uv:       return 3
+        case .activity, .dress, .sun: return 1
+        case .precipMM: return 2
+        case .precipProb: return 0.2
+        case .cloud, .cloudHigh, .cloudLow, .cloudMed: return 0.2
+        case .pressurePa: return 1000
         }
     }
 
@@ -199,7 +210,8 @@ enum ModelPlausibility {
         guard y0.isFinite else { return .nonFiniteCoefficients }
 
         // Temperature: the one prior we insist on. Averaged over a few degrees
-        // so a hinge sitting exactly at the probe point can't dominate.
+        // so a hinge sitting exactly at the probe point can't dominate. A model
+        // with no temperature term scores exactly 0 here, which is allowed.
         let perDegree = (state.predict(base.warmed(by: 3)) - state.predict(base.warmed(by: -3))) / 6
         guard perDegree.isFinite else { return .nonFiniteCoefficients }
         if perDegree < minScorePerDegreeC { return .coolerWhenWarmer(perDegreeC: perDegree) }
