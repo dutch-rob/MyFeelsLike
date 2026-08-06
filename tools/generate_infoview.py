@@ -35,6 +35,8 @@ NUMBERED = "NUMBERED"
 BULLET   = "BULLET"
 LINK     = "LINK"
 TOC      = "TOC"      # table-of-contents entry: "- [label](#anchor) — desc"
+DETAIL   = "DETAIL"   # "### More detail" -> a collapsed DisclosureGroup
+IMAGE    = "IMAGE"    # "![alt](asset:Name)" -> an Image from the asset catalog
 
 
 def slug(text: str) -> str:
@@ -67,6 +69,19 @@ def parse_items(section: str) -> list:
 
         if not line:
             flush()
+            continue
+
+        # ### Detail heading -> disclosure group
+        if line.startswith("### "):
+            flush()
+            items.append((DETAIL, line[4:].strip(), 0))
+            continue
+
+        # Illustration: ![alt](asset:AssetName)
+        m = re.match(r'^\s*!\[([^\]]*)\]\(asset:([A-Za-z0-9_]+)\)\s*$', line)
+        if m:
+            flush()
+            items.append((IMAGE, f"{m.group(2)}|{m.group(1)}", 0))
             continue
 
         # ## Heading
@@ -140,6 +155,15 @@ def swift_toc(content: str) -> str:
             f'label: {{ {swift_text(text)}.frame(maxWidth: .infinity, alignment: .leading) }}')
 
 
+def swift_image(content: str) -> str:
+    name, alt = (content.split("|", 1) + [""])[:2]
+    return (f'Image("{esc(name)}").resizable().scaledToFit()'
+            f'.frame(maxWidth: .infinity).frame(maxHeight: 240)'
+            f'.clipShape(RoundedRectangle(cornerRadius: 8))'
+            f'.overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary))'
+            f'.accessibilityLabel("{esc(alt)}")')
+
+
 def generate(items: list) -> str:
     # Split items into per-section groups (each group starts with a HEADING)
     groups: list[list] = []
@@ -194,6 +218,33 @@ def generate(items: list) -> str:
             if typ == LINK:
                 out.append(f'{L5}{swift_link(content)}')
                 i += 1
+                continue
+
+            if typ == IMAGE:
+                out.append(f'{L5}{swift_image(content)}')
+                i += 1
+                continue
+
+            if typ == DETAIL:
+                # Everything up to the next DETAIL/HEADING goes inside a
+                # collapsed DisclosureGroup, giving the two-level structure:
+                # skim the sections, expand only what you want in depth.
+                out.append(f'{L5}DisclosureGroup("{esc(content)}") {{')
+                out.append(f'{L6}VStack(alignment: .leading, spacing: 10) {{')
+                j = i + 1
+                while j < len(group) and group[j][0] not in (DETAIL, HEADING):
+                    t2, c2, _ = group[j]
+                    if t2 == PARA:    out.append(f'{L7}{swift_text(c2)}')
+                    elif t2 == LINK:  out.append(f'{L7}{swift_link(c2)}')
+                    elif t2 == IMAGE: out.append(f'{L7}{swift_image(c2)}')
+                    elif t2 == NUMBERED: out.append(f'{L7}{swift_text(c2)}')
+                    elif t2 == BULLET:   out.append(f'{L7}{swift_text("    • " + c2)}')
+                    j += 1
+                out.append(f'{L7}Spacer(minLength: 0)')
+                out.append(f'{L6}}}.frame(maxWidth: .infinity, alignment: .leading)')
+                out.append(f'{L5}}}')
+                out.append(f'{L5}.font(.callout)')
+                i = j
                 continue
 
             # Collect a consecutive run of list / toc items

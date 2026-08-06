@@ -463,14 +463,13 @@ struct HereTodayView: View {
                     let x0 = proxy.position(forX: lim.start) ?? 0
                     let x1 = proxy.position(forX: lim.end) ?? plot.width
                     let mid = plot.minX + (x0 + x1) / 2
-                    Text(lim.reason)
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(axisInk)
+                    // Outlined, because it sits directly on the color band and
+                    // has to read over anything from white to dark red.
+                    OutlinedText(text: lim.reason, fill: .white, outline: .black, width: 1.2)
+                        .font(.system(size: 10, weight: .bold))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .padding(.horizontal, 3)
                         .fixedSize()
-                        .position(x: min(max(mid, plot.minX + 40), plot.maxX - 40),
+                        .position(x: min(max(mid, plot.minX + 60), plot.maxX - 60),
                                   y: plot.midY)
                 }
             }
