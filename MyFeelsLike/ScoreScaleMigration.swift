@@ -17,11 +17,10 @@
 //        yellow       340.2        690
 //        red          482.7        880
 //
-//  So below red a rating keeps the color the user actually picked: we find which
-//  segment the old score sits in, and place it at the same fraction of the
-//  matching new segment. (The one imperfection: the old green was pure
-//  (0, 1, 0) and the new one is (0, 0.85, 0), so the greenest ratings land on
-//  the nearest available green rather than an identical RGB.)
+//  So below red a rating keeps exactly the color the user actually picked: we
+//  find which segment the old score sits in, and place it at the same fraction
+//  of the matching new segment. Both scales use the same anchor colors there,
+//  pure green included, so the RGB comes out identical.
 //
 //  Above red the old scale continues through purple to black while the new one
 //  only darkens red, so there is no color to match and the rest is mapped
@@ -68,7 +67,7 @@ enum ScoreScaleMigration {
                 * (ColorScale.maxScore - newRed)
         }
 
-        // Below red: keep the color by matching anchor segments.
+        // Below red: keep the exact color by matching anchor segments.
         for i in 0..<4 where s < legacyAnchorScores[i + 1] {
             let lo = legacyAnchorScores[i], hi = legacyAnchorScores[i + 1]
             let t = hi > lo ? (s - lo) / (hi - lo) : 0

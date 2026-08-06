@@ -42,7 +42,8 @@ struct ScoreScaleMigrationTests {
         #expect(abs(converted - ScoreScaleMigration.newRed) < 1e-6)
     }
 
-    /// Below red, the whole point: the color the user picked is preserved.
+    /// Below red, the whole point: the color the user picked is preserved —
+    /// exactly, since the two scales share all their anchors there.
     @Test func colorsArePreservedBelowRed() {
         var worst = 0.0
         for old in stride(from: 0.0, through: ScoreScaleMigration.legacyRed, by: 5) {
@@ -50,10 +51,9 @@ struct ScoreScaleMigrationTests {
                              ColorScale.color(forScore: ScoreScaleMigration.convert(old)))
             worst = max(worst, d)
         }
-        // The only mismatch is that the old green was pure (0,1,0) while the new
-        // one is (0,0.85,0), so the greenest ratings land on the nearest green.
-        // That caps the error at 0.15 in one channel.
-        #expect(worst < 0.16, "worst color distance \(worst)")
+        // Both scales share every anchor below red, including pure green, so
+        // the conversion reproduces the picked color exactly (bar rounding).
+        #expect(worst < 0.01, "worst color distance \(worst)")
     }
 
     /// Conversion must never reorder ratings: hotter stays hotter.

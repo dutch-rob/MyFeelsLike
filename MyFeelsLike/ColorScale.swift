@@ -109,7 +109,7 @@ enum ColorScale {
     static let scoreAnchors: [ScoreAnchor] = [
         ScoreAnchor(score:    0, color: Color(red: 1.00, green: 1.00, blue: 1.00)),  // white
         ScoreAnchor(score:  250, color: Color(red: 0.00, green: 0.00, blue: 1.00)),  // blue
-        ScoreAnchor(score:  500, color: Color(red: 0.00, green: 0.85, blue: 0.00)),  // green
+        ScoreAnchor(score:  500, color: Color(red: 0.00, green: 1.00, blue: 0.00)),  // green
         ScoreAnchor(score:  690, color: Color(red: 1.00, green: 1.00, blue: 0.00)),  // yellow
         ScoreAnchor(score:  880, color: Color(red: 1.00, green: 0.00, blue: 0.00)),  // red
         ScoreAnchor(score: 1000, color: Color(red: 0.45, green: 0.00, blue: 0.00))   // dark red
