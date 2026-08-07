@@ -104,6 +104,8 @@ struct ContentView: View {
     /// One-shot: convert ratings from the previous color scale (see
     /// ScoreScaleMigration).
     @AppStorage(SettingsKey.didMigrateScoreScaleV2) private var didMigrateScoreScaleV2: Bool = false
+    /// One-shot repair for a build that converted without re-uploading.
+    @AppStorage(SettingsKey.didReuploadAfterScaleV2) private var didReuploadAfterScaleV2: Bool = false
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -265,6 +267,14 @@ struct ContentView: View {
                     DeveloperDataSync.markAllForReupload()
                 }
                 didMigrateScoreScaleV2 = true
+            }
+            // Repair for anyone who installed the build where the conversion ran
+            // without clearing the upload markers: their converted ratings were
+            // never re-sent. Harmless for everyone else — records are keyed by
+            // rating id and overwrite, so this costs one re-upload, once.
+            if !DemoMode.isActive && !didReuploadAfterScaleV2 {
+                DeveloperDataSync.markAllForReupload()
+                didReuploadAfterScaleV2 = true
             }
             refitRegression()
             // Welcome on first launch; "what's new" after an update.

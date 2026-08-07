@@ -61,4 +61,11 @@ enum SettingsKey {
     /// scale to the redesigned one (see ScoreScaleMigration). Set for fresh
     /// installs too, so a new user never runs the conversion.
     static let didMigrateScoreScaleV2 = "didMigrateScoreScaleV2"
+    /// One-shot repair. A build shipped in which the conversion above ran but
+    /// did not clear the developer-upload markers, so converted ratings were
+    /// never re-sent and their uploaded copies kept old-scale scores with no
+    /// score1. Anyone who installed that build has the migration flag set, so
+    /// the fixed migration path can no longer help them — this forces one
+    /// re-upload regardless of whether they migrated.
+    static let didReuploadAfterScaleV2 = "didReuploadAfterScaleV2"
 }
