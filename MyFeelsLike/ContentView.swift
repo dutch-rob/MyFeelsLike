@@ -256,7 +256,14 @@ struct ContentView: View {
             // flag. refitRegression() below then refits on the new targets.
             if !DemoMode.isActive && !didMigrateScoreScaleV2 {
                 let n = ScoreScaleMigration.migrate(ratings)
-                if n > 0 { try? modelContext.save() }
+                if n > 0 {
+                    try? modelContext.save()
+                    // These ratings changed in place. The developer-data upload
+                    // is a delta keyed on rating id, so without this the already
+                    // uploaded copies would keep their old-scale scores and never
+                    // gain score1 — the shared set would quietly mix both scales.
+                    DeveloperDataSync.markAllForReupload()
+                }
                 didMigrateScoreScaleV2 = true
             }
             refitRegression()

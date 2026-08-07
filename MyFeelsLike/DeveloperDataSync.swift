@@ -39,6 +39,16 @@ enum DeveloperDataSync {
         return s
     }
 
+    /// Forget which ratings have already been uploaded, so the next sync re-sends
+    /// all of them. Needed when stored ratings change *in place* — the upload is
+    /// otherwise a delta and would leave the already-uploaded copies untouched,
+    /// silently mixing old and new values in the shared data. Record IDs are
+    /// derived from the rating id and saved with `.allKeys`, so re-sending
+    /// overwrites rather than duplicating.
+    static func markAllForReupload() {
+        UserDefaults.standard.removeObject(forKey: uploadedKey)
+    }
+
     /// Upload new ratings + the current model when consent is on; delete
     /// everything we previously uploaded when consent is off.
     static func sync(consent: Bool, ratings: [Rating], model: RegressionState?) {
