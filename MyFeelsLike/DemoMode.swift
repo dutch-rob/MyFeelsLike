@@ -70,13 +70,44 @@ enum DemoMode {
 
     // MARK: - Ratings (enough to fit a model so the colors show)
 
+    /// Apparent-temperature band the demo user has "rated in". Deliberately
+    /// narrower than the forecast's own range so the screenshots show what a
+    /// real model looks like: full-width color where the forecast matches the
+    /// conditions that were rated, and a narrowed band (down to the 15% floor)
+    /// where it doesn't.
+    /// Comfortably wider than the 3 °C a feature needs to be eligible at all,
+    /// and sitting in the upper part of the coming day's range so the colder
+    /// hours fall outside it.
+    static let ratedApparentBand: ClosedRange<Double> = 10.8...14.2
+
     static func ratings() -> [Rating] {
-        // Apparent 5…30 °C → score 150…900 (spread 750 ≥ 80) so canFit passes.
-        stride(from: 5.0, through: 30.0, by: 2.5).map { a in
-            let score = 150 + (a - 5) / 25 * 750
-            let snap = point(date: Date(), kind: .forecast, tempC: a + 1, apparentC: a,
-                             wetBulbC: a - 3, dewC: a - 6, windKPH: 8, uv: 3, daylight: true)
-            return Rating(feelsLikeScore: score, activity: 1, dress: 0, sun: 0, snapshot: snap)
+        // Rate real forecast hours rather than invented ones, so every other
+        // observation (humidity, wind, cloud, pressure…) carries a realistic
+        // range too and the reliability checks behave as they would in the field.
+        let (_, s10, _) = forecast()
+        let candidates = s10.filter { ratedApparentBand.contains($0.apparentTemperatureC) }
+        guard candidates.count >= 5 else {
+            // Fallback for an empty/odd CSV: keep the old synthetic ratings so a
+            // model still fits and the demo isn't colorless.
+            return stride(from: 5.0, through: 30.0, by: 2.5).map { a in
+                let snap = point(date: Date(), kind: .forecast, tempC: a + 1, apparentC: a,
+                                 wetBulbC: a - 3, dewC: a - 6, windKPH: 8, uv: 3, daylight: true)
+                return Rating(feelsLikeScore: 150 + (a - 5) / 25 * 750,
+                              activity: 1, dress: 0, sun: 0, snapshot: snap)
+            }
+        }
+        // Sample evenly across the temperature range, both ends included. Picking
+        // by position in time instead left the coldest and warmest rated hours
+        // out, and the resulting spread fell just under the 3 °C a feature needs
+        // to be eligible at all — so no model was fit and the demo lost its color.
+        let sorted = candidates.sorted { $0.apparentTemperatureC < $1.apparentTemperatureC }
+        let wanted = min(14, sorted.count)
+        return (0..<wanted).map { i in
+            let p = sorted[i * (sorted.count - 1) / max(1, wanted - 1)]
+            // ~40 points per °C: steep enough to clear the score-spread gate,
+            // gentle enough to stay well inside the plausibility ceiling.
+            let score = 420 + (p.apparentTemperatureC - ratedApparentBand.lowerBound) * 40
+            return Rating(feelsLikeScore: score, activity: 1, dress: 0, sun: 0, snapshot: p)
         }
     }
 

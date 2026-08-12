@@ -116,12 +116,18 @@ enum FeelsLikeRegression {
     /// Trigger threshold: at least 5 ratings, ≥ `minScoreSpread` spread of
     /// user-reported feels-like scores, and enough temperature variation to
     /// actually estimate a temperature response.
+    /// Note there is deliberately *no* temperature-spread gate here. A narrow
+    /// band of rated temperatures is handled where it actually matters: a
+    /// feature needs 3 °C of spread to be eligible, the fitted model must still
+    /// respond plausibly to temperature, and the range checks narrow the band
+    /// outside the conditions that were rated. Gating here as well would deny a
+    /// usable model to someone whose comfort really does vary with sun,
+    /// activity or clothing within a narrow temperature range.
     static func canFit(ratings: [Rating]) -> Bool {
         guard ratings.count >= 5 else { return false }
         let ys = ratings.map { $0.feelsLikeScore }
         guard let lo = ys.min(), let hi = ys.max() else { return false }
-        guard (hi - lo) >= minScoreSpread else { return false }
-        return apparentSpread(ratings) >= minApparentSpreadC
+        return (hi - lo) >= minScoreSpread
     }
 
     /// Observed spread of apparent temperature (°C) across the ratings.
