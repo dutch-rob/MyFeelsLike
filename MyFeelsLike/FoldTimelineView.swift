@@ -107,13 +107,32 @@ struct FoldTimelineView: View {
     private var fullLo: Date { allPoints.first?.date ?? narrowLo }
     private var fullHi: Date { series.last?.date ?? narrowHi }
 
+    /// End of the first stage: the whole preceding day is in view and the
+    /// forecast reaches +72 h. Up to here the swipe only widens the window (the
+    /// color band just gets thinner as each hour claims less width); past it the
+    /// band starts rotating into the heat map.
+    private let foldSplit = 0.4
+    /// Where the first stage stops zooming to: 72 hours ahead of "now".
+    private var midHi: Date { narrowLo.addingTimeInterval(72 * 3600) }
+
+    /// 0…1 through the widening stage.
+    private var zoomPhase: Double { min(1, progress / foldSplit) }
+    /// 0…1 through the rotating stage (0 until the widening stage is done).
+    private var rotatePhase: Double { max(0, (progress - foldSplit) / (1 - foldSplit)) }
+
     private func lerpDate(_ a: Date, _ b: Date, _ t: Double) -> Date {
         Date(timeIntervalSinceReferenceDate:
                 a.timeIntervalSinceReferenceDate
                 + (b.timeIntervalSinceReferenceDate - a.timeIntervalSinceReferenceDate) * t)
     }
-    private var visLo: Date { lerpDate(narrowLo, fullLo, progress) }
-    private var visHi: Date { lerpDate(narrowHi, fullHi, progress) }
+    /// The past comes in during the first stage only, so by the time +72 h is on
+    /// screen the preceding day is fully there and stays put while the rest of
+    /// the forecast arrives.
+    private var visLo: Date { lerpDate(narrowLo, fullLo, zoomPhase) }
+    private var visHi: Date {
+        progress <= foldSplit ? lerpDate(narrowHi, midHi, zoomPhase)
+                              : lerpDate(midHi, fullHi, rotatePhase)
+    }
     private var visDomain: ClosedRange<Date> { visLo...max(visLo.addingTimeInterval(3600), visHi) }
 
     // MARK: Y ranges (over all data, stable while zooming)
@@ -339,7 +358,9 @@ struct FoldTimelineView: View {
                 // little at the bottom so the legend clears the floating toolbar.
                 let overhead: CGFloat = 40 + 58     // scenario strip + indicator, + toolbar
                 let avail = max(220, h - overhead)
-                let colorH = lerp(avail * 0.10, avail * 0.34, progress)
+                // The band only needs its full height once it starts standing
+                // up, so it keeps the graphs' space through the widening stage.
+                let colorH = lerp(avail * 0.10, avail * 0.34, smoothstep(rotatePhase))
                 let graphsH = avail - colorH
                 // A ScrollView sized to exactly one screen: it never actually
                 // scrolls, but it restores pull-to-refresh (.refreshable only
@@ -605,9 +626,9 @@ struct FoldTimelineView: View {
             let midY = plot.midY
             let bandH = plot.height * 0.92
             let barTh = min(26, plot.height * 0.5)
-            // Fold tracks the overall progress (not column width) so the swing is
-            // visible across the whole transition, matched to the charts' zoom.
-            let f = smoothstep(progress)
+            // Rotation belongs to the second stage only: the first stage just
+            // widens the window, so the band thins without tipping over.
+            let f = smoothstep(rotatePhase)
             let phi = f * .pi / 2
 
             for (_, col) in cols.enumerated() {

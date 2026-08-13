@@ -26,7 +26,8 @@ enum DemoMode {
     /// screenshots show genuine-looking weather rather than a synthetic curve.
     static func forecast(now: Date = Date()) -> (s24: [ForecastPoint],
                                                  s10: [ForecastPoint],
-                                                 current: ForecastPoint) {
+                                                 current: ForecastPoint,
+                                                 historic: [ForecastPoint]) {
         let cal = Calendar.current
         let startHour = cal.dateInterval(of: .hour, for: now)?.start ?? now
 
@@ -34,7 +35,7 @@ enum DemoMode {
         guard !rows.isEmpty else {
             let fallback = point(date: now, kind: .current, tempC: 20, apparentC: 20,
                                  wetBulbC: 15, dewC: 12, windKPH: 10, uv: 3, daylight: true)
-            return ([fallback], [fallback], fallback)
+            return ([fallback], [fallback], fallback, [])
         }
 
         // Line up the CSV's diurnal cycle with the real current hour (UTC) so
@@ -46,7 +47,10 @@ enum DemoMode {
 
         func makePoint(hoursFromStart h: Int, kind: ForecastPoint.Kind = .forecast) -> ForecastPoint {
             let date = startHour.addingTimeInterval(Double(h) * 3600)
-            let r = rows[(phase + h) % rows.count]
+            // Wrap positively: h is negative for the historic hours, and Swift's
+            // % keeps the sign, which would index out of bounds.
+            let idx = ((phase + h) % rows.count + rows.count) % rows.count
+            let r = rows[idx]
             return ForecastPoint(
                 kind: kind, date: date, symbolName: r.symbol,
                 isDaylight: r.isDaylight, uvIndex: r.uv,
@@ -65,7 +69,11 @@ enum DemoMode {
         let s24 = (0..<24).map { makePoint(hoursFromStart: $0) }
         let s10 = (0..<240).map { makePoint(hoursFromStart: $0) }
         let current = makePoint(hoursFromStart: 0, kind: .current)
-        return (s24, s10, current)
+        // The past day, so the demo exercises everything that reads history:
+        // the dashed past on the 10-day chart, the complication's whole-day
+        // range, and the fold timeline bringing the preceding day into view.
+        let historic = (-24 ..< 0).map { makePoint(hoursFromStart: $0, kind: .historic) }
+        return (s24, s10, current, historic)
     }
 
     // MARK: - Ratings (enough to fit a model so the colors show)
@@ -84,7 +92,7 @@ enum DemoMode {
         // Rate real forecast hours rather than invented ones, so every other
         // observation (humidity, wind, cloud, pressure…) carries a realistic
         // range too and the reliability checks behave as they would in the field.
-        let (_, s10, _) = forecast()
+        let (_, s10, _, _) = forecast()
         let candidates = s10.filter { ratedApparentBand.contains($0.apparentTemperatureC) }
         guard candidates.count >= 5 else {
             // Fallback for an empty/odd CSV: keep the old synthetic ratings so a

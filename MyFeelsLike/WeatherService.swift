@@ -167,11 +167,11 @@ final class WeatherService: ObservableObject {
 
     /// Populate with canned data for App Store screenshots (no network/location).
     func loadDemo() {
-        let (s24, s10, cur) = DemoMode.forecast()
+        let (s24, s10, cur, hist) = DemoMode.forecast()
         series24h = s24
         series10d = s10
         current = cur
-        historic = []
+        historic = hist
         historicUnavailable = false
         placeDescription = DemoMode.placeName
         isRefreshing = false
