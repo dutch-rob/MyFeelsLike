@@ -644,9 +644,14 @@ struct FoldTimelineView: View {
                 guard colCenterX.isFinite, length.isFinite, cross > 0, cellW > 0 else { continue }
 
                 ctx.drawLayer { layer in
-                    // Keep each day's fold inside its own column so half-folded
-                    // bands don't cross into their neighbours.
-                    layer.clip(to: Path(CGRect(x: xl, y: plot.minY, width: colW, height: plot.height)))
+                    // Deliberately *not* clipped to the day's own column. Doing
+                    // that was what sliced the corners off a rotating band: a
+                    // band of length L at angle phi sweeps L*cos(phi) + T*sin(phi)
+                    // across, which is wider than its column mid-swing. Letting
+                    // neighbours overlap keeps each band a whole rectangle, which
+                    // reads as one object turning; the overlap resolves itself as
+                    // the rotation completes. The panel-wide clip still applies,
+                    // so nothing escapes into the charts above or below.
                     layer.translateBy(x: colCenterX, y: midY)
                     layer.rotate(by: .radians(-phi))     // hour 0 → bottom at f=1
                     for h in 0..<24 {
