@@ -465,12 +465,17 @@ struct HereTodayView: View {
                     let x1 = proxy.position(forX: lim.end) ?? plot.width
                     let mid = plot.minX + (x0 + x1) / 2
                     // Outlined, because it sits directly on the color band and
-                    // has to read over anything from white to dark red.
+                    // has to read over anything from white to dark red. Bounded
+                    // by the plot and allowed to shrink: a long reason near one
+                    // edge used to run past the chart and get clipped mid-word.
+                    let width = min(plot.width - 8, 260)
                     OutlinedText(text: lim.reason, fill: .white, outline: .black, width: 1.2)
                         .font(.system(size: 10, weight: .bold))
                         .lineLimit(1)
-                        .fixedSize()
-                        .position(x: min(max(mid, plot.minX + 60), plot.maxX - 60),
+                        .minimumScaleFactor(0.6)
+                        .frame(width: width)
+                        .position(x: min(max(mid, plot.minX + width / 2),
+                                         plot.maxX - width / 2),
                                   y: plot.midY)
                 }
             }

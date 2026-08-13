@@ -107,7 +107,12 @@ enum DemoMode {
             // ~40 points per °C: steep enough to clear the score-spread gate,
             // gentle enough to stay well inside the plausibility ceiling.
             let score = 420 + (p.apparentTemperatureC - ratedApparentBand.lowerBound) * 40
-            return Rating(feelsLikeScore: score, activity: 1, dress: 0, sun: 0, snapshot: p)
+            // Vary the self-reports so their rated ranges cover what the forecast
+            // will ask for. With sun fixed at 0, every night hour (forced to
+            // shade) counted as a scenario never rated, and that dominated the
+            // narrowing instead of the temperature difference we want to show.
+            let sun = [-1, 0, 1][i % 3]
+            return Rating(feelsLikeScore: score, activity: 1, dress: 0, sun: sun, snapshot: p)
         }
     }
 

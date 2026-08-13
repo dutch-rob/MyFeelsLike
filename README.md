@@ -54,10 +54,6 @@ week teach the app very little, because it cannot tell what came from the
 temperature and what came from sun, activity or clothing. A handful of ratings
 across clearly cooler *and* clearly warmer weather is worth much more.
 
-The color scale was redesigned during testing. Ratings you gave on the earlier
-scale were converted automatically, keeping the color you originally picked, so
-you can carry straight on rather than starting over.
-
 ## The 24-hour screen
 The temperature panel shows the outdoor temperature and the standard
 "feels like" as lines. Below it, a band shows your predicted comfort hour by
