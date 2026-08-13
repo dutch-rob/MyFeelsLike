@@ -55,7 +55,6 @@ struct InfoView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("You must set each of the three choices deliberately; nothing is pre-filled, because a default left untouched would teach the app something you did not mean.")
                             Text("Variety matters far more than quantity. Ten ratings all taken in the same hot week teach the app very little, because it cannot tell what came from the temperature and what came from sun, activity or clothing. A handful of ratings across clearly cooler *and* clearly warmer weather is worth much more.")
-                            Text("The color scale was redesigned during testing. Ratings you gave on the earlier scale were converted automatically, keeping the color you originally picked, so you can carry straight on rather than starting over.")
                             Spacer(minLength: 0)
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -84,7 +83,7 @@ struct InfoView: View {
                 Group {
                     Text("Reading exact values").font(.headline).id("reading-exact-values")
                     Text("**Long-press any graph** to drop a line you can drag along the timeline. A card shows every value for that moment — your comfort score, temperature and feels like, wet bulb, dew point, wind and gusts, precipitation, cloud and UV. Tap to dismiss.")
-                    Image("InfoScrubberReadout").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The long-press readout, with the dashed line marking the hour it describes")
+                    Image("InfoScrubberReadout").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 380).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The long-press readout, with the dashed line marking the hour it describes")
                     DisclosureGroup("Show more — And the table screen") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Because the long-press readout gives you the exact numbers anywhere you point, the full table screen is switched off by default. You can turn it back on in Settings if you like scrolling a full table.")
@@ -121,6 +120,7 @@ struct InfoView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("When you are together, **Connect Nearby** exchanges models directly between the two devices for a live comparison.")
                             Text("For someone who is not nearby, send a snapshot of your model as a link, a small file attachment, or a QR code they scan. No account and no server is involved, and it works to an Android device too. A snapshot does not update when you rate more — re-send it to share a newer one.")
+                            Image("InfoShareModel").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 380).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The share sheet: send as a file, or a QR code to scan in person")
                             Text("Either way the comparison shows as side-by-side color bands, so you can see how differently the same day feels to each of you.")
                             Spacer(minLength: 0)
                         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -139,7 +139,8 @@ struct InfoView: View {
                     DisclosureGroup("Show more — The rest of Settings") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("**Muted colors** softens the weather lines for a gentler look. You can show or hide the **table** screen, turn the weather-sky background on or off, set the name others see when comparing, and choose whether to share anonymous data with the developer.")
-                            Text("**Fold timeline** is experimental: it replaces the two graph screens with a single one you swipe to morph from the 24-hour view into the 10-day heat map.")
+                            Text("**Fold timeline** is experimental: it replaces the two graph screens with a single one you swipe to morph from the 24-hour view into the 10-day heat map. Swipe part-way and it holds there, mid-turn.")
+                            Image("InfoFoldRotation").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("Mid-swipe: each day's color band turning on its way to becoming a heatmap column")
                             Spacer(minLength: 0)
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }

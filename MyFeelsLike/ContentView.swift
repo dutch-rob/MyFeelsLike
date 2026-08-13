@@ -311,13 +311,16 @@ struct ContentView: View {
                             ownModel: regressionState,
                             ownSunSplit: sunFeatureActive,
                             invite: incomingInvite,
-                            ink: skyInk)
+                            ink: skyInk,
+                            systemScheme: systemScheme)
             } else {
                 forecastContent
             }
         }
         // Chips/buttons follow the weather's day/night, not the phone's dark-mode
-        // setting, so they stay white over the daytime sky (sheets are unaffected).
+        // setting, so they stay white over the daytime sky. Sheets attached out
+        // here in `body` don't inherit this, but ones presented from *inside*
+        // this subtree do — CompareView takes `systemScheme` to undo it.
         .environment(\.colorScheme, chromeScheme)
     }
 

@@ -123,6 +123,8 @@ file attachment, or a QR code they scan. No account and no server is involved,
 and it works to an Android device too. A snapshot does not update when you rate
 more — re-send it to share a newer one.
 
+![The share sheet: send as a file, or a QR code to scan in person](MyFeelsLike/Assets.xcassets/InfoShareModel.imageset/InfoShareModel.png)
+
 Either way the comparison shows as side-by-side color bands, so you can see how
 differently the same day feels to each of you.
 
@@ -142,6 +144,9 @@ the developer.
 
 **Fold timeline** is experimental: it replaces the two graph screens with a
 single one you swipe to morph from the 24-hour view into the 10-day heat map.
+Swipe part-way and it holds there, mid-turn.
+
+![Mid-swipe: each day's color band turning on its way to becoming a heatmap column](MyFeelsLike/Assets.xcassets/InfoFoldRotation.imageset/InfoFoldRotation.png)
 
 ## Your data
 Your ratings and your personal model stay on your device.

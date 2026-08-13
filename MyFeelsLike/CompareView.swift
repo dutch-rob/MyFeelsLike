@@ -143,6 +143,11 @@ struct CompareView: View {
     var invite: CompareInvite? = nil
     /// Legible text color over the weather-sky background.
     var ink: Color = .primary
+    /// The phone's *real* light/dark setting. This screen renders under the
+    /// sky's own chrome scheme (dark at night), and sheets presented from here
+    /// inherit that — which would put dark-mode label colors on a light sheet
+    /// and make the text almost invisible. Sheet contents reset to this.
+    var systemScheme: ColorScheme = .light
 
     @StateObject private var coordinator = CompareCoordinator()
 
@@ -292,6 +297,7 @@ struct CompareView: View {
                     showMessageComposer = false
                 }
                 .ignoresSafeArea()
+                .environment(\.colorScheme, systemScheme)
             }
         }
         .alert("Link copied", isPresented: $inviteCopiedAlert) {
@@ -299,7 +305,9 @@ struct CompareView: View {
         } message: {
             Text("Messages isn't available here, so the invite link was copied. Paste it into any messaging app to send it.")
         }
-        .sheet(isPresented: $showShareModel) { shareModelSheet }
+        .sheet(isPresented: $showShareModel) {
+            shareModelSheet.environment(\.colorScheme, systemScheme)
+        }
         .onChange(of: invite) { _, inv in
             guard let inv else { return }
             coordinator.add(shareID: inv.id, name: inv.name, token: inv.token,

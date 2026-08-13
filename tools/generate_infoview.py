@@ -23,8 +23,11 @@ Markdown rules:
 """
 
 import re
+import struct
 import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent   # repo root (tools/ is one level down)
 
 MARKER_START = "<!-- INFO_SCREEN_START -->"
 MARKER_END   = "<!-- INFO_SCREEN_END -->"
@@ -166,11 +169,22 @@ def swift_toc(content: str) -> str:
             f'label: {{ {swift_text(text)}.frame(maxWidth: .infinity, alignment: .leading) }}')
 
 
+def _is_portrait(name: str) -> bool:
+    """Read the asset's pixel size straight from the PNG header (bytes 16-24)."""
+    png = ROOT / "MyFeelsLike/Assets.xcassets" / f"{name}.imageset" / f"{name}.png"
+    try:
+        head = png.read_bytes()[16:24]
+        w, h = struct.unpack(">II", head)
+        return h > w
+    except Exception:
+        return False
+
+
 def swift_image(content: str) -> str:
     name, alt = (content.split("|", 1) + [""])[:2]
     # Portrait crops (e.g. the rating column) need more height than a wide
     # strip, or scaledToFit shrinks them to an illegible sliver.
-    cap = 380 if "Column" in name else 240
+    cap = 380 if _is_portrait(name) else 240
     return (f'Image("{esc(name)}").resizable().scaledToFit()'
             f'.frame(maxWidth: .infinity).frame(maxHeight: {cap})'
             f'.clipShape(RoundedRectangle(cornerRadius: 8))'
@@ -350,7 +364,7 @@ def generate(items: list) -> str:
 
 
 def main():
-    root = Path(__file__).resolve().parent.parent   # repo root (tools/ is one level down)
+    root = ROOT
     readme   = root / "README.md"
     infoview = root / "MyFeelsLike" / "InfoView.swift"
 
