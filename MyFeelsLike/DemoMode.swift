@@ -77,6 +77,11 @@ enum DemoMode {
     }
 
     // MARK: - Ratings (enough to fit a model so the colors show)
+    //
+    // Ratings and Places are SwiftData models that live only in the phone
+    // target. The watch shares this file for `forecast()` alone — its demo
+    // model arrives pre-fitted in DemoWatchPayload.
+#if os(iOS)
 
     /// Apparent-temperature band the demo user has "rated in". Deliberately
     /// narrower than the forecast's own range so the screenshots show what a
@@ -137,6 +142,8 @@ enum DemoMode {
             Place(name: "New Delhi",     latitude:  28.6139, longitude:   77.2090, altitude: 216),
         ]
     }
+
+#endif
 
     // MARK: - Builder
 

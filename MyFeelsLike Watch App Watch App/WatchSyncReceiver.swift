@@ -24,6 +24,10 @@ final class WatchSyncReceiver: NSObject, ObservableObject, WCSessionDelegate {
 
     private override init() {
         super.init()
+        if DemoMode.isActive {
+            payload = DemoWatchPayload.payload
+            return
+        }
         if let data = store?.data(forKey: key),
            let p = try? JSONDecoder().decode(WatchSyncPayload.self, from: data) {
             payload = p
@@ -31,6 +35,9 @@ final class WatchSyncReceiver: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     func start() {
+        // Screenshot mode is self-contained: don't let a real phone (or a
+        // stale cached context) replace the embedded demo model.
+        guard !DemoMode.isActive else { return }
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self

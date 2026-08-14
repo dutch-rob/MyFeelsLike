@@ -42,6 +42,9 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        // Screenshot mode never asks for a location — its forecast is canned,
+        // and the permission alert would sit on top of every capture.
+        guard !DemoMode.isActive else { return }
         manager.requestWhenInUseAuthorization()
     }
 
@@ -50,6 +53,7 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
     /// nothing — saving a WeatherKit fetch, a location fix, and a complication
     /// reload. `force` (place change, manual refresh) always refetches.
     func refresh(force: Bool = false) {
+        if DemoMode.isActive { loadDemo(); return }
         if !force, !series10d.isEmpty, let last = lastLoadedAt,
            Date().timeIntervalSince(last) < Self.freshWindow {
             // Skipping the fetch, but still rewrite the complication snapshot:
@@ -69,6 +73,22 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
         } else {
             manager.requestLocation()
         }
+    }
+
+    /// Screenshot mode: the same canned Adelaide forecast the phone uses, with
+    /// the phone's demo model embedded rather than synced, so the watch shows
+    /// real colors without a network, a location fix, or a paired phone.
+    private func loadDemo() {
+        let (s24, s10, cur, hist) = DemoMode.forecast()
+        series24h = s24
+        series10d = s10
+        historic  = hist
+        current   = cur
+        selectedPlace = DemoWatchPayload.place
+        isLoading = false
+        errorText = nil
+        lastLoadedAt = Date()
+        applyModel()
     }
 
     /// Switch to a place (nil = back to current location) and refetch.

@@ -21,7 +21,16 @@ struct ContentView: View {
     //   2 = 10-day (real)
     //   3 = Table (real)
     //   4 = Today phantom  → real tab is 1
-    @State private var selectedTab = 1
+    @State private var selectedTab = Self.initialTab
+
+    /// Screenshot automation picks the page with `-UITestScreen today|tenday|table`.
+    private static var initialTab: Int {
+        switch UserDefaults.standard.string(forKey: "UITestScreen") {
+        case "tenday": return 2
+        case "table":  return 3
+        default:       return 1
+        }
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
