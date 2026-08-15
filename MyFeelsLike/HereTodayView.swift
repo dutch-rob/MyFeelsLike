@@ -161,6 +161,10 @@ struct HereTodayView: View {
     /// are on actually draws it (the table screen does not).
     private var overSky: Bool { graphSky && skyIsVisible }
     private var axisInk: Color { overSky ? (skyIsDay ? .black : .white) : .primary }
+    /// Weather-series colors sit on a near-black sky at night, where they read
+    /// dimmer than the same colors do on the pale daytime sky. A small lift
+    /// restores the contrast. Only when the sky is actually behind them.
+    private var seriesBrightness: Double { overSky && !skyIsDay ? 0.14 : 0 }
 
     // MARK: Scrubbing (long-press to read a specific hour's values)
     //
@@ -635,7 +639,7 @@ struct HereTodayView: View {
                             LineMark(x: .value("Time", p.date), y: .value("Temp", dry),
                                      series: .value("S", "dry"))
                                 .foregroundStyle(.green).interpolationMethod(.linear)
-                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
@@ -649,7 +653,7 @@ struct HereTodayView: View {
                             LineMark(x: .value("Time", p.date), y: .value("Wet Bulb", wet),
                                      series: .value("S", "wet"))
                                 .foregroundStyle(.blue).interpolationMethod(.linear)
-                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
@@ -663,7 +667,7 @@ struct HereTodayView: View {
                             LineMark(x: .value("Time", p.date), y: .value("Dew Point", dew),
                                      series: .value("S", "dew"))
                                 .foregroundStyle(.red).interpolationMethod(.linear)
-                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
@@ -679,7 +683,7 @@ struct HereTodayView: View {
                                            useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
                                  series: .value("S", "app"))
                             .foregroundStyle(.purple).interpolationMethod(.linear)
-                            .lineStyle(StrokeStyle(lineWidth: 1.5))
+                            .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
                     }
                 }
                 // Prominent "now" dots in the gap left of the forecast curves.
@@ -762,6 +766,7 @@ struct HereTodayView: View {
             .frame(height: height - 20)
         }
         .saturation(graphPalette.saturation)
+            .brightness(seriesBrightness)
     }
 
     @ViewBuilder
@@ -795,7 +800,7 @@ struct HereTodayView: View {
                                      y: .value("Precip %", p.precipProbability * 100),
                                      series: .value("S", "rainL"))
                                 .foregroundStyle(.blue).interpolationMethod(.linear)
-                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
@@ -864,6 +869,7 @@ struct HereTodayView: View {
                 .padding(.leading, 36)
         }
         .saturation(graphPalette.saturation)
+            .brightness(seriesBrightness)
     }
 }
 

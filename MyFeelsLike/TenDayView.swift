@@ -153,6 +153,10 @@ struct TenDayView: View {
     /// are on actually draws it (the table screen does not).
     private var overSky: Bool { graphSky && skyIsVisible }
     private var axisInk: Color { overSky ? (skyIsDay ? .black : .white) : .primary }
+    /// Weather-series colors sit on a near-black sky at night, where they read
+    /// dimmer than the same colors do on the pale daytime sky. A small lift
+    /// restores the contrast. Only when the sky is actually behind them.
+    private var seriesBrightness: Double { overSky && !skyIsDay ? 0.14 : 0 }
     /// x-position of "now", for the current-time marker line.
     private var nowLineDate: Date? { current?.date ?? series.first?.date }
 
@@ -358,21 +362,21 @@ struct TenDayView: View {
                          y: .value("Temp", useFahrenheit ? p.temperatureF : p.temperatureC),
                          series: .value("S", "A" + suffix))
                     .foregroundStyle(.green).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: dash ?? []))
+                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
             }
             if graphWetBulb {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Wet Bulb", useFahrenheit ? p.wetBulbF : p.wetBulbC),
                          series: .value("S", "B" + suffix))
                     .foregroundStyle(.blue).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: dash ?? []))
+                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
             }
             if graphDewPoint {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Dew Point", useFahrenheit ? p.dewPointF : p.dewPointC),
                          series: .value("S", "C" + suffix))
                     .foregroundStyle(.red).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: dash ?? []))
+                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
             }
             if graphFeels {
                 LineMark(x: .value("Time", p.date),
@@ -380,7 +384,7 @@ struct TenDayView: View {
                                    useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
                          series: .value("S", "D" + suffix))
                     .foregroundStyle(.purple).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: dash ?? []))
+                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
             }
         }
     }
@@ -418,7 +422,7 @@ struct TenDayView: View {
                                    useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
                          series: .value("S", "appA"))
                     .foregroundStyle(.purple).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
             }
         }
     }
@@ -441,7 +445,7 @@ struct TenDayView: View {
                          y: .value("Wind", useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH),
                          series: .value("S", "W" + suffix))
                     .foregroundStyle(.red).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: windDash ?? []))
+                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: windDash ?? []))
                     .symbol(Circle()).symbolSize(0)
             }
         }
@@ -724,6 +728,7 @@ struct TenDayView: View {
             .frame(height: height - 20)
         }
         .saturation(graphPalette.saturation)
+            .brightness(seriesBrightness)
     }
 
     @ViewBuilder
@@ -758,7 +763,7 @@ struct TenDayView: View {
                                      y: .value("Precip %", p.precipProbability * 100),
                                      series: .value("S", "rainL"))
                                 .foregroundStyle(.blue).interpolationMethod(.linear)
-                                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
@@ -807,5 +812,6 @@ struct TenDayView: View {
                 .padding(.leading, 36)
         }
         .saturation(graphPalette.saturation)
+            .brightness(seriesBrightness)
     }
 }

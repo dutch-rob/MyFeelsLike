@@ -40,10 +40,7 @@ enum DemoMode {
 
         // Line up the CSV's diurnal cycle with the real current hour (UTC) so
         // "now" doesn't land on a mismatched sun/moon icon or temperature swing.
-        var utcCal = Calendar(identifier: .gregorian)
-        utcCal.timeZone = TimeZone(identifier: "UTC")!
-        let nowUTCHour = utcCal.component(.hour, from: now)
-        let phase = rows.prefix(24).firstIndex { utcCal.component(.hour, from: $0.date) == nowUTCHour } ?? 0
+        let phase = phaseIndex(for: now)
 
         func makePoint(hoursFromStart h: Int, kind: ForecastPoint.Kind = .forecast) -> ForecastPoint {
             let date = startHour.addingTimeInterval(Double(h) * 3600)
@@ -74,6 +71,47 @@ enum DemoMode {
         // range, and the fold timeline bringing the preceding day into view.
         let historic = (-24 ..< 0).map { makePoint(hoursFromStart: $0, kind: .historic) }
         return (s24, s10, current, historic)
+    }
+
+    /// Which CSV row "now" lands on: the row whose UTC hour matches, so the
+    /// canned diurnal cycle stays in step with the real clock.
+    static func phaseIndex(for date: Date) -> Int {
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(identifier: "UTC")!
+        let hour = utcCal.component(.hour, from: date)
+        return DemoForecastAdelaide.rows.prefix(24)
+            .firstIndex { utcCal.component(.hour, from: $0.date) == hour } ?? 0
+    }
+
+    /// The instant the *displayed* demo forecast is built around.
+    ///
+    /// Normally now, so the demo tracks the real clock. `-UITestSky night` (or
+    /// `day`) shifts it by whole hours until "now" lands on a row with that
+    /// daylight flag, which is how a capture run pins the weather-sky
+    /// background instead of leaving it to whatever hour the run happens at.
+    /// The shift moves the displayed hours with it, so the axis labels and the
+    /// sky still agree. Ratings deliberately do not use this — they are fitted
+    /// at `ratingsEpoch` so the model stays put.
+    static var displayNow: Date {
+        let now = Date()
+        let args = ProcessInfo.processInfo.arguments
+        guard isActive,
+              let i = args.firstIndex(of: "-UITestSky"), i + 1 < args.count else { return now }
+        let wantDaylight: Bool
+        switch args[i + 1] {
+        case "day":   wantDaylight = true
+        case "night": wantDaylight = false
+        default:      return now
+        }
+        let rows = DemoForecastAdelaide.rows
+        guard !rows.isEmpty else { return now }
+        // Smallest shift either way, so the displayed times stay as close to
+        // the real ones as the CSV allows.
+        for hours in [0] + (1...12).flatMap({ [$0, -$0] }) {
+            let candidate = now.addingTimeInterval(Double(hours) * 3600)
+            if rows[phaseIndex(for: candidate)].isDaylight == wantDaylight { return candidate }
+        }
+        return now
     }
 
     // MARK: - Ratings (enough to fit a model so the colors show)

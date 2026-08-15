@@ -71,18 +71,26 @@ enum SkyRenderer {
         if rain > 0.03 { rainStreaks(context, rect, intensity: rain, seed: seed &+ 9) }
     }
 
-    /// Cover ~`coverage` of the whole sky with small opaque cumulus puffs. A
-    /// grid cell gets a cloud with probability `coverage`; clouds are sized to
-    /// touch at full coverage (solid overcast) and leave gaps otherwise.
+    /// Cover ~`coverage` of the whole sky with opaque cumulus puffs.
+    ///
+    /// Coverage raises cloud *size* as well as count. Adding more clouds of a
+    /// fixed size turns an overcast sky into a field of identical dots, which
+    /// reads as busier than the content drawn over it; real heavy cloud is a
+    /// few large merged masses. Holding density ∝ coverage / scale² keeps the
+    /// painted area at roughly `coverage` while the pieces grow — and since it
+    /// paints far fewer, larger clouds (about a third as many at overcast), it
+    /// is cheaper to draw, not dearer.
     private static func cloudLayer(_ context: GraphicsContext, _ rect: CGRect,
                                    coverage: Double, color: Color, seed: UInt64) {
         guard coverage > 0.02 else { return }
         var rng = SeededRNG(seed: seed)
         let cols = 16, rows = 10
-        let cloudW = rect.width / CGFloat(cols) * 1.35
+        let scale = 1.0 + coverage * 1.2                      // 1.0 clear → 2.2 overcast
+        let density = min(1.0, coverage / (scale * scale))
+        let cloudW = rect.width / CGFloat(cols) * 1.35 * CGFloat(scale)
         for c in 0..<cols {
             for r in 0..<rows {
-                let present = rng.unit() < coverage
+                let present = rng.unit() < density
                 let jx = (Double(c) + 0.5) / Double(cols) + (rng.unit() - 0.5) * 0.6 / Double(cols)
                 let jy = (Double(r) + 0.5) / Double(rows) + (rng.unit() - 0.5) * 0.6 / Double(rows)
                 let sizeVar = CGFloat(0.8 + rng.unit() * 0.5)

@@ -11,6 +11,7 @@
 #
 # Usage:  tools/make-screenshots.sh
 #         DERIVED_DATA=/path/to/dd tools/make-screenshots.sh     # non-default build dir
+#         SKY=day tools/make-screenshots.sh                      # daylight background
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -85,7 +86,9 @@ rendered() {   # path  platform  threshold
 shoot() {   # udid  devname  index  screen  bundle  threshold  platform
   local udid="$1" dev="$2" idx="$3" screen="$4" bundle="$5" threshold="$6" platform="$7"
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1
-  local args=(-UITestDemo)
+  # Night sky: the daytime background (white clouds on blue) is busier than the
+  # graph lines drawn over it. SKY=day for the daylight version.
+  local args=(-UITestDemo -UITestSky "${SKY:-night}")
   case "$screen" in
     today)    ;;                                   # the default tab
     # Same screen as "today", with the long-press readout parked mid-chart.
@@ -122,9 +125,20 @@ shoot() {   # udid  devname  index  screen  bundle  threshold  platform
     prev="$cur"
   done
   [ -z "$settled" ] && echo "  ! $dev $screen never settled — check it by eye"
-  # Let the splash→content cross-fade finish, then take the final frame.
+  # Let the splash→content cross-fade finish, then keep taking frames until two
+  # six seconds apart match. A freshly erased device fires system banners
+  # ("Ready for Apple Intelligence") that sit over the UI for a few seconds, and
+  # one of those landed square across the iPad's title. Anything transient
+  # differs between the two frames; a settled screen does not.
   xcrun simctl spawn "$udid" sleep 5 >/dev/null 2>&1
-  xcrun simctl io "$udid" screenshot "$path" >/dev/null 2>&1
+  local a="" b="" tries=0
+  while [ "$tries" -lt 6 ]; do
+    xcrun simctl io "$udid" screenshot "$path" >/dev/null 2>&1
+    b=$(shasum -a1 "$path" 2>/dev/null | cut -d" " -f1)
+    [ -n "$b" ] && [ "$a" = "$b" ] && break
+    a="$b"; tries=$((tries + 1))
+    xcrun simctl spawn "$udid" sleep 6 >/dev/null 2>&1
+  done
   size=$(stat -f%z "$path" 2>/dev/null || echo 0)
   rm -f "$dest"
   cp "$path" "$dest"
@@ -158,9 +172,18 @@ for entry in "${DEVICES[@]}"; do
   xcrun simctl boot "$udid" >/dev/null 2>&1
   xcrun simctl bootstatus "$udid" >/dev/null 2>&1
   xcrun simctl install "$udid" "$app" || { echo "install failed on $dev"; continue; }
-  # Demo mode never asks for a location, but pre-granting costs nothing and
-  # keeps a stray permission alert off the captures.
-  xcrun simctl privacy "$udid" grant location "$bundle" >/dev/null 2>&1
+  # No location grant: both apps skip the authorization request entirely in
+  # demo mode, so nothing prompts — and granting it lit the location-services
+  # arrow in the status bar of every shot.
+  # A fixed status bar, the way App Store screenshots normally carry one: full
+  # bars, full battery, no carrier clutter, and no location-services arrow.
+  # Not supported on watchOS, where it fails harmlessly.
+  if [ "$platform" != "watch" ]; then
+    xcrun simctl status_bar "$udid" override \
+      --time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3 \
+      --cellularMode active --cellularBars 4 \
+      --batteryState charged --batteryLevel 100 >/dev/null 2>&1
+  fi
   # Warm-up launch so the first real capture isn't a cold-start splash.
   xcrun simctl launch "$udid" "$bundle" -UITestDemo >/dev/null 2>&1
   xcrun simctl spawn "$udid" sleep 25 >/dev/null 2>&1

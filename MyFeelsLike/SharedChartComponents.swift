@@ -293,6 +293,12 @@ enum SunShadeStyle: String, CaseIterable {
     case gradient
 }
 
+/// Stroke width for the weather series curves (temperature, wet bulb, dew
+/// point, wind, precipitation). Wider than a hairline so the curves hold their
+/// own against the painted sky behind them — a 1-point line vanished into the
+/// night background. Scrub rules and grid lines keep their own thinner widths.
+let seriesLineWidth: CGFloat = 2.2
+
 /// Saturation applied to the weather series (temperature bands/lines and the
 /// precip/wind panel). `vivid` is full-strength; `muted` softens them for
 /// people who find the default colors too harsh. The MyFeelsLike score colors

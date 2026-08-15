@@ -79,7 +79,7 @@ final class WatchWeatherModel: NSObject, ObservableObject, CLLocationManagerDele
     /// the phone's demo model embedded rather than synced, so the watch shows
     /// real colors without a network, a location fix, or a paired phone.
     private func loadDemo() {
-        let (s24, s10, cur, hist) = DemoMode.forecast()
+        let (s24, s10, cur, hist) = DemoMode.forecast(now: DemoMode.displayNow)
         series24h = s24
         series10d = s10
         historic  = hist

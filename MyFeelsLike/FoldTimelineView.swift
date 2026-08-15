@@ -169,6 +169,10 @@ struct FoldTimelineView: View {
     /// are on actually draws it (the table screen does not).
     private var overSky: Bool { graphSky && skyIsVisible }
     private var axisInk: Color { overSky ? (skyIsDay ? .black : .white) : .primary }
+    /// Weather-series colors sit on a near-black sky at night, where they read
+    /// dimmer than the same colors do on the pale daytime sky. A small lift
+    /// restores the contrast. Only when the sky is actually behind them.
+    private var seriesBrightness: Double { overSky && !skyIsDay ? 0.14 : 0 }
 
     // MARK: Scrubbing (long-press to read exact values; coexists with the swipe)
 
@@ -467,7 +471,7 @@ struct FoldTimelineView: View {
                     if graphDewPoint { tempMark(p.date, dew, .red,   base: base, key: "dew") }
                     if graphFeels {
                         LineMark(x: .value("t", p.date), y: .value("app", app), series: .value("s", "app"))
-                            .foregroundStyle(.purple).lineStyle(StrokeStyle(lineWidth: 1.5))
+                            .foregroundStyle(.purple).lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
                             .interpolationMethod(.linear)
                     }
                 }
@@ -491,6 +495,7 @@ struct FoldTimelineView: View {
             }
             .frame(height: height - 20)
             .saturation(graphPalette.saturation)
+            .brightness(seriesBrightness)
         }
     }
 
@@ -498,7 +503,7 @@ struct FoldTimelineView: View {
     private func tempMark(_ date: Date, _ y: Double, _ color: Color, base: Double, key: String) -> some ChartContent {
         if linesOnly {
             LineMark(x: .value("t", date), y: .value("y", y), series: .value("s", key))
-                .foregroundStyle(color).lineStyle(StrokeStyle(lineWidth: 1.5)).interpolationMethod(.linear)
+                .foregroundStyle(color).lineStyle(StrokeStyle(lineWidth: seriesLineWidth)).interpolationMethod(.linear)
         } else {
             AreaMark(x: .value("t", date), yStart: .value("b", base), yEnd: .value("y", y),
                      series: .value("s", key))
@@ -531,7 +536,7 @@ struct FoldTimelineView: View {
                     if graphPrecip {
                         if linesOnly {
                             LineMark(x: .value("t", p.date), y: .value("y", rain), series: .value("s", "rL"))
-                                .foregroundStyle(.blue).lineStyle(StrokeStyle(lineWidth: 1.5)).interpolationMethod(.linear)
+                                .foregroundStyle(.blue).lineStyle(StrokeStyle(lineWidth: seriesLineWidth)).interpolationMethod(.linear)
                         } else {
                             windArea(p.date, rain, .blue, "rA")
                         }
@@ -567,6 +572,7 @@ struct FoldTimelineView: View {
             }
             .frame(height: height - 20)
             .saturation(graphPalette.saturation)
+            .brightness(seriesBrightness)
 
             ChartLegendRow(entries: windLegend, ink: axisInk).padding(.leading, gutter)
         }
@@ -707,7 +713,7 @@ struct FoldTimelineView: View {
         if let nx = current?.date ?? series.first?.date {
             RuleMark(x: .value("now", nx))
                 .foregroundStyle(.gray)
-                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
         }
     }
 
