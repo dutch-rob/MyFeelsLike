@@ -322,6 +322,7 @@ struct ContentView: View {
         // here in `body` don't inherit this, but ones presented from *inside*
         // this subtree do — CompareView takes `systemScheme` to undo it.
         .environment(\.colorScheme, chromeScheme)
+        .environment(\.skyIsVisible, showSky)
     }
 
     /// A color-band series: a given model applied to *our* local 24h forecast
@@ -576,11 +577,35 @@ struct ContentView: View {
         switch args[i + 1] {
         case "tenday": selectedTab = 2
         case "table":  selectedTab = 3          // real table tab (see tabPagerWithTable)
+        // The sheets need presenting *after* the first layout settles — SwiftUI
+        // drops an isPresented change made this early in the view's life, which
+        // is why these used to be captured by tapping the bottom bar instead.
+        case "places": presentAfterLaunch({ showPlaces }, { showPlaces = true })
+        case "rate":   presentAfterLaunch({ showRate },   { showRate = true })
+        case "info":   presentAfterLaunch({ showInfo },   { showInfo = true })
         default:       break                    // "today" → default tab 1
         }
-        // The Rate / Places sheets aren't auto-presented here: SwiftUI drops an
-        // isPresented change made this early in the view's life, so those two
-        // screens are captured by tapping their bottom-bar buttons (demo mode).
+    }
+
+    /// Show a sheet once the screen behind it will actually keep it.
+    ///
+    /// SwiftUI silently drops an isPresented change made before the hierarchy
+    /// has settled, and how long that takes varies enormously: a warm
+    /// simulator accepts it almost immediately, while a cold one under
+    /// screenshot-capture load swallowed every attempt for ~10 seconds. So
+    /// this keeps asking twice a second until the flag sticks, then stops.
+    /// Capped so a screen that never presents can't retry forever.
+    private func presentAfterLaunch(_ isPresented: @escaping () -> Bool,
+                                    _ show: @escaping () -> Void) {
+        func attempt(_ n: Int) {
+            guard n < 60 else { return }              // ~30s
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                guard !isPresented() else { return }
+                show()
+                attempt(n + 1)
+            }
+        }
+        attempt(0)
     }
 
     /// Seed canned sample ratings + places for demo/screenshot runs (in-memory).
@@ -698,7 +723,6 @@ struct ContentView: View {
 
     private func forecastTableTab(chipFeatures: Set<Feature>) -> some View {
         VStack(spacing: 0) {
-            tabLabel("table")
             ForecastTableView(
                 weatherService: weather,
                 nowTick: nowTick,

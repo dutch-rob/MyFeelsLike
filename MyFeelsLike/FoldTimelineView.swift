@@ -164,7 +164,11 @@ struct FoldTimelineView: View {
         if let sr = sunrise, let ss = sunset { return nowTick >= sr && nowTick < ss }
         return (series.first ?? current)?.isDaylight ?? true
     }
-    private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
+    @Environment(\.skyIsVisible) private var skyIsVisible
+    /// The sky is only behind us when the user wants it *and* the screen we
+    /// are on actually draws it (the table screen does not).
+    private var overSky: Bool { graphSky && skyIsVisible }
+    private var axisInk: Color { overSky ? (skyIsDay ? .black : .white) : .primary }
 
     // MARK: Scrubbing (long-press to read exact values; coexists with the swipe)
 

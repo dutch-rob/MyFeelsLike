@@ -148,7 +148,11 @@ struct TenDayView: View {
     }
     /// Ink for axis text/legends/titles: black by day, white by night when the
     /// sky is shown; otherwise the system color (adapts to light/dark mode).
-    private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
+    @Environment(\.skyIsVisible) private var skyIsVisible
+    /// The sky is only behind us when the user wants it *and* the screen we
+    /// are on actually draws it (the table screen does not).
+    private var overSky: Bool { graphSky && skyIsVisible }
+    private var axisInk: Color { overSky ? (skyIsDay ? .black : .white) : .primary }
     /// x-position of "now", for the current-time marker line.
     private var nowLineDate: Date? { current?.date ?? series.first?.date }
 

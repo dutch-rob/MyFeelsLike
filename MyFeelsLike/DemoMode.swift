@@ -93,11 +93,20 @@ enum DemoMode {
     /// hours fall outside it.
     static let ratedApparentBand: ClosedRange<Double> = 10.8...14.2
 
+    /// Ratings are sampled from a forecast built at this fixed instant, not
+    /// "now". The 10-day series is 240 points over 237 CSV rows, so a few rows
+    /// appear twice and *which* ones depends on the current hour — enough to
+    /// shift the sampling and refit a slightly different model every hour.
+    /// Pinning it keeps the demo's colors identical from run to run, and keeps
+    /// the phone's model identical to the copy the watch carries
+    /// (DemoWatchPayload). The forecast itself still follows the real clock.
+    private static let ratingsEpoch = Date(timeIntervalSince1970: 1_782_000_000)
+
     static func ratings() -> [Rating] {
         // Rate real forecast hours rather than invented ones, so every other
         // observation (humidity, wind, cloud, pressure…) carries a realistic
         // range too and the reliability checks behave as they would in the field.
-        let (_, s10, _, _) = forecast()
+        let (_, s10, _, _) = forecast(now: ratingsEpoch)
         let candidates = s10.filter { ratedApparentBand.contains($0.apparentTemperatureC) }
         guard candidates.count >= 5 else {
             // Fallback for an empty/odd CSV: keep the old synthetic ratings so a

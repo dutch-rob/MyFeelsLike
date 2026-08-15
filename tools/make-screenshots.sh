@@ -53,14 +53,12 @@ else echo "No watch app build found — skipping Apple Watch (build the watch sc
 # platform, so the two are set together.
 #
 # The iPad shows the 24-hour and 10-day panes side by side in one layout, so
-# "tenday" there is the same picture as "today", and its table screen isn't
-# presentable (with the sky hidden the graph legends draw white-on-white) — one
-# capture covers the iPad.
+# "tenday" there is the same picture as "today" and is left out.
 # Rate / Places are sheets that don't auto-present via a launch arg — capture
 # those by tapping the bottom-bar buttons while running in demo mode.
 DEVICES=(
-  "352D53EB-F8D7-42D7-90E3-145E9F17E45C|iPhone 17 Pro Max|ios|250000|today tenday table"
-  "B62C181F-E6F0-4053-859E-42A583057F1E|iPad Pro 13-inch (M5)|ios|250000|today"
+  "352D53EB-F8D7-42D7-90E3-145E9F17E45C|iPhone 17 Pro Max|ios|250000|today scrubber tenday table places rate info"
+  "B62C181F-E6F0-4053-859E-42A583057F1E|iPad Pro 13-inch (M5)|ios|250000|today scrubber table rate info"
   "360294D4-8EB4-4D83-AA6E-424D38B6B77C|Apple Watch Series 11 (46mm)|watch|3000|today tenday table"
 )
 
@@ -88,25 +86,42 @@ shoot() {   # udid  devname  index  screen  bundle  threshold  platform
   local udid="$1" dev="$2" idx="$3" screen="$4" bundle="$5" threshold="$6" platform="$7"
   xcrun simctl terminate "$udid" "$bundle" >/dev/null 2>&1
   local args=(-UITestDemo)
-  [ "$screen" != "today" ] && args+=(-UITestScreen "$screen")
-  # The table screen is off by default on the phone/iPad (the long-press
-  # readout replaced it), so asking for its tab alone silently lands back on
-  # Today — turn it on for that one capture.
-  [ "$screen" = "table" ] && args+=(-showTable YES)
+  case "$screen" in
+    today)    ;;                                   # the default tab
+    # Same screen as "today", with the long-press readout parked mid-chart.
+    scrubber) args+=(-UITestScrubber) ;;
+    # The table screen is off by default (the long-press readout replaced it),
+    # so asking for its tab alone silently lands back on Today.
+    table)    args+=(-UITestScreen table -showTable YES) ;;
+    *)        args+=(-UITestScreen "$screen") ;;   # tenday, places, rate, info
+  esac
   xcrun simctl launch "$udid" "$bundle" "${args[@]}" >/dev/null 2>&1
   local path="$STAGE/${dev}-${idx}_${screen}.png"
   local dest="$OUT/${dev}-${idx}_${screen}.png"
   # Poll until the capture is real content, not the (nearly uniform, small)
   # launch splash. Grab up to ~50s.
-  local t=0 size=0
-  while [ "$t" -lt 60 ]; do
+  # Sheets keep retrying until SwiftUI accepts them (see presentAfterLaunch),
+  # which on a cold device under capture load took ~27s. Don't accept a shot of
+  # the screen behind them before that has had time to happen.
+  local minwait=9
+  case "$screen" in places|rate|info) minwait=36 ;; esac
+  local t=0 size=0 prev="" cur="" settled=""
+  while [ "$t" -lt 75 ]; do
     xcrun simctl spawn "$udid" sleep 3 >/dev/null 2>&1; t=$((t + 3))
     xcrun simctl io "$udid" screenshot "$path" >/dev/null 2>&1
-    rendered "$path" "$platform" "$threshold" && [ "$t" -ge 9 ] && break
+    if rendered "$path" "$platform" "$threshold" && [ "$t" -ge "$minwait" ]; then
+      settled=yes; break
+    fi
+    # Fallback for screens the size test can't recognise — a sheet of mostly
+    # white (Info, Rate) compresses smaller than a launch splash. Once the
+    # picture has stopped changing and we are well past a cold launch, take it.
+    cur=$(shasum -a1 "$path" 2>/dev/null | cut -d" " -f1)
+    if [ -n "$cur" ] && [ "$cur" = "$prev" ] && [ "$t" -ge $((minwait + 15)) ]; then
+      settled=yes; break
+    fi
+    prev="$cur"
   done
-  if ! rendered "$path" "$platform" "$threshold"; then
-    echo "  ! $dev $screen still looks like the launch splash after ${t}s"
-  fi
+  [ -z "$settled" ] && echo "  ! $dev $screen never settled — check it by eye"
   # Let the splash→content cross-fade finish, then take the final frame.
   xcrun simctl spawn "$udid" sleep 5 >/dev/null 2>&1
   xcrun simctl io "$udid" screenshot "$path" >/dev/null 2>&1
@@ -132,6 +147,13 @@ for entry in "${DEVICES[@]}"; do
   # and a narrowed one. A stuck permission alert survives an uninstall too.
   # Erasing costs a slower first boot and buys reproducible captures.
   xcrun simctl shutdown "$udid" >/dev/null 2>&1
+  # `shutdown` returns while the device is still "Shutting Down", and erasing or
+  # booting in that window fails with SimError 405 — which is how the watch got
+  # skipped entirely on one run. Wait for the state to settle first.
+  for _ in $(seq 1 30); do
+    xcrun simctl list devices | grep -q "$udid.*Shutdown" && break
+    sleep 1
+  done
   xcrun simctl erase "$udid" >/dev/null 2>&1
   xcrun simctl boot "$udid" >/dev/null 2>&1
   xcrun simctl bootstatus "$udid" >/dev/null 2>&1

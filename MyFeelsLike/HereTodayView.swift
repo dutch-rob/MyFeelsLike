@@ -156,7 +156,11 @@ struct HereTodayView: View {
     }
     /// Ink for axis text/legends/titles: black by day, white by night when the
     /// sky is shown; otherwise the system color (adapts to light/dark mode).
-    private var axisInk: Color { graphSky ? (skyIsDay ? .black : .white) : .primary }
+    @Environment(\.skyIsVisible) private var skyIsVisible
+    /// The sky is only behind us when the user wants it *and* the screen we
+    /// are on actually draws it (the table screen does not).
+    private var overSky: Bool { graphSky && skyIsVisible }
+    private var axisInk: Color { overSky ? (skyIsDay ? .black : .white) : .primary }
 
     // MARK: Scrubbing (long-press to read a specific hour's values)
     //
@@ -363,6 +367,19 @@ struct HereTodayView: View {
             }
             .refreshable { await onRefresh?() }
         }
+        // Screenshot automation: drop the scrub line on a mid-afternoon hour so
+        // the readout is in the capture. Keyed off the series arriving, because
+        // it is empty on first appear.
+        .onChange(of: series.count) { _, _ in placeScreenshotScrubber() }
+        .onAppear { placeScreenshotScrubber() }
+    }
+
+    /// `-UITestScrubber` (demo runs only) parks the scrub line without a long
+    /// press, which no scripted capture can perform.
+    private func placeScreenshotScrubber() {
+        guard DemoMode.isActive, scrubDate == nil, series.count > 4,
+              ProcessInfo.processInfo.arguments.contains("-UITestScrubber") else { return }
+        scrubDate = series[series.count * 2 / 5].date
     }
 
     /// A thin horizontal MyFeelsLike color band across the 24 hours — the 24h

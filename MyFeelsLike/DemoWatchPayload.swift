@@ -43,7 +43,7 @@ enum DemoWatchPayload {
             0.07692307692307693
           ]
         ],
-        "lastFitAt": 808418091.358031,
+        "lastFitAt": 808465149.654957,
         "means": [
           12.155
         ],

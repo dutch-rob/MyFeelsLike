@@ -230,6 +230,21 @@ func clockHourLabel(_ hour: Int, use12: Bool) -> String {
 
 // MARK: - Graph visibility settings (user-toggleable in Settings)
 
+/// Whether the weather-sky background is actually drawn behind this view.
+/// The `graphSky` setting only records that the user wants it — the table
+/// screen hides it regardless, and in the iPad's side-by-side layout the graph
+/// panes then sit on a plain light background, where sky-white ink is
+/// invisible. Views that pick ink for legibility must read this, not the
+/// setting.
+private struct SkyIsVisibleKey: EnvironmentKey { static let defaultValue = true }
+
+extension EnvironmentValues {
+    var skyIsVisible: Bool {
+        get { self[SkyIsVisibleKey.self] }
+        set { self[SkyIsVisibleKey.self] = newValue }
+    }
+}
+
 /// @AppStorage keys for which graph series the user wants to see. All default
 /// to true. Shared by the forecast views, ContentView (tab gating) and Settings.
 enum GraphKey {
