@@ -115,17 +115,108 @@ enum ColorScale {
         ScoreAnchor(score: 1000, color: Color(red: 0.45, green: 0.00, blue: 0.00))   // dark red
     ]
 
+    // MARK: - Color vision
+
+    /// How the comfort scale is expressed, for people whose color vision makes
+    /// the default palette hard to read.
+    ///
+    /// `full` is the designed palette. `noRed` keeps every color up to pure
+    /// yellow exactly where it is and replaces the red end with yellow
+    /// darkening to black — red/green confusion (deuteranomaly and
+    /// protanomaly, by far the most common deficiencies) then cannot turn the
+    /// hot end into the mild end, because the remaining cue is lightness.
+    /// `noColor` removes hue as a carrier of meaning altogether: the scale is
+    /// grayscale, and the screens that lean on color switch to named comfort
+    /// categories and line patterns instead.
+    enum ColorVisionMode: String, CaseIterable {
+        case full
+        case noRed
+        case noColor
+    }
+
+    /// Read straight from user defaults rather than passed down the view tree:
+    /// this type is a pile of static functions called from charts, the
+    /// complication and the rating column alike, and threading a mode through
+    /// every one of them would touch far more code than it is worth. Views that
+    /// need to redraw on a change hold their own @AppStorage for the same key.
+    static var visionMode: ColorVisionMode {
+        ColorVisionMode(rawValue: UserDefaults.standard.string(forKey: "colorVisionMode") ?? "")
+            ?? .full
+    }
+
+    /// Red removed: identical to `scoreAnchors` up to pure yellow, then yellow
+    /// darkens to black instead of turning red. Keeping the shared anchors in
+    /// place means a rating made in one mode means the same in the other.
+    static let noRedScoreAnchors: [ScoreAnchor] = [
+        ScoreAnchor(score:    0, color: Color(red: 1.00, green: 1.00, blue: 1.00)),  // white
+        ScoreAnchor(score:  250, color: Color(red: 0.00, green: 0.00, blue: 1.00)),  // blue
+        ScoreAnchor(score:  500, color: Color(red: 0.00, green: 1.00, blue: 0.00)),  // green
+        ScoreAnchor(score:  690, color: Color(red: 1.00, green: 1.00, blue: 0.00)),  // yellow
+        ScoreAnchor(score: 1000, color: Color(red: 0.00, green: 0.00, blue: 0.00))   // black
+    ]
+
+    /// Grayscale: light at the cold end, dark at the hot end. Used where a
+    /// color still has to be produced in `noColor` mode (the complication, for
+    /// instance) so magnitude survives even when hue carries nothing.
+    static let grayScoreAnchors: [ScoreAnchor] = [
+        ScoreAnchor(score:    0, color: Color(white: 1.00)),
+        ScoreAnchor(score: 1000, color: Color(white: 0.10))
+    ]
+
+    /// The anchors in force for the current setting.
+    static var activeScoreAnchors: [ScoreAnchor] {
+        switch visionMode {
+        case .full:    return scoreAnchors
+        case .noRed:   return noRedScoreAnchors
+        case .noColor: return grayScoreAnchors
+        }
+    }
+
+    // MARK: - Named comfort categories
+    //
+    // The same scale said in words, for `noColor` mode and for anyone who would
+    // rather read a label than a hue. Positions are the color anchors, so the
+    // words and the colors always mean the same thing.
+
+    struct ComfortCategory {
+        let score: Double
+        let name: String
+    }
+
+    static let comfortCategories: [ComfortCategory] = [
+        ComfortCategory(score:    0, name: "very cold"),
+        ComfortCategory(score:  250, name: "cold"),
+        ComfortCategory(score:  500, name: "mild"),
+        ComfortCategory(score:  690, name: "warm"),
+        ComfortCategory(score:  880, name: "very warm"),
+        ComfortCategory(score: 1000, name: "hot")
+    ]
+
+    /// The category a score reads as: the nearest anchor, so a score exactly
+    /// between two categories takes the lower one.
+    static func categoryName(forScore score: Double) -> String {
+        let s = score.isFinite ? max(minScore, min(maxScore, score)) : minScore
+        var best = comfortCategories[0]
+        var bestGap = Double.infinity
+        for c in comfortCategories {
+            let gap = abs(c.score - s)
+            if gap < bestGap { bestGap = gap; best = c }
+        }
+        return best.name
+    }
+
     /// Color at an arbitrary score (clamped to [0, 1000]), interpolating between
     /// the `scoreAnchors`. This is the single source for every MyFeelsLike color
     /// — band, heatmap, complication and the rating column alike.
     static func color(forScore score: Double) -> Color {
         let s = score.isFinite ? max(minScore, min(maxScore, score)) : minScore
         // Find the bracketing anchors by score position.
-        guard let hiIdx = scoreAnchors.firstIndex(where: { $0.score >= s }) else {
-            return scoreAnchors.last!.color
+        let palette = activeScoreAnchors
+        guard let hiIdx = palette.firstIndex(where: { $0.score >= s }) else {
+            return palette.last!.color
         }
-        if hiIdx == 0 { return scoreAnchors.first!.color }
-        let lo = scoreAnchors[hiIdx - 1], hi = scoreAnchors[hiIdx]
+        if hiIdx == 0 { return palette.first!.color }
+        let lo = palette[hiIdx - 1], hi = palette[hiIdx]
         let span = hi.score - lo.score
         let t = span > 0 ? (s - lo.score) / span : 0
         let (r1, g1, b1) = rgb(lo.color)

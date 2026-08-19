@@ -27,6 +27,9 @@ import SwiftUI
 import SwiftData
 
 struct RateFeelsLikeView: View {
+    @AppStorage(SettingsKey.colorVisionMode)
+    private var visionMode = ColorScale.ColorVisionMode.full
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -104,9 +107,26 @@ struct RateFeelsLikeView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("How does it feel right now?")
                 .font(.headline)
-            Text("Scroll the color column until the strip across the middle shows the color that matches how this weather feels to you.")
+            Text(visionMode == .noColor
+                 ? "Scroll the column until the strip across the middle sits at how this weather feels to you."
+                 : "Scroll the color column until the strip across the middle shows the color that matches how this weather feels to you.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            // In No color mode the column carries names rather than a hue, so
+            // show the reading itself: the category, and the number that is
+            // actually recorded and modelled.
+            if visionMode == .noColor {
+                HStack(spacing: 6) {
+                    Text(ColorScale.categoryName(forScore: feelsLikeScore))
+                        .font(.title3.weight(.semibold))
+                    Text("\(Int(feelsLikeScore.rounded()))")
+                        .font(.title3.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 2)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Selected: \(ColorScale.categoryName(forScore: feelsLikeScore)), \(Int(feelsLikeScore.rounded())) out of 1000")
+            }
         }
     }
 
@@ -243,6 +263,8 @@ private struct HintID: Hashable {
 
 struct ColorScoreColumn: View {
     @Binding var score: Double   // 0…1000
+    @AppStorage(SettingsKey.colorVisionMode)
+    private var visionMode = ColorScale.ColorVisionMode.full
 
     var body: some View {
         GeometryReader { geo in
@@ -264,9 +286,17 @@ struct ColorScoreColumn: View {
                         }
                         .frame(height: contentHeight)
                         .background(
-                            LinearGradient(gradient: Self.paddedScoreGradient(),
-                                           startPoint: .top, endPoint: .bottom)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            Group {
+                                if visionMode == .noColor {
+                                    // Same geometry as the ruler overlay below, so
+                                    // the categories line up with the tick marks.
+                                    ComfortCategoryLadder(activeTop: h / 2, activeSpan: 2 * h)
+                                } else {
+                                    LinearGradient(gradient: Self.paddedScoreGradient(),
+                                                   startPoint: .top, endPoint: .bottom)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
+                            }
                         )
                         // Ruler gradation down the middle — no numbers. A tick
                         // every 10 score gives a fine ruler feel; longer major
@@ -282,7 +312,7 @@ struct ColorScoreColumn: View {
                                     let len: CGFloat = (s % 50 == 0) ? 15 : 8
                                     ctx.fill(Path(CGRect(x: cx - len, y: y - thickness / 2,
                                                          width: 2 * len, height: thickness)),
-                                             with: .color(.black))
+                                             with: .color(tickColor))
                                 }
                             }
                             .allowsHitTesting(false)
@@ -315,6 +345,11 @@ struct ColorScoreColumn: View {
             }
         }
     }
+
+    /// Ruler ink. Black reads on every color of the gradient; the No color
+    /// ladder is a system background that follows light/dark, so there the
+    /// ticks follow the text color instead.
+    private var tickColor: Color { visionMode == .noColor ? .primary : .black }
 
     /// Maps a scroll content offset to a score in 0…1000. `offsetY == 0`
     /// (top, unscrolled) → 1000 (hot); `offsetY == usableRange` (fully

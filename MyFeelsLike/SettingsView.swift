@@ -29,6 +29,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.shareForCompare) private var shareForCompare = true
     @AppStorage(SettingsKey.syncAcrossDevices) private var syncAcrossDevices = false
     @AppStorage(SettingsKey.sunShadeStyle)   private var sunShadeStyle  = SunShadeStyle.separate
+    @AppStorage(SettingsKey.colorVisionMode) private var colorVision = ColorScale.ColorVisionMode.full
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
     @AppStorage(SettingsKey.useFoldTimeline) private var useFoldTimeline = false
@@ -129,6 +130,32 @@ struct SettingsView: View {
                 Text("Experimental")
             } footer: {
                 Text("Fold timeline replaces the two graph screens with one continuous timeline: swipe left/right to morph between 24-hour and 10-day — the color band folds into the heat map while the charts zoom. Long-press a graph to read exact values. (The table screen is hidden while this is on.)")
+            }
+
+            Section {
+                Picker("Comfort scale", selection: $colorVision) {
+                    Text("Colors").tag(ColorScale.ColorVisionMode.full)
+                    Text("No red").tag(ColorScale.ColorVisionMode.noRed)
+                    Text("No color").tag(ColorScale.ColorVisionMode.noColor)
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Color vision")
+            } footer: {
+                Text("""
+                     Colors is the designed scale: white and blue when it feels cold, \
+                     green in the middle, yellow through red as it gets hot.
+
+                     No red keeps every color up to yellow exactly where it is and \
+                     darkens the hot end to black instead of turning it red, so \
+                     red/green confusion cannot make a hot hour read as a mild one.
+
+                     No color drops hue entirely: the comfort band becomes a line \
+                     graph labelled with named categories — very cold, cold, mild, \
+                     warm, very warm, hot — the rating scale names them too and shows \
+                     the number behind them, and the weather curves are told apart by \
+                     line pattern rather than color.
+                     """)
             }
 
             Section {

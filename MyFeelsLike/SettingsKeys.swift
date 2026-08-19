@@ -23,6 +23,9 @@ enum SettingsKey {
     static let didAskCompareName = "didAskCompareName"
     /// Last app version whose welcome / what's-new sheet was shown ("" = never).
     static let lastSeenVersion   = "lastSeenVersion"
+    /// Color-vision accommodation: ColorScale.ColorVisionMode raw value
+    /// ("full" / "noRed" / "noColor").
+    static let colorVisionMode   = "colorVisionMode"
     /// How in-shade vs in-sun is drawn: SunShadeStyle raw value ("separate"/"gradient").
     static let sunShadeStyle     = "sunShadeStyle"
     /// How the temperature / precip / wind curves are drawn: ChartSeriesStyle raw
