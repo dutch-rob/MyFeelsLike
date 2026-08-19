@@ -85,9 +85,16 @@ struct HereTodayView: View {
     /// band is deliberately thin; `usable` < 1 leaves room for the panel
     /// labels + scenario strip + attribution so everything fits without
     /// scrolling.
+    /// Whether the color panel is currently drawn as two stacked bands.
+    private var showsTwoBands: Bool {
+        sunFeatureActive && hasModel && sunShadeStyle == .separate
+    }
+
     private func panelHeights(_ h: CGFloat) -> (temp: CGFloat, color: CGFloat, wind: CGFloat) {
         let wT = tempPanelVisible ? 0.50 : 0
-        let wC = colorPanelVisible ? 0.08 : 0
+        // Two bands plus the label between them need roughly twice the share of
+        // one band, otherwise splitting turns each row into a sliver.
+        let wC = colorPanelVisible ? (showsTwoBands ? 0.16 : 0.08) : 0
         let wW = windPanelVisible ? 0.36 : 0
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
@@ -390,7 +397,7 @@ struct HereTodayView: View {
     /// analogue of the 10-day heatmap, but a single row (narrower). Aligned in
     /// time with the temperature chart's plot area via the leading padding.
     /// When the model has learned a sun effect it splits into two half-height
-    /// rows: in-sun on top, in-shade below.
+    /// rows: in-shade on top, in-sun below.
     @ViewBuilder
     private func myFeelsLikePanel(height: CGFloat) -> some View {
         let splitActive = sunFeatureActive && hasModel
@@ -567,7 +574,10 @@ struct HereTodayView: View {
                 .font(.caption2).foregroundStyle(axisInk)
                 .padding(.leading, 36)
             soloBand(icon: "sun.max.fill", height: barH) { p in
-                guard p.isDaylight, let s = p.myFeelsLikeSunScore else { return nil }
+                // See CompareView/the watch: the in-sun value already collapses onto
+                // shade after dark, so night hours belong here too. The old isDaylight
+                // guard left this half of the band empty overnight.
+                guard let s = p.myFeelsLikeSunScore else { return nil }
                 return ColorScale.feelsColor(score: s, opacity: p.myFeelsLikeSunOpacity, floor: 0.2)
             }
         }
@@ -600,13 +610,10 @@ struct HereTodayView: View {
         .chartXAxis(.hidden)
         .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
         .frame(height: height)
-        // Title overlaid in the middle of the band, outlined so it stays legible
-        // over whatever colors sit under it (like the watch complication number).
-        .overlay {
-            OutlinedText(text: "MyFeelsLike — sun / shade", fill: .white, outline: .black, width: 1.5)
-                .font(.system(size: 14, weight: .bold))
-                .padding(.leading, 36)
-        }
+        // No title overlay here. Separate style draws two of these bands, so an
+        // overlaid title appeared twice, stacked over the single label that
+        // already sits between them. The gutter icons (cloud / sun) say which
+        // row is which; splitColorBand carries the title for gradient style.
     }
 
     /// Color for a split-band cell: the score's color, opacity carrying

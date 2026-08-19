@@ -70,7 +70,9 @@ struct FeelsBand: View {
                             }
                         }
                         bar(domain: domain) { p in
-                            guard p.isDaylight, let s = p.myFeelsLikeSunScore else { return nil }
+                            // Night hours included: the in-sun value collapses onto shade
+                            // after dark (see applySunShadePrediction), so the bar stays whole.
+                            guard let s = p.myFeelsLikeSunScore else { return nil }
                             return AnyShapeStyle(ColorScale.feelsColor(score: s, opacity: p.myFeelsLikeSunOpacity))
                         }
                     }
