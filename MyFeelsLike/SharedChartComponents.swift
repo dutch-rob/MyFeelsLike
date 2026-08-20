@@ -138,6 +138,10 @@ struct ForecastLoadingView: View {
 
 struct ChartLegendRow: View {
     let entries: [(color: Color, label: String, isArea: Bool)]
+    /// Dash pattern per entry, parallel to `entries`. In "No color" mode the
+    /// swatches are all the same gray, so the pattern is the only thing that
+    /// says which curve is which — the legend has to show it.
+    var dashes: [[CGFloat]] = []
     /// Text color — follows the sky (black by day, white by night) so labels
     /// stay legible on the weather background.
     var ink: Color = .secondary
@@ -154,6 +158,11 @@ struct ChartLegendRow: View {
         }
     }
 
+    private func dash(for label: String) -> [CGFloat]? {
+        guard let i = entries.firstIndex(where: { $0.label == label }), i < dashes.count else { return nil }
+        return dashes[i]
+    }
+
     @ViewBuilder
     private func row(_ items: [(color: Color, label: String, isArea: Bool)]) -> some View {
         HStack(spacing: 14) {
@@ -163,6 +172,13 @@ struct ChartLegendRow: View {
                         RoundedRectangle(cornerRadius: 2)
                             .fill(e.color.opacity(0.4))
                             .frame(width: 18, height: 8)
+                    } else if let dash = dash(for: e.label), !dash.isEmpty {
+                        Path { p in
+                            p.move(to: CGPoint(x: 0, y: 1))
+                            p.addLine(to: CGPoint(x: 18, y: 1))
+                        }
+                        .stroke(e.color, style: StrokeStyle(lineWidth: 2, dash: dash))
+                        .frame(width: 18, height: 2)
                     } else {
                         Rectangle()
                             .fill(e.color)
@@ -291,6 +307,22 @@ func myFeelsLikeReliability(_ p: ForecastPoint) -> Double {
 enum SunShadeStyle: String, CaseIterable {
     case separate
     case gradient
+}
+
+/// Dash patterns that tell the weather curves apart without relying on color,
+/// for "No color" mode. Order matters only in that neighbouring series should
+/// not share a pattern; the names say what each looks like.
+enum SeriesDash {
+    static let solid:   [CGFloat] = []
+    static let dashed:  [CGFloat] = [7, 4]
+    static let dotted:  [CGFloat] = [1.5, 3.5]
+    static let dashDot: [CGFloat] = [8, 3, 1.5, 3]
+
+    /// The stroke for one series: plain when color already separates them,
+    /// patterned when it does not.
+    static func stroke(_ pattern: [CGFloat], patterned: Bool) -> StrokeStyle {
+        StrokeStyle(lineWidth: seriesLineWidth, dash: patterned ? pattern : [])
+    }
 }
 
 /// Stroke width for the weather series curves (temperature, wet bulb, dew

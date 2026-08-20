@@ -49,9 +49,16 @@ struct HereTodayView: View {
     @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
+    @AppStorage(SettingsKey.colorVisionMode)
+    private var visionMode = ColorScale.ColorVisionMode.full
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
-    private var linesOnly: Bool { chartStyle == .lines }
+    /// Filled bands stack three translucent colors on top of each other; with
+    /// hue carrying nothing they become three grays, so No color mode always
+    /// draws curves and tells them apart by pattern instead.
+    private var linesOnly: Bool { chartStyle == .lines || visionMode == .noColor }
+    /// Whether the curves need dash patterns to be distinguishable.
+    private var patternedSeries: Bool { visionMode == .noColor }
 
     /// The time the user is scrubbing to after a long-press on a chart. A dashed
     /// vertical line is drawn at this time across every panel, and a readout card
@@ -71,6 +78,27 @@ struct HereTodayView: View {
         if graphWetBulb  { e.append((.blue,   "Wet Bulb",    false)) }
         if graphDewPoint { e.append((.red,    "Dew Pt",      false)) }
         return e
+    }
+
+    /// Dash patterns matching the curves, in the same order as the legend
+    /// entries are appended. Empty when color already tells them apart.
+    private var tempLegendDashes: [[CGFloat]] {
+        guard patternedSeries else { return [] }
+        var d: [[CGFloat]] = []
+        if graphFeels    { d.append(SeriesDash.solid) }
+        if graphTemp     { d.append(SeriesDash.dashed) }
+        if graphWetBulb  { d.append(SeriesDash.dotted) }
+        if graphDewPoint { d.append(SeriesDash.dashDot) }
+        return d
+    }
+
+    private var windLegendDashes: [[CGFloat]] {
+        guard patternedSeries else { return [] }
+        var d: [[CGFloat]] = []
+        if graphPrecip { d.append(SeriesDash.dotted) }
+        if graphWind   { d.append(SeriesDash.solid) }
+        if graphGust   { d.append([4, 3]) }
+        return d
     }
 
     private var windLegendEntries: [(color: Color, label: String, isArea: Bool)] {
@@ -94,7 +122,8 @@ struct HereTodayView: View {
         let wT = tempPanelVisible ? 0.50 : 0
         // Two bands plus the label between them need roughly twice the share of
         // one band, otherwise splitting turns each row into a sliver.
-        let wC = colorPanelVisible ? (showsTwoBands ? 0.16 : 0.08) : 0
+        let wC = colorPanelVisible ? (visionMode == .noColor ? 0.22
+                                      : (showsTwoBands ? 0.16 : 0.08)) : 0
         let wW = windPanelVisible ? 0.36 : 0
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
@@ -413,7 +442,8 @@ struct HereTodayView: View {
                     .padding(.leading, 36)
             }
             if hasModel {
-                if sunFeatureActive {
+                if visionMode == .noColor { comfortLineGraph(height: height) }
+                else if sunFeatureActive {
                     if sunShadeStyle == .separate { separateColorBands(height: height) }
                     else { splitColorBand(height: height + 14) }   // reclaim the title row
                 }
@@ -429,6 +459,62 @@ struct HereTodayView: View {
                     )
             }
         }
+    }
+
+    /// The comfort band as a conventional line graph, for "No color" mode.
+    ///
+    /// Comfort runs up the y-axis, labelled with the category names rather than
+    /// numbers, so the reading is legible without hue. Reliability, which the
+    /// color band carries as the thickness of the stripe, becomes a gray
+    /// uncertainty ribbon around the curve: the less the model can be trusted
+    /// for an hour, the wider the ribbon. When the model has learned a sun
+    /// effect the in-sun curve is drawn too, dashed, so the pair is told apart
+    /// by pattern.
+    private func comfortLineGraph(height: CGFloat) -> some View {
+        Chart {
+            ForEach(series) { p in
+                if let s = p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore {
+                    let spread = (1 - myFeelsLikeReliability(p)) * 160
+                    AreaMark(x: .value("Time", p.date),
+                             yStart: .value("lo", max(ColorScale.minScore, s - spread)),
+                             yEnd:   .value("hi", min(ColorScale.maxScore, s + spread)),
+                             series: .value("S", "band"))
+                        .foregroundStyle(.gray.opacity(0.22)).interpolationMethod(.linear)
+                }
+            }
+            ForEach(series) { p in
+                if let s = p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore {
+                    LineMark(x: .value("Time", p.date), y: .value("Comfort", s),
+                             series: .value("S", "shade"))
+                        .foregroundStyle(axisInk).interpolationMethod(.linear)
+                        .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: true))
+                }
+                if sunFeatureActive, let s = p.myFeelsLikeSunScore {
+                    LineMark(x: .value("Time", p.date), y: .value("In sun", s),
+                             series: .value("S", "sun"))
+                        .foregroundStyle(axisInk).interpolationMethod(.linear)
+                        .lineStyle(SeriesDash.stroke(SeriesDash.dashed, patterned: true))
+                }
+            }
+        }
+        .chartYScale(domain: ColorScale.minScore...ColorScale.maxScore)
+        .chartYAxis {
+            AxisMarks(position: .leading,
+                      values: ColorScale.comfortCategories.map(\.score)) { value in
+                AxisGridLine().foregroundStyle(.gray.opacity(0.25))
+                AxisValueLabel {
+                    // Abbreviated so the labels fit the same leading gutter the
+                    // temperature and wind panels reserve; the full names are on
+                    // the rating scale and in the scrubber readout.
+                    Text(ColorScale.categoryName(forScore: value.as(Double.self) ?? 0)
+                            .replacingOccurrences(of: "very ", with: "v."))
+                        .font(.system(size: 9)).foregroundStyle(axisInk)
+                }
+            }
+        }
+        .chartXAxis(.hidden)
+        .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .frame(height: height)
     }
 
     /// Single-row color band (current scenario), reliability as thickness.
@@ -629,7 +715,7 @@ struct HereTodayView: View {
         let base = dom.lowerBound
         VStack(alignment: .leading, spacing: 2) {
             // Legend without units — only for the enabled series.
-            ChartLegendRow(entries: tempLegendEntries, ink: axisInk)
+            ChartLegendRow(entries: tempLegendEntries, dashes: tempLegendDashes, ink: axisInk)
             .padding(.leading, 36)   // start near the y-axis line, not the y-axis labels
 
             Chart {
@@ -646,7 +732,7 @@ struct HereTodayView: View {
                             LineMark(x: .value("Time", p.date), y: .value("Temp", dry),
                                      series: .value("S", "dry"))
                                 .foregroundStyle(.green).interpolationMethod(.linear)
-                                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
+                                .lineStyle(SeriesDash.stroke(SeriesDash.dashed, patterned: patternedSeries))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
@@ -660,7 +746,7 @@ struct HereTodayView: View {
                             LineMark(x: .value("Time", p.date), y: .value("Wet Bulb", wet),
                                      series: .value("S", "wet"))
                                 .foregroundStyle(.blue).interpolationMethod(.linear)
-                                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
+                                .lineStyle(SeriesDash.stroke(SeriesDash.dotted, patterned: patternedSeries))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
@@ -674,7 +760,7 @@ struct HereTodayView: View {
                             LineMark(x: .value("Time", p.date), y: .value("Dew Point", dew),
                                      series: .value("S", "dew"))
                                 .foregroundStyle(.red).interpolationMethod(.linear)
-                                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
+                                .lineStyle(SeriesDash.stroke(SeriesDash.dashDot, patterned: patternedSeries))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
@@ -690,7 +776,7 @@ struct HereTodayView: View {
                                            useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
                                  series: .value("S", "app"))
                             .foregroundStyle(.purple).interpolationMethod(.linear)
-                            .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
+                            .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
                     }
                 }
                 // Prominent "now" dots in the gap left of the forecast curves.
@@ -772,7 +858,7 @@ struct HereTodayView: View {
             }
             .frame(height: height - 20)
         }
-        .saturation(graphPalette.saturation)
+        .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .brightness(seriesBrightness)
     }
 
@@ -807,7 +893,7 @@ struct HereTodayView: View {
                                      y: .value("Precip %", p.precipProbability * 100),
                                      series: .value("S", "rainL"))
                                 .foregroundStyle(.blue).interpolationMethod(.linear)
-                                .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
+                                .lineStyle(SeriesDash.stroke(SeriesDash.dotted, patterned: patternedSeries))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
@@ -820,13 +906,14 @@ struct HereTodayView: View {
                         LineMark(x: .value("Time", p.date),
                                  y: .value("Gust", gust), series: .value("S", "gustL"))
                             .foregroundStyle(.red.opacity(0.7)).interpolationMethod(.linear)
-                            .lineStyle(StrokeStyle(lineWidth: 2.4, dash: [4, 3]))
+                            .lineStyle(StrokeStyle(lineWidth: 2.4, dash: [4, 3]))   // already patterned
                             .symbol(Circle()).symbolSize(0)
                     }
                     if graphWind {
                         LineMark(x: .value("Time", p.date),
                                  y: .value("Wind", wind), series: .value("S", "windL"))
                             .foregroundStyle(.red).interpolationMethod(.linear)
+                            .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
                             .symbol(Circle()).symbolSize(0)
                     }
                 }
@@ -872,10 +959,10 @@ struct HereTodayView: View {
             .frame(height: height - 20)
 
             // Legend below the panel (moved from the top), near the largest values.
-            ChartLegendRow(entries: windLegendEntries, ink: axisInk)
+            ChartLegendRow(entries: windLegendEntries, dashes: windLegendDashes, ink: axisInk)
                 .padding(.leading, 36)
         }
-        .saturation(graphPalette.saturation)
+        .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .brightness(seriesBrightness)
     }
 }
