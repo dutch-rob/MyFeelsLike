@@ -27,6 +27,14 @@ struct WatchSyncPayload: Codable {
     var scenarioSun: Int
     var places: [PlaceDTO] = []
 
+    // Presentation settings that describe the person rather than the screen,
+    // so both devices should agree on them. Optional because a watch may still
+    // be holding a payload cached by an older build: decoding must not fail,
+    // it must fall back to the default.
+    var colorVisionMode: String? = nil
+    var use12HourClock: Bool? = nil
+    var sunShadeStyle: String? = nil
+
     var scenario: Scenario {
         Scenario(activity: scenarioActivity, dress: scenarioDress, sun: scenarioSun)
     }

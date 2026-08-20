@@ -47,6 +47,15 @@ struct TenDayView: View {
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
+    @AppStorage(SettingsKey.colorVisionMode)
+    private var visionMode = ColorScale.ColorVisionMode.full
+    @AppStorage(SettingsKey.noColorStyle)
+    private var noColorStyle = ColorScale.NoColorStyle.lineGraph
+    /// Curves need dash patterns to be told apart once hue carries nothing.
+    private var patternedSeries: Bool { visionMode == .noColor }
+    private var comfortAsLineGraph: Bool {
+        visionMode == .noColor && noColorStyle == .lineGraph
+    }
     @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
@@ -84,6 +93,26 @@ struct TenDayView: View {
         if graphWetBulb  { e.append((.blue,   "Wet Bulb",    false)) }
         if graphDewPoint { e.append((.red,    "Dew Pt",      false)) }
         return e
+    }
+
+    /// Dash patterns matching the curves, parallel to the legend entries.
+    private var tempLegendDashes: [[CGFloat]] {
+        guard patternedSeries else { return [] }
+        var d: [[CGFloat]] = []
+        if graphFeels    { d.append(SeriesDash.solid) }
+        if graphTemp     { d.append(SeriesDash.dashed) }
+        if graphWetBulb  { d.append(SeriesDash.dotted) }
+        if graphDewPoint { d.append(SeriesDash.dashDot) }
+        return d
+    }
+
+    private var windLegendDashes: [[CGFloat]] {
+        guard patternedSeries else { return [] }
+        var d: [[CGFloat]] = []
+        if graphPrecip { d.append(SeriesDash.dotted) }
+        if graphWind   { d.append(SeriesDash.solid) }
+        if graphGust   { d.append([4, 3]) }
+        return d
     }
 
     private var windLegendEntries: [(color: Color, label: String, isArea: Bool)] {
@@ -356,35 +385,48 @@ struct TenDayView: View {
     /// are not connected across the "now" boundary; `dash` nil = solid.
     @ChartContentBuilder
     private func tempLines(_ pts: [ForecastPoint], suffix: String, dash: [CGFloat]?) -> some ChartContent {
+        // A dash means "this is the observed past" in color mode. In No color
+        // mode dashes have to carry series identity instead, so the past is
+        // marked by drawing it faded rather than broken.
+        let isPast = dash != nil
+        let fade: Double = (patternedSeries && isPast) ? 0.45 : 1
         ForEach(pts) { p in
             if graphTemp {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Temp", useFahrenheit ? p.temperatureF : p.temperatureC),
                          series: .value("S", "A" + suffix))
-                    .foregroundStyle(.green).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
+                    .foregroundStyle(.green.opacity(fade)).interpolationMethod(.linear)
+                    .lineStyle(patternedSeries
+                               ? SeriesDash.stroke(SeriesDash.dashed, patterned: true)
+                               : StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
             }
             if graphWetBulb {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Wet Bulb", useFahrenheit ? p.wetBulbF : p.wetBulbC),
                          series: .value("S", "B" + suffix))
-                    .foregroundStyle(.blue).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
+                    .foregroundStyle(.blue.opacity(fade)).interpolationMethod(.linear)
+                    .lineStyle(patternedSeries
+                               ? SeriesDash.stroke(SeriesDash.dotted, patterned: true)
+                               : StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
             }
             if graphDewPoint {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Dew Point", useFahrenheit ? p.dewPointF : p.dewPointC),
                          series: .value("S", "C" + suffix))
-                    .foregroundStyle(.red).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
+                    .foregroundStyle(.red.opacity(fade)).interpolationMethod(.linear)
+                    .lineStyle(patternedSeries
+                               ? SeriesDash.stroke(SeriesDash.dashDot, patterned: true)
+                               : StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
             }
             if graphFeels {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Apparent",
                                    useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
                          series: .value("S", "D" + suffix))
-                    .foregroundStyle(.purple).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
+                    .foregroundStyle(.purple.opacity(fade)).interpolationMethod(.linear)
+                    .lineStyle(patternedSeries
+                               ? SeriesDash.stroke(SeriesDash.solid, patterned: true)
+                               : StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
             }
         }
     }
@@ -431,12 +473,14 @@ struct TenDayView: View {
     /// makes the wind line dashed for the historic pass, solid for the forecast.
     @ChartContentBuilder
     private func windLines(_ pts: [ForecastPoint], suffix: String, windDash: [CGFloat]?) -> some ChartContent {
-        ForEach(pts) { p in
+        let isPast = windDash != nil
+        let fade: Double = (patternedSeries && isPast) ? 0.45 : 1
+        return ForEach(pts) { p in
             if graphGust {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Gust", useFahrenheit ? p.windGustMPH : p.windGustKPH),
                          series: .value("S", "G" + suffix))
-                    .foregroundStyle(.red.opacity(0.7)).interpolationMethod(.linear)
+                    .foregroundStyle(.red.opacity(0.7 * fade)).interpolationMethod(.linear)
                     .lineStyle(StrokeStyle(lineWidth: 2.4, dash: [4, 3]))
                     .symbol(Circle()).symbolSize(0)
             }
@@ -444,8 +488,10 @@ struct TenDayView: View {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Wind", useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH),
                          series: .value("S", "W" + suffix))
-                    .foregroundStyle(.red).interpolationMethod(.linear)
-                    .lineStyle(StrokeStyle(lineWidth: seriesLineWidth, dash: windDash ?? []))
+                    .foregroundStyle(.red.opacity(fade)).interpolationMethod(.linear)
+                    .lineStyle(patternedSeries
+                               ? SeriesDash.stroke(SeriesDash.solid, patterned: true)
+                               : StrokeStyle(lineWidth: seriesLineWidth, dash: windDash ?? []))
                     .symbol(Circle()).symbolSize(0)
             }
         }
@@ -457,7 +503,14 @@ struct TenDayView: View {
     /// is time; this grid's y-axis is hour-of-day).
     @ViewBuilder
     private func feelsLikeHeatmap(height: CGFloat) -> some View {
-        if hasModel && sunShadeStyle == .separate && hasSunSplit {
+        if hasModel && comfortAsLineGraph {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("MyFeelsLike")
+                    .font(.caption2).foregroundStyle(axisInk)
+                    .padding(.leading, 36)
+                comfortLineGraph.frame(height: height - 16)
+            }
+        } else if hasModel && sunShadeStyle == .separate && hasSunSplit {
             separateHeatmaps(height: height)
         } else {
             VStack(alignment: .leading, spacing: 2) {
@@ -529,6 +582,55 @@ struct TenDayView: View {
                 .frame(height: sunH)
             }
         }
+    }
+
+    /// Comfort over the ten days as a curve — the same shape as the
+    /// temperature chart above it, sharing its x-axis, just a shorter panel.
+    /// Unlike the heatmap this drops the hour-of-day dimension: it is one
+    /// reading per hour laid along the same timeline, not a grid.
+    private var comfortLineGraph: some View {
+        Chart {
+            ForEach(historicPlus) { p in
+                if let v = p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore {
+                    LineMark(x: .value("Time", p.date), y: .value("Comfort", v),
+                             series: .value("S", "past"))
+                        .foregroundStyle(axisInk.opacity(0.45)).interpolationMethod(.linear)
+                        .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: true))
+                }
+            }
+            ForEach(forecastPlus) { p in
+                if let v = p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore {
+                    LineMark(x: .value("Time", p.date), y: .value("Comfort", v),
+                             series: .value("S", "shade"))
+                        .foregroundStyle(axisInk).interpolationMethod(.linear)
+                        .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: true))
+                }
+                if hasSunSplit, let v = p.myFeelsLikeSunScore {
+                    LineMark(x: .value("Time", p.date), y: .value("In sun", v),
+                             series: .value("S", "sun"))
+                        .foregroundStyle(axisInk).interpolationMethod(.linear)
+                        .lineStyle(SeriesDash.stroke(SeriesDash.dashed, patterned: true))
+                }
+            }
+        }
+        .chartYScale(domain: ColorScale.minScore...ColorScale.maxScore)
+        .chartYAxis {
+            AxisMarks(position: .leading,
+                      values: ColorScale.comfortCategories.map(\.score)) { value in
+                AxisGridLine().foregroundStyle(.gray.opacity(0.25))
+                AxisValueLabel {
+                    Text(ColorScale.categoryName(forScore: value.as(Double.self) ?? 0)
+                            .replacingOccurrences(of: "very ", with: "v."))
+                        .font(.system(size: 9)).foregroundStyle(axisInk)
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day, count: 1)) { _ in
+                AxisGridLine().foregroundStyle(.gray.opacity(0.25))
+            }
+        }
+        .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
     }
 
     private var heatmapChart: some View {
@@ -665,7 +767,7 @@ struct TenDayView: View {
         let dom = tempYDomain
         VStack(alignment: .leading, spacing: 2) {
             // Legend without units — only for the enabled series.
-            ChartLegendRow(entries: tempLegendEntries, ink: axisInk)
+            ChartLegendRow(entries: tempLegendEntries, dashes: tempLegendDashes, ink: axisInk)
             .padding(.leading, 36)
 
             Chart {
@@ -727,7 +829,7 @@ struct TenDayView: View {
             }
             .frame(height: height - 20)
         }
-        .saturation(graphPalette.saturation)
+        .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .brightness(seriesBrightness)
     }
 
@@ -808,10 +910,10 @@ struct TenDayView: View {
             .frame(height: height - 20)
 
             // Legend below the panel (moved from the top), near the largest values.
-            ChartLegendRow(entries: windLegendEntries, ink: axisInk)
+            ChartLegendRow(entries: windLegendEntries, dashes: windLegendDashes, ink: axisInk)
                 .padding(.leading, 36)
         }
-        .saturation(graphPalette.saturation)
+        .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .brightness(seriesBrightness)
     }
 }

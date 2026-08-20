@@ -30,6 +30,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.syncAcrossDevices) private var syncAcrossDevices = false
     @AppStorage(SettingsKey.sunShadeStyle)   private var sunShadeStyle  = SunShadeStyle.separate
     @AppStorage(SettingsKey.colorVisionMode) private var colorVision = ColorScale.ColorVisionMode.full
+    @AppStorage(SettingsKey.noColorStyle)    private var noColorStyle = ColorScale.NoColorStyle.lineGraph
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
     @AppStorage(SettingsKey.useFoldTimeline) private var useFoldTimeline = false
@@ -139,6 +140,14 @@ struct SettingsView: View {
                     Text("No color").tag(ColorScale.ColorVisionMode.noColor)
                 }
                 .pickerStyle(.segmented)
+
+                if colorVision == .noColor {
+                    Picker("Comfort shown as", selection: $noColorStyle) {
+                        Text("Line graph").tag(ColorScale.NoColorStyle.lineGraph)
+                        Text("Gray bars").tag(ColorScale.NoColorStyle.grayBars)
+                    }
+                    .pickerStyle(.segmented)
+                }
             } header: {
                 Text("Color vision")
             } footer: {
@@ -155,6 +164,10 @@ struct SettingsView: View {
                      warm, very warm, hot — the rating scale names them too and shows \
                      the number behind them, and the weather curves are told apart by \
                      line pattern rather than color.
+
+                     With No color chosen, comfort can be drawn either as a line \
+                     graph against those named categories, or as the same bar it \
+                     always was in shades of gray — same shape, same place, no hue.
                      """)
             }
 

@@ -32,10 +32,17 @@ final class PhoneWatchSync: NSObject, WCSessionDelegate {
     /// Call whenever the model, settings, or saved places change.
     func update(state: RegressionState?, useFahrenheit: Bool,
                 activity: Int, dress: Int, sun: Int, places: [PlaceDTO]) {
+        // Read straight from defaults rather than adding a parameter per
+        // setting: these are global preferences, and every call site would
+        // otherwise have to be updated each time one is added.
+        let d = UserDefaults.standard
         let payload = WatchSyncPayload(
             regressionState: state, useFahrenheit: useFahrenheit,
             scenarioActivity: activity, scenarioDress: dress, scenarioSun: sun,
-            places: places)
+            places: places,
+            colorVisionMode: d.string(forKey: SettingsKey.colorVisionMode),
+            use12HourClock: d.object(forKey: SettingsKey.use12HourClock) as? Bool,
+            sunShadeStyle: d.string(forKey: SettingsKey.sunShadeStyle))
         lastPayload = payload
         send(payload)
     }

@@ -50,10 +50,22 @@ final class WatchSyncReceiver: NSObject, ObservableObject, WCSessionDelegate {
     private func apply(_ context: [String: Any]) {
         guard let p = WatchSyncPayload.from(applicationContext: context) else { return }
         if let data = try? JSONEncoder().encode(p) { store?.set(data, forKey: key) }
+        mirrorSettings(p)
         DispatchQueue.main.async {
             self.payload = p
             self.version &+= 1
         }
+    }
+
+    /// Copy the synced presentation settings into this watch's own defaults.
+    /// ColorScale and the date formatters read them from there, so a setting
+    /// changed on the phone has to land in the same place on the watch —
+    /// otherwise the watch keeps drawing full color while the phone does not.
+    private func mirrorSettings(_ p: WatchSyncPayload) {
+        let d = UserDefaults.standard
+        if let mode = p.colorVisionMode { d.set(mode, forKey: "colorVisionMode") }
+        if let clock = p.use12HourClock { d.set(clock, forKey: "use12HourClock") }
+        if let style = p.sunShadeStyle { d.set(style, forKey: "sunShadeStyle") }
     }
 
     // MARK: WCSessionDelegate

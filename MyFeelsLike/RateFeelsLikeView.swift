@@ -29,6 +29,8 @@ import SwiftData
 struct RateFeelsLikeView: View {
     @AppStorage(SettingsKey.colorVisionMode)
     private var visionMode = ColorScale.ColorVisionMode.full
+    @AppStorage(SettingsKey.noColorStyle)
+    private var noColorStyle = ColorScale.NoColorStyle.lineGraph
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -265,6 +267,8 @@ struct ColorScoreColumn: View {
     @Binding var score: Double   // 0…1000
     @AppStorage(SettingsKey.colorVisionMode)
     private var visionMode = ColorScale.ColorVisionMode.full
+    @AppStorage(SettingsKey.noColorStyle)
+    private var noColorStyle = ColorScale.NoColorStyle.lineGraph
 
     var body: some View {
         GeometryReader { geo in
@@ -287,7 +291,7 @@ struct ColorScoreColumn: View {
                         .frame(height: contentHeight)
                         .background(
                             Group {
-                                if visionMode == .noColor {
+                                if visionMode == .noColor, noColorStyle == .lineGraph {
                                     // Same geometry as the ruler overlay below, so
                                     // the categories line up with the tick marks.
                                     ComfortCategoryLadder(activeTop: h / 2, activeSpan: 2 * h)
@@ -349,7 +353,9 @@ struct ColorScoreColumn: View {
     /// Ruler ink. Black reads on every color of the gradient; the No color
     /// ladder is a system background that follows light/dark, so there the
     /// ticks follow the text color instead.
-    private var tickColor: Color { visionMode == .noColor ? .primary : .black }
+    private var tickColor: Color {
+        visionMode == .noColor && noColorStyle == .lineGraph ? .primary : .black
+    }
 
     /// Maps a scroll content offset to a score in 0…1000. `offsetY == 0`
     /// (top, unscrolled) → 1000 (hot); `offsetY == usableRange` (fully

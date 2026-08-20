@@ -134,6 +134,26 @@ enum ColorScale {
         case noColor
     }
 
+    /// How `noColor` mode replaces the comfort color bar. Both keep the same
+    /// meaning; they differ in shape. `lineGraph` redraws comfort as a
+    /// conventional curve against named categories. `grayBars` keeps the bar
+    /// exactly where it is — same layout, same rotation on the rating column —
+    /// and simply renders it in shades of gray.
+    enum NoColorStyle: String, CaseIterable {
+        case lineGraph
+        case grayBars
+    }
+
+    static var noColorStyle: NoColorStyle {
+        NoColorStyle(rawValue: UserDefaults.standard.string(forKey: "noColorStyle") ?? "")
+            ?? .lineGraph
+    }
+
+    /// True when comfort should be drawn as a curve rather than a bar.
+    static var usesComfortLineGraph: Bool {
+        visionMode == .noColor && noColorStyle == .lineGraph
+    }
+
     /// Read straight from user defaults rather than passed down the view tree:
     /// this type is a pile of static functions called from charts, the
     /// complication and the rating column alike, and threading a mode through

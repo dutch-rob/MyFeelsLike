@@ -27,6 +27,9 @@ enum SettingsKey {
     /// ("full" / "noRed" / "noColor").
     static let colorVisionMode   = "colorVisionMode"
     /// How in-shade vs in-sun is drawn: SunShadeStyle raw value ("separate"/"gradient").
+    /// Which shape "No color" mode gives the comfort bar:
+    /// ColorScale.NoColorStyle raw value ("lineGraph" / "grayBars").
+    static let noColorStyle      = "noColorStyle"
     static let sunShadeStyle     = "sunShadeStyle"
     /// How the temperature / precip / wind curves are drawn: ChartSeriesStyle raw
     /// value ("area" filled bands, or "lines" — thin curves, no fill; in lines

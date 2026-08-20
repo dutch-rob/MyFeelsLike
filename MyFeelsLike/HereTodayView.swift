@@ -51,6 +51,13 @@ struct HereTodayView: View {
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
     @AppStorage(SettingsKey.colorVisionMode)
     private var visionMode = ColorScale.ColorVisionMode.full
+    @AppStorage(SettingsKey.noColorStyle)
+    private var noColorStyle = ColorScale.NoColorStyle.lineGraph
+    /// Comfort as a curve rather than a bar. Gray bars keep every existing
+    /// band layout untouched — the grayscale palette alone carries the change.
+    private var comfortAsLineGraph: Bool {
+        visionMode == .noColor && noColorStyle == .lineGraph
+    }
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// Filled bands stack three translucent colors on top of each other; with
@@ -122,7 +129,7 @@ struct HereTodayView: View {
         let wT = tempPanelVisible ? 0.50 : 0
         // Two bands plus the label between them need roughly twice the share of
         // one band, otherwise splitting turns each row into a sliver.
-        let wC = colorPanelVisible ? (visionMode == .noColor ? 0.22
+        let wC = colorPanelVisible ? (comfortAsLineGraph ? 0.22
                                       : (showsTwoBands ? 0.16 : 0.08)) : 0
         let wW = windPanelVisible ? 0.36 : 0
         let tot = wT + wC + wW
@@ -442,7 +449,7 @@ struct HereTodayView: View {
                     .padding(.leading, 36)
             }
             if hasModel {
-                if visionMode == .noColor { comfortLineGraph(height: height) }
+                if comfortAsLineGraph { comfortLineGraph(height: height) }
                 else if sunFeatureActive {
                     if sunShadeStyle == .separate { separateColorBands(height: height) }
                     else { splitColorBand(height: height + 14) }   // reclaim the title row
