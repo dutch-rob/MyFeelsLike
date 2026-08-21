@@ -768,6 +768,7 @@ struct TenDayView: View {
         VStack(alignment: .leading, spacing: 2) {
             // Legend without units — only for the enabled series.
             ChartLegendRow(entries: tempLegendEntries, dashes: tempLegendDashes, ink: axisInk)
+                .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .padding(.leading, 36)
 
             Chart {

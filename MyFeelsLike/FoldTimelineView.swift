@@ -47,6 +47,12 @@ struct FoldTimelineView: View {
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
+    @AppStorage(SettingsKey.sunShadeStyle)
+    private var sunShadeStyle = SunShadeStyle.separate
+    @AppStorage(SettingsKey.colorVisionMode)
+    private var visionMode = ColorScale.ColorVisionMode.full
+    @AppStorage(SettingsKey.noColorStyle)
+    private var noColorStyle = ColorScale.NoColorStyle.lineGraph
 
     /// 0 = 24-hour view, 1 = 10-day view. Scrubbed by a horizontal swipe.
     @State private var progress: Double = 0
@@ -59,7 +65,15 @@ struct FoldTimelineView: View {
     /// panels can be mapped to a time too.
     @State private var plotXRange: ClosedRange<CGFloat>? = nil
 
-    private var linesOnly: Bool { chartStyle == .lines }
+    /// Stacked translucent areas become indistinguishable grays once hue
+    /// carries nothing, so No color mode always draws curves.
+    private var linesOnly: Bool { chartStyle == .lines || visionMode == .noColor }
+    private var patternedSeries: Bool { visionMode == .noColor }
+    private var comfortAsLineGraph: Bool {
+        visionMode == .noColor && noColorStyle == .lineGraph
+    }
+    /// The model learned a sun effect, so the band has two things to show.
+    private var sunFeatureActive: Bool { activeFeatures.contains(.sun) }
     private var tempVisible: Bool { graphTemp || graphWetBulb || graphDewPoint || graphFeels }
     private var windVisible: Bool { graphPrecip || graphWind || graphGust }
 
@@ -76,22 +90,29 @@ struct FoldTimelineView: View {
         let start: Date
         let scores: [Double?]
         let widths: [Double]
+        /// In-sun scores, when the model learned a sun effect. Empty otherwise.
+        let sunScores: [Double?]
     }
 
     private var dayCols: [DayCol] {
         let cal = Calendar.current
-        var byDay: [Date: [Int: (Double, Double)]] = [:]
+        var byDay: [Date: [Int: (Double, Double, Double?)]] = [:]
         for p in allPoints {
             guard let s = p.myFeelsLikeScore else { continue }
             let d = cal.startOfDay(for: p.date)
             let h = cal.component(.hour, from: p.date)
-            byDay[d, default: [:]][h] = (s, myFeelsLikeReliability(p))
+            // Shade is the band's main value; sun rides alongside it. No
+            // daylight test here: after dark the prediction already collapses
+            // sun onto shade, so the two halves simply read the same.
+            let shade = p.myFeelsLikeShadeScore ?? s
+            byDay[d, default: [:]][h] = (shade, myFeelsLikeReliability(p), p.myFeelsLikeSunScore)
         }
         return byDay.keys.sorted().map { d in
             let row = byDay[d]
             return DayCol(start: d,
                           scores: (0..<24).map { row?[$0]?.0 },
-                          widths: (0..<24).map { row?[$0]?.1 ?? 1 })
+                          widths: (0..<24).map { row?[$0]?.1 ?? 1 },
+                          sunScores: (0..<24).map { row?[$0]?.2 })
         }
     }
 
@@ -368,7 +389,12 @@ struct FoldTimelineView: View {
                 let avail = max(220, h - overhead)
                 // The band only needs its full height once it starts standing
                 // up, so it keeps the graphs' space through the widening stage.
-                let colorH = lerp(avail * 0.10, avail * 0.34, smoothstep(rotatePhase))
+                // The rotating band grows as it tips upright; a line graph does
+                // not rotate, so it takes one steady share big enough to carry
+                // six named ticks without crushing them.
+                let colorH = comfortAsLineGraph
+                    ? avail * 0.26
+                    : lerp(avail * 0.10, avail * 0.34, smoothstep(rotatePhase))
                 let graphsH = avail - colorH
                 // A ScrollView sized to exactly one screen: it never actually
                 // scrolls, but it restores pull-to-refresh (.refreshable only
@@ -459,19 +485,24 @@ struct FoldTimelineView: View {
         let dom = tempYDomain
         let base = dom.lowerBound
         VStack(alignment: .leading, spacing: 2) {
-            ChartLegendRow(entries: tempLegend, ink: axisInk).padding(.leading, gutter)
+            ChartLegendRow(entries: tempLegend, dashes: tempLegendDashes, ink: axisInk)
+                .saturation(visionMode == .noColor ? 0 : graphPalette.saturation).padding(.leading, gutter)
             Chart {
                 ForEach(allPoints) { p in
                     let dry = useFahrenheit ? p.temperatureF : p.temperatureC
                     let wet = useFahrenheit ? p.wetBulbF : p.wetBulbC
                     let dew = useFahrenheit ? p.dewPointF : p.dewPointC
                     let app = useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC
-                    if graphTemp     { tempMark(p.date, dry, .green, base: base, key: "dry") }
-                    if graphWetBulb  { tempMark(p.date, wet, .blue,  base: base, key: "wet") }
-                    if graphDewPoint { tempMark(p.date, dew, .red,   base: base, key: "dew") }
+                    if graphTemp     { tempMark(p.date, dry, .green, base: base, key: "dry",
+                                                 dash: SeriesDash.dashed) }
+                    if graphWetBulb  { tempMark(p.date, wet, .blue,  base: base, key: "wet",
+                                                 dash: SeriesDash.dotted) }
+                    if graphDewPoint { tempMark(p.date, dew, .red,   base: base, key: "dew",
+                                                 dash: SeriesDash.dashDot) }
                     if graphFeels {
                         LineMark(x: .value("t", p.date), y: .value("app", app), series: .value("s", "app"))
-                            .foregroundStyle(.purple).lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
+                            .foregroundStyle(.purple)
+                            .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
                             .interpolationMethod(.linear)
                     }
                 }
@@ -494,21 +525,43 @@ struct FoldTimelineView: View {
                 }
             }
             .frame(height: height - 20)
-            .saturation(graphPalette.saturation)
+            .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .brightness(seriesBrightness)
         }
     }
 
     @ChartContentBuilder
-    private func tempMark(_ date: Date, _ y: Double, _ color: Color, base: Double, key: String) -> some ChartContent {
+    private func tempMark(_ date: Date, _ y: Double, _ color: Color, base: Double, key: String,
+                          dash: [CGFloat] = []) -> some ChartContent {
         if linesOnly {
             LineMark(x: .value("t", date), y: .value("y", y), series: .value("s", key))
-                .foregroundStyle(color).lineStyle(StrokeStyle(lineWidth: seriesLineWidth)).interpolationMethod(.linear)
+                .foregroundStyle(color)
+                .lineStyle(SeriesDash.stroke(dash, patterned: patternedSeries))
+                .interpolationMethod(.linear)
         } else {
             AreaMark(x: .value("t", date), yStart: .value("b", base), yEnd: .value("y", y),
                      series: .value("s", key))
                 .foregroundStyle(color).interpolationMethod(.linear)
         }
+    }
+
+    private var tempLegendDashes: [[CGFloat]] {
+        guard patternedSeries else { return [] }
+        var d: [[CGFloat]] = []
+        if graphFeels    { d.append(SeriesDash.solid) }
+        if graphTemp     { d.append(SeriesDash.dashed) }
+        if graphWetBulb  { d.append(SeriesDash.dotted) }
+        if graphDewPoint { d.append(SeriesDash.dashDot) }
+        return d
+    }
+
+    private var windLegendDashes: [[CGFloat]] {
+        guard patternedSeries else { return [] }
+        var d: [[CGFloat]] = []
+        if graphPrecip { d.append(SeriesDash.dotted) }
+        if graphWind   { d.append(SeriesDash.solid) }
+        if graphGust   { d.append([3, 2]) }
+        return d
     }
 
     private var tempLegend: [(color: Color, label: String, isArea: Bool)] {
@@ -536,7 +589,9 @@ struct FoldTimelineView: View {
                     if graphPrecip {
                         if linesOnly {
                             LineMark(x: .value("t", p.date), y: .value("y", rain), series: .value("s", "rL"))
-                                .foregroundStyle(.blue).lineStyle(StrokeStyle(lineWidth: seriesLineWidth)).interpolationMethod(.linear)
+                                .foregroundStyle(.blue)
+                                .lineStyle(SeriesDash.stroke(SeriesDash.dotted, patterned: patternedSeries))
+                                .interpolationMethod(.linear)
                         } else {
                             windArea(p.date, rain, .blue, "rA")
                         }
@@ -548,7 +603,9 @@ struct FoldTimelineView: View {
                     }
                     if graphWind {
                         LineMark(x: .value("t", p.date), y: .value("y", wind), series: .value("s", "wL"))
-                            .foregroundStyle(.red).interpolationMethod(.linear)
+                            .foregroundStyle(.red)
+                            .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
+                            .interpolationMethod(.linear)
                     }
                 }
                 nowRule
@@ -571,10 +628,11 @@ struct FoldTimelineView: View {
                 }
             }
             .frame(height: height - 20)
-            .saturation(graphPalette.saturation)
+            .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .brightness(seriesBrightness)
 
-            ChartLegendRow(entries: windLegend, ink: axisInk).padding(.leading, gutter)
+            ChartLegendRow(entries: windLegend, dashes: windLegendDashes, ink: axisInk)
+                .saturation(visionMode == .noColor ? 0 : graphPalette.saturation).padding(.leading, gutter)
         }
     }
 
@@ -601,7 +659,12 @@ struct FoldTimelineView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(progress > 0.5 ? "MyFeelsLike by time of day" : "MyFeelsLike by hour")
                 .font(.caption2).foregroundStyle(axisInk).padding(.leading, gutter)
-            if hasModel {
+            if hasModel && comfortAsLineGraph {
+                // A curve has no fold to perform: it simply keeps the shared
+                // x-scale as the window widens, which is what the user asked
+                // for — the graph shrinks, it does not rotate.
+                comfortLineGraph.frame(height: height)
+            } else if hasModel {
                 Chart { PointMark(x: .value("t", visLo), y: .value("y", 0)).foregroundStyle(.clear) }
                     .chartXScale(domain: visDomain)
                     .chartYScale(domain: 0...1)
@@ -626,8 +689,52 @@ struct FoldTimelineView: View {
         }
     }
 
+    /// Comfort as a curve against the named categories, for No color mode.
+    /// Shares the fold's x-scale so it stays aligned with the charts above and
+    /// below as the window widens from 24 hours to ten days.
+    private var comfortLineGraph: some View {
+        Chart {
+            ForEach(allPoints) { p in
+                if let v = p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore {
+                    LineMark(x: .value("t", p.date), y: .value("comfort", v),
+                             series: .value("s", "shade"))
+                        .foregroundStyle(axisInk).interpolationMethod(.linear)
+                        .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: true))
+                }
+                if sunFeatureActive, let v = p.myFeelsLikeSunScore {
+                    LineMark(x: .value("t", p.date), y: .value("in sun", v),
+                             series: .value("s", "sun"))
+                        .foregroundStyle(axisInk).interpolationMethod(.linear)
+                        .lineStyle(SeriesDash.stroke(SeriesDash.dashed, patterned: true))
+                }
+            }
+            nowRule
+            scrubRule()
+        }
+        .chartLegend(.hidden)
+        .chartYScale(domain: ColorScale.minScore...ColorScale.maxScore)
+        .chartXScale(domain: visDomain)
+        .chartYAxis {
+            AxisMarks(position: .leading,
+                      values: ColorScale.comfortCategories.map(\.score)) { value in
+                AxisGridLine().foregroundStyle(.gray.opacity(0.25))
+                AxisValueLabel {
+                    Text(ColorScale.categoryName(forScore: value.as(Double.self) ?? 0)
+                            .replacingOccurrences(of: "very ", with: "v."))
+                        .font(.system(size: 9)).foregroundStyle(axisInk)
+                }
+            }
+        }
+        .chartXAxis(.hidden)
+        .chartOverlay { proxy in scrubEntry(proxy) }
+        .chartOverlay { proxy in if scrubDate != nil { scrubDragLayer(proxy) } }
+    }
+
     private func foldCanvas(cols: [DayCol], total: Int, plot: CGRect) -> some View {
         let cal = Calendar.current
+        // Only split when the model actually learned a sun effect and the user
+        // asked for separate halves; otherwise the two would be identical.
+        let splitSunShade = sunFeatureActive && sunShadeStyle == .separate
         return Canvas { ctx, _ in
             // During the first layout pass (and while panels resize) the plot can
             // be empty or non-finite; drawing then feeds NaN to CoreGraphics.
@@ -667,6 +774,9 @@ struct FoldTimelineView: View {
                     for h in 0..<24 {
                         let localX = (CGFloat(h) + 0.5 - 12) * cellW
                         let color = col.scores[h].map { ColorScale.color(forScore: $0) } ?? Color.gray.opacity(0.4)
+                        let sunColor = splitSunShade
+                            ? col.sunScores[h].map { ColorScale.color(forScore: $0) }
+                            : nil
                         // Reliability shrinks the cell across the strip. Because
                         // the strip rotates, that is the band's thickness at
                         // 24-hour and the cell's width inside its day column at
@@ -675,7 +785,21 @@ struct FoldTimelineView: View {
                         let rect = CGRect(x: localX - cellW / 2, y: -thick / 2,
                                           width: cellW + 0.5, height: thick)
                         guard rect.isFinite, thick > 0 else { continue }
-                        layer.fill(Path(rect), with: .color(color))
+                        if let sunColor {
+                            // Shade above, sun below, splitting the strip across
+                            // its thickness. Because the strip rotates, that is
+                            // two stacked bands at 24-hour and two halves of the
+                            // day column at 10-day — the same split the paged
+                            // screens draw, carried through the fold.
+                            var top = rect, bottom = rect
+                            top.size.height = rect.height / 2
+                            bottom.origin.y = rect.midY
+                            bottom.size.height = rect.height / 2
+                            layer.fill(Path(top), with: .color(color))
+                            layer.fill(Path(bottom), with: .color(sunColor))
+                        } else {
+                            layer.fill(Path(rect), with: .color(color))
+                        }
                     }
                 }
             }
