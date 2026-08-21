@@ -1,0 +1,484 @@
+% MyFeelsLike: a personalized apparent-temperature model
+% Draft for arXiv (physics.ao-ph / stat.AP). Compiles with pdflatex, no
+% non-standard packages.
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+\title{MyFeelsLike: Learning an Individual Apparent-Temperature Scale\\
+from Self-Reported Comfort Ratings}
+
+% TODO(author): replace with your name, affiliation and ORCID before submission.
+\author{R.\ [Surname]\thanks{Correspondence: \texttt{[email]}. Source code:
+\url{https://github.com/dutch-rob/MyFeelsLike} (GPL-3.0-or-later).}}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Operational ``feels like'' indices --- apparent temperature, heat index, wind
+chill, humidex, UTCI --- are population constructs. They are calibrated to a
+reference person with a reference clothing level, metabolic rate and
+physiology, and they report a single number for everyone standing in the same
+weather. Individuals depart from that reference substantially and
+systematically: the same 12\,\textdegree C morning is pleasant to one person
+and cold to another, and the disagreement is stable over time rather than
+random. We describe MyFeelsLike, a smartphone application that estimates a
+\emph{personal} apparent-temperature scale by regressing a user's own comfort
+ratings on the weather that was present when each rating was made, and then
+applies the fitted model to hourly forecasts. The contributions are (i) a
+rating instrument that elicits a continuous comfort score without exposing
+temperature units, thereby avoiding anchoring on the very quantity being
+modelled; (ii) an estimation procedure designed for the small-$n$ regime that
+a single user can realistically supply, combining a hard feature budget,
+corrected-AIC forward selection and a set of physical plausibility screens that
+reject coefficient sets implying an implausible response to temperature, wind
+or activity; (iii) a multi-part reliability measure that widens or narrows the
+displayed band according to statistical leverage and to how far a forecast
+falls outside the range of conditions the user has actually rated; and (iv) an
+evaluation protocol for comparing personalized against population indices. We
+specify the method in full and state the evaluation design; empirical results
+from the deployed user base are reported separately.
+\end{abstract}
+
+\section{Introduction}
+
+Every weather service reports a ``feels like'' temperature, and every such
+number is an average over people. \citet{steadman1984} defines apparent
+temperature for an adult of specified height, weight and clothing walking at a
+specified speed; the heat index, humidex \citep{masterton1979} and wind chill
+\citep{osczevski2005} make comparable commitments. The Universal Thermal
+Climate Index \citep{jendritzky2012} is derived from a multi-node
+thermoregulation model of a reference person. These indices succeed at what
+they were built for --- issuing warnings calibrated to a population --- and
+they are not intended to describe any particular person.
+
+The residual variation between people is, however, large enough to matter for
+ordinary decisions: what to wear, whether to cycle, when to run. Indoor thermal
+comfort research has long recognized this. \citet{fanger1970} predicts a mean
+vote (PMV) and an expected percentage dissatisfied (PPD), the latter
+acknowledging that a substantial fraction of occupants disagree with the mean
+even at its optimum. Adaptive comfort models \citep{dedear1998} explain part of
+the gap by context and acclimatization. More recently, \emph{personal comfort
+models} \citep{kim2018} abandon the population target and fit a separate model
+per occupant from that occupant's own feedback, typically in an instrumented
+building with an HVAC system to control.
+
+MyFeelsLike asks whether the personal-comfort-model idea transfers outdoors,
+where the covariates cannot be manipulated, the sampling is opportunistic, the
+label is supplied by an untrained rater on a phone, and the useful output is a
+forecast rather than a setpoint. The setting imposes three constraints that
+shape the entire design:
+
+\begin{enumerate}
+\item \textbf{Very small $n$.} An engaged user supplies tens of ratings, not
+      thousands. The model must be useful at $n = 10$ and must not overfit at
+      $n = 40$.
+\item \textbf{Confounded, self-selected covariates.} People rate the weather
+      they are in. Temperature, humidity and sunshine covary seasonally, and
+      the user chooses when to rate, so the design matrix is neither balanced
+      nor randomized.
+\item \textbf{A label that must not be anchored.} If the instrument shows a
+      temperature, the rating collapses toward that temperature. The scale must
+      therefore carry no units.
+\end{enumerate}
+
+Section~\ref{sec:ratings} describes the rating instrument,
+Section~\ref{sec:features} the feature construction, Section~\ref{sec:fitting}
+estimation and model selection, Section~\ref{sec:forecast} application to
+forecasts, Section~\ref{sec:reliability} the reliability measure,
+Section~\ref{sec:presentation} the visual encoding and its accessibility
+variants, and Section~\ref{sec:evaluation} the evaluation protocol.
+
+\section{Collecting ratings}
+\label{sec:ratings}
+
+\subsection{The instrument}
+
+A rating is elicited on a continuous, unitless scale from 0 to 1000, presented
+as a vertical colour column that the user scrolls until the colour under a
+fixed indicator matches how the present weather feels. The scale runs white
+(coldest) through blue, green, yellow and red to dark red (hottest), with
+anchor positions at 0, 250, 500, 690, 880 and 1000 respectively; intermediate
+scores interpolate linearly in RGB between neighbouring anchors. Green sits at
+the midpoint by design, so that ``comfortable'' is the centre of the scale
+rather than a point along a cold-to-hot ramp.
+
+Two properties of this instrument are deliberate. First, \emph{no temperature
+is displayed}: the score is the response variable, and showing a temperature
+alongside it would invite the user to report the thermometer rather than their
+own sensation. Second, the scale is continuous rather than the discrete
+seven-point ASHRAE thermal sensation scale. A continuous score avoids the
+floor and ceiling effects that a short ordinal scale produces at climatic
+extremes, and it supplies more information per observation --- which matters
+when observations are scarce. For users who prefer words, or who cannot use
+the colour scale, the same 0--1000 range is presented as six named categories
+(\emph{very cold, cold, mild, warm, very warm, hot}) placed at the colour
+anchors, with linear transitions between them; the recorded quantity is
+identical.
+
+\subsection{Context supplied by the user}
+
+Three contextual variables are recorded with each rating, because they change
+the sensation without changing the weather:
+
+\begin{itemize}
+\item \textbf{Activity} (0 not active, 1 light, 2 moderate, 3 vigorous), a
+      coarse proxy for metabolic rate.
+\item \textbf{Dress} ($-2$ dressed for very cold $\ldots$ $0$ dressed
+      appropriately $\ldots$ $+2$ dressed for very warm), a coarse proxy for
+      clothing insulation relative to conditions.
+\item \textbf{Sun exposure} ($+1$ full sun, $0$ partial, $-1$ shade).
+\end{itemize}
+
+These are deliberately coarse. Asking for clo values or MET rates would raise
+the cost of a rating and lower the response rate, and the resulting precision
+would be spurious given the rest of the measurement chain.
+
+\subsection{Covariates captured automatically}
+
+At the moment of rating, the application records the concurrent weather for the
+user's location from the platform weather service: dry-bulb temperature,
+service-reported apparent temperature, dew point, relative humidity, station
+pressure, wind speed, precipitation probability and amount, total cloud cover
+and its low, medium and high components, UV index, and a daylight flag. Wet-bulb
+temperature is derived from temperature and relative humidity using
+\citet{stull2011}. Storing the covariates at rating time, rather than
+re-fetching them later, is what makes the observation immutable: a subsequent
+revision of the forecast archive cannot silently change a training row.
+
+\subsection{Eligibility for fitting}
+
+No model is fitted until two conditions hold: at least five ratings exist, and
+the spread of the recorded scores (maximum minus minimum) is at least 50 points
+--- five per cent of the scale. The second condition matters more than the
+first. A user who has rated ten mild mornings at 500 supplies almost no
+information about their response to temperature, and a regression fitted to
+that data would extrapolate wildly. Until both hold, the application shows the
+population apparent temperature and explains which condition is unmet.
+
+\section{Feature construction}
+\label{sec:features}
+
+The candidate feature set contains 28 terms in four groups.
+
+\paragraph{Direct meteorological terms.} Apparent temperature, dry-bulb
+temperature, wet-bulb temperature, dew point, relative humidity, station
+pressure, wind speed, precipitation probability and amount, total, low, medium
+and high cloud cover, UV index, and the daylight indicator.
+
+\paragraph{Derived differences.} Apparent minus dry-bulb (the service's own
+wind and humidity correction), dry-bulb minus wet-bulb (wet-bulb depression),
+and wet-bulb minus dew point. These are included because they isolate physical
+effects that the raw variables confound: two days at the same temperature with
+different wet-bulb depressions are physiologically different days.
+
+\paragraph{Contextual terms.} Activity, dress and sun exposure as recorded
+above.
+
+\paragraph{Piecewise-linear hinges and interactions.} Human thermal response is
+not linear in temperature; the same one-degree change matters more near the
+extremes than in the middle. Rather than fitting splines, which the sample size
+will not support, the candidate set includes five hinge terms of the form
+$\max(0, x - c)$ or $\max(0, c - x)$ with fixed knots chosen on physical
+grounds: cold amplification below 10\,\textdegree C, warm onset above
+18\,\textdegree C, heat amplification above 26\,\textdegree C, a wind threshold
+at 15\,kph, and a UV threshold at 4. Three interaction terms (apparent
+temperature with humidity, with UV, and with activity) capture the familiar
+effects that humidity matters more when it is hot and that exertion matters
+more when it is warm.
+
+Hinges become candidates only at $n \geq 25$ and interactions only at
+$n \geq 40$. A hinge estimated from five observations describes noise.
+
+All features are standardized before fitting, so estimated coefficients are
+expressed per standard deviation rather than per physical unit. This is
+essential to keep in mind when interpreting them, and the plausibility screens
+of Section~\ref{sec:plausibility} therefore work in physical units by probing
+the fitted model rather than by inspecting coefficients directly.
+
+\section{Estimating the model}
+\label{sec:fitting}
+
+\subsection{Objective and estimator}
+
+Let $y_i \in [0, 1000]$ be the $i$-th comfort score and $\mathbf{x}_i$ the
+standardized feature vector at that observation. The model is ordinary least
+squares with an intercept,
+\begin{equation}
+y_i = \beta_0 + \sum_{j \in S} \beta_j x_{ij} + \varepsilon_i ,
+\end{equation}
+where $S$ is the selected feature subset. Coefficients are obtained by Cholesky
+solution of the normal equations, and $(\mathbf{X}^\top\mathbf{X})^{-1}$ is
+retained --- it is needed later for leverage.
+
+\subsection{Selection}
+
+Selection is forward stepwise on the corrected Akaike information criterion
+\citep{hurvich1989, burnham2002},
+\begin{equation}
+\mathrm{AIC_c} = n \log\!\left(\frac{\mathrm{RSS}}{n}\right) + 2p +
+\frac{2p(p+1)}{n - p - 1},
+\end{equation}
+with $p$ the number of estimated parameters. The correction term dominates in
+exactly the regime of interest, and without it the criterion would happily add
+features to a ten-observation fit.
+
+Three rules constrain the search:
+
+\begin{enumerate}
+\item \textbf{Feature budget.} At most $\lfloor n/5 \rfloor$ features may enter,
+      independently of what $\mathrm{AIC_c}$ prefers. Five observations per
+      estimated coefficient is a conventional floor for regression, and here it
+      is enforced as a hard cap rather than a guideline.
+\item \textbf{Margin.} A feature enters only if it improves $\mathrm{AIC_c}$ by
+      at least 2 over the best model without it; otherwise the search stops.
+      The search begins from the intercept-only model, so the margin applies to
+      the first feature as well as to later ones.
+\item \textbf{Per-step eligibility.} Plausibility is checked at each step, on
+      the model that would result, not once at the end.
+\end{enumerate}
+
+\subsection{Plausibility screens}
+\label{sec:plausibility}
+
+A model can fit the training ratings well and still be absurd --- the failure
+that motivated this section was a real user seeing a forecast at the coldest
+end of the scale during a heat wave, produced by a well-fitting model whose
+temperature response had the wrong sign. Because coefficients are standardized
+and features are correlated, the sign of any individual coefficient is not
+diagnostic. The screens therefore \emph{probe} the candidate model: they
+evaluate its predictions at the user's median conditions and at perturbations
+of them, and reject the candidate if the implied physical response is not
+credible.
+
+A candidate feature is ineligible at a given step if adding it would imply any
+of the following, where the response is measured at the user's median
+conditions:
+
+\begin{itemize}
+\item a temperature response outside $[0, 60]$ score points per
+      \textdegree C, evaluated by moving all temperature-like variables
+      together by $\pm 3$\,\textdegree C (a negative response means the model
+      claims the user feels colder as it gets warmer; 60 points per degree
+      means the full scale is traversed in under 17 degrees);
+\item a warmer reading from an additional 10\,kph of wind, beyond a tolerance
+      of 25 score points;
+\item a warmer reading from one additional level of activity, beyond the same
+      tolerance;
+\item any non-finite coefficient, mean or standard deviation, or a
+      standard deviation that is not strictly positive.
+\end{itemize}
+
+A feature is also ineligible unless the observed spread of its underlying
+physical variable reaches a per-variable minimum (for example 3\,\textdegree C
+for temperature-like variables, 5\,kph for wind, 0.1 for relative humidity).
+Fitting a wind coefficient from ratings that all occurred in still air is not
+informative regardless of what the criterion says.
+
+The wind and activity screens deserve comment, since they encode a physical
+prior rather than a statistical one. It is possible for a person to genuinely
+feel warmer in wind, and the tolerance of 25 points permits a modest effect in
+that direction; what the screen rejects is a large one, which in this data is
+overwhelmingly more likely to be confounding --- windy days in the user's
+sample happening also to be warm days --- than physiology.
+
+\section{Applying the model to forecasts}
+\label{sec:forecast}
+
+The fitted model is applied to each hour of the hourly forecast, and to each
+day of the ten-day forecast, producing a personal score for every point.
+Because the contextual variables are not forecast quantities, the user selects
+a \emph{scenario} --- an activity level, a dress level and a sun exposure ---
+which is held fixed across the forecast horizon. The default scenario is the
+user's modal rating context.
+
+When the fitted model contains a sun-exposure term, two predictions are
+produced per hour: one in shade and one in sun. After dark the two are
+deliberately collapsed onto the shade value, since ``in sun'' is not a state
+that exists at night; the pair is displayed either as two bands or as a
+gradient within one band.
+
+Predictions are clamped to $[0, 1000]$ for display. Clamping is a display
+decision, not a modelling one: the underlying prediction is retained for the
+reliability calculation, where an out-of-range prediction is itself evidence
+that the model is being extrapolated.
+
+\section{Reliability}
+\label{sec:reliability}
+
+A personalized model built from tens of observations will be asked to predict
+conditions the user has never rated. Communicating that honestly is as
+important as the point prediction, and a single confidence interval is a poor
+vehicle: the reasons a prediction is untrustworthy are heterogeneous, and the
+user's response to each is different.
+
+The application computes four widths, each in $[0.15, 1]$, and takes their
+minimum. The floor of 0.15 means the displayed band never vanishes entirely; a
+sliver still communicates a value while making the loss of confidence obvious.
+
+\paragraph{Leverage.} With $h = \mathbf{x}^\top(\mathbf{X}^\top\mathbf{X})^{-1}
+\mathbf{x}$ the leverage of the forecast point in the standardized design,
+$m$ the number of parameters and $n$ the number of ratings, the width is $1$
+for $h \leq 2m/n$, $0$ for $h \geq 3m/n$, and linear between. This is the
+classical high-leverage rule of thumb used as a continuous fade rather than a
+flag.
+
+\paragraph{In-model range.} For each selected feature, the range of values
+observed in training is recorded. A forecast value inside that range gives
+width 1; one more than a full range-length outside it gives 0.15; linear
+between. Leverage alone does not capture this cleanly, because a point can have
+modest leverage while still lying beyond every value the user has rated.
+
+\paragraph{Not-in-model range.} Variables that are \emph{not} in the model are
+also checked, with a per-variable tolerance factor. A model that omits wind
+because the user only ever rated calm days should not be silently trusted on a
+forecast gale. Tolerances vary by variable: temperature-like variables use
+1.5 range-lengths, humidity, wind and UV use 2, and precipitation and cloud
+variables use 4, reflecting how strongly each is expected to matter when it
+falls outside the sampled range.
+
+\paragraph{Predicted-score range.} A prediction far outside the range of scores
+the user has actually given, or a non-finite prediction, narrows the band to
+the floor.
+
+The resulting width is encoded geometrically rather than by transparency
+wherever possible: the hourly band's thickness about its centre line, and the
+ten-day heatmap's cell width within its day column. Where geometry is not
+available --- the sun/shade gradient, which needs full height to be legible ---
+opacity is used with a floor of 0.25.
+
+\section{Presentation and accessibility}
+\label{sec:presentation}
+
+The comfort scale is colour by default, which makes it inaccessible to a
+non-trivial minority of users. Roughly 8\% of men and 0.5\% of women of
+Northern European descent have some form of colour vision deficiency, the
+large majority red--green (deuteranomaly and protanomaly). The application
+therefore offers three encodings of the same underlying score:
+
+\begin{enumerate}
+\item \textbf{Full colour}, as described in Section~\ref{sec:ratings}.
+\item \textbf{Red-free}, which keeps every anchor up to pure yellow in place
+      and replaces the red end with yellow darkening to black. What separates
+      the hot end from the middle is then lightness rather than hue, so
+      red--green confusion cannot make a hot hour read as a mild one. Because
+      the shared anchors do not move, a rating made under one encoding means
+      the same under the other.
+\item \textbf{No colour}, in which hue carries nothing. Comfort is shown either
+      as a line graph against the six named categories, or as the same bands
+      rendered in grayscale; the weather curves are distinguished by line
+      pattern (solid, dashed, dotted, dash-dot) rather than colour; and the
+      rating scale states both the category name and the numeric score.
+\end{enumerate}
+
+This matters methodologically and not only ethically: the rating instrument
+\emph{is} the measurement device, and a user who cannot read the scale
+reliably supplies noisier labels.
+
+\section{Evaluation protocol}
+\label{sec:evaluation}
+
+We state the evaluation design here; measured results are not included in this
+draft and will be reported once the deployed data set is of sufficient size.
+
+\subsection{Question}
+
+Does a personalized model predict an individual's comfort ratings better than
+population indices do? The comparison is against three baselines: (i) dry-bulb
+temperature, (ii) the weather service's apparent temperature, mapped
+monotonically onto the score scale, and (iii) a pooled model fitted across all
+users, which isolates the value of \emph{personalization} from the value of
+\emph{regression}.
+
+\subsection{Design}
+
+The primary estimate is leave-one-out cross-validation within user, which
+matches the small-$n$ regime and uses every observation. Because ratings are
+temporally autocorrelated --- consecutive ratings are often the same day ---
+LOOCV will be optimistic, and a blocked variant leaving out whole days is
+reported alongside it. The strongest evidence is prospective: predictions are
+recorded before the rating is made, and scored when it arrives.
+
+\subsection{Metrics}
+
+Mean absolute error in score units is the headline metric, being interpretable
+on the instrument the user actually sees. Skill relative to each baseline is
+reported as the proportional reduction in MAE. Two further quantities matter
+specifically here:
+
+\begin{itemize}
+\item \textbf{Learning curve.} MAE as a function of $n$, which answers the
+      practical question of how many ratings a user must supply before the
+      model is worth showing.
+\item \textbf{Reliability calibration.} Whether the width described in
+      Section~\ref{sec:reliability} is honest --- that is, whether absolute
+      error is in fact larger where the band is narrower. A reliability signal
+      that does not track error is worse than none, since it invites misplaced
+      confidence.
+\end{itemize}
+
+\subsection{Between-person variation}
+
+The application supports comparing forecasts between consenting users, which
+provides a direct estimate of the quantity that motivates the work: the spread
+of personal scores across people under identical weather. Reporting that
+spread, and its stability over time, tests the premise that individual
+differences are systematic rather than noise.
+
+\section{Limitations}
+
+\paragraph{Opportunistic sampling.} Users rate when they choose to, producing a
+design matrix that is neither balanced nor randomized. Seasonal confounding is
+the most serious consequence: over a single season, temperature, humidity, UV
+and daylight move together, and no amount of model selection can separate
+effects that never vary independently. The plausibility screens mitigate the
+worst outcomes but do not solve the underlying identification problem.
+
+\paragraph{Coarse context.} Activity, dress and sun are three-to-five level
+ordinal proxies for metabolic rate, clothing insulation and radiant load.
+
+\paragraph{Single-rater labels.} There is no way to estimate the measurement
+error of the instrument from a single rater, since a rating cannot be repeated
+under identical conditions. Test--retest reliability would require deliberate
+duplicate ratings within a short window.
+
+\paragraph{Adaptation.} Thermal preference drifts with acclimatization
+\citep{dedear1998}. The model as described weights all ratings equally
+regardless of age; a user's ratings from the previous winter may not describe
+this one. Recency weighting is an obvious extension and is not yet implemented.
+
+\paragraph{Forecast error.} The personal model is applied to forecast
+covariates, so its errors compound with the underlying forecast's. The
+reliability measure captures uncertainty in the personal model only.
+
+\section{Availability and privacy}
+
+Ratings, the fitted model and the derived forecasts remain on the user's
+device and in their private cloud account; nothing is transmitted to the
+authors by default. Sharing a model with another user is explicit and
+per-recipient, and is implemented as a self-contained snapshot rather than a
+live feed. Source code is available at
+\url{https://github.com/dutch-rob/MyFeelsLike} under GPL-3.0-or-later.
+
+\section{Conclusion}
+
+Population apparent-temperature indices answer a question no individual asked:
+how does the average person feel? MyFeelsLike substitutes the question each
+user actually has, and shows that the substitution is tractable on a phone with
+a few tens of self-supplied ratings --- provided the estimator is built for
+that regime rather than borrowed from one with abundant data, and provided the
+interface is honest about the many forecasts for which the answer is not yet
+known.
+
+\bibliography{myfeelslike}
+
+\end{document}
