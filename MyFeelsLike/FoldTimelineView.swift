@@ -732,9 +732,11 @@ struct FoldTimelineView: View {
 
     private func foldCanvas(cols: [DayCol], total: Int, plot: CGRect) -> some View {
         let cal = Calendar.current
-        // Only split when the model actually learned a sun effect and the user
-        // asked for separate halves; otherwise the two would be identical.
-        let splitSunShade = sunFeatureActive && sunShadeStyle == .separate
+        // Show sun/shade whenever the model learned a sun effect. The style
+        // setting picks how — two halves, or a gradient through the strip —
+        // it does not decide whether. Gating on `.separate` here was why the
+        // fold showed a plain band for anyone using Gradient.
+        let splitSunShade = sunFeatureActive
         return Canvas { ctx, _ in
             // During the first layout pass (and while panels resize) the plot can
             // be empty or non-finite; drawing then feeds NaN to CoreGraphics.
@@ -786,17 +788,24 @@ struct FoldTimelineView: View {
                                           width: cellW + 0.5, height: thick)
                         guard rect.isFinite, thick > 0 else { continue }
                         if let sunColor {
-                            // Shade above, sun below, splitting the strip across
-                            // its thickness. Because the strip rotates, that is
-                            // two stacked bands at 24-hour and two halves of the
-                            // day column at 10-day — the same split the paged
-                            // screens draw, carried through the fold.
-                            var top = rect, bottom = rect
-                            top.size.height = rect.height / 2
-                            bottom.origin.y = rect.midY
-                            bottom.size.height = rect.height / 2
-                            layer.fill(Path(top), with: .color(color))
-                            layer.fill(Path(bottom), with: .color(sunColor))
+                            // Shade first, sun second, across the strip's
+                            // thickness. Because the strip rotates, that is two
+                            // stacked bands at 24-hour and two halves of the day
+                            // column at 10-day — the same split the paged screens
+                            // draw, carried through the fold.
+                            if sunShadeStyle == .separate {
+                                var top = rect, bottom = rect
+                                top.size.height = rect.height / 2
+                                bottom.origin.y = rect.midY
+                                bottom.size.height = rect.height / 2
+                                layer.fill(Path(top), with: .color(color))
+                                layer.fill(Path(bottom), with: .color(sunColor))
+                            } else {
+                                layer.fill(Path(rect), with: .linearGradient(
+                                    Gradient(colors: [color, sunColor]),
+                                    startPoint: CGPoint(x: rect.midX, y: rect.minY),
+                                    endPoint: CGPoint(x: rect.midX, y: rect.maxY)))
+                            }
                         } else {
                             layer.fill(Path(rect), with: .color(color))
                         }
