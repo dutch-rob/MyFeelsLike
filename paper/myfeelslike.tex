@@ -282,8 +282,9 @@ conditions:
 \end{itemize}
 
 A feature is also ineligible unless the observed spread of its underlying
-physical variable reaches a per-variable minimum (for example 3\,\textdegree C
-for temperature-like variables, 5\,kph for wind, 0.1 for relative humidity).
+physical variable reaches the per-variable minimum in Table~\ref{tab:ranges}
+(3\,\textdegree C for temperature-like variables, 5\,kph for wind, 0.1 for
+relative humidity, and so on).
 Fitting a wind coefficient from ratings that all occurred in still air is not
 informative regardless of what the criterion says.
 
@@ -335,23 +336,79 @@ for $h \leq 2m/n$, $0$ for $h \geq 3m/n$, and linear between. This is the
 classical high-leverage rule of thumb used as a continuous fade rather than a
 flag.
 
+All three range checks share one ramp. Let $R$ be the range of a variable
+observed in training, $|R|$ its length, and $d$ the distance a forecast value
+falls outside $R$, expressed in units of $|R|$. The width is
+\begin{equation}
+w(d) = \begin{cases}
+1 & d \leq d_{\text{free}} \\
+0.15 & d \geq d_{\text{full}} \\
+1 - 0.85\,\dfrac{d - d_{\text{free}}}{d_{\text{full}} - d_{\text{free}}}
+  & \text{otherwise,}
+\end{cases}
+\end{equation}
+so $d_{\text{free}}$ is a grace zone in which nothing is lost and
+$d_{\text{full}}$ is where the floor is reached. The three checks differ only
+in those two constants and in what plays the role of $|R|$.
+
 \paragraph{In-model range.} For each selected feature, the range of values
-observed in training is recorded. A forecast value inside that range gives
-width 1; one more than a full range-length outside it gives 0.15; linear
-between. Leverage alone does not capture this cleanly, because a point can have
-modest leverage while still lying beyond every value the user has rated.
+observed in training is recorded, and $|R|$ is that range's length. Here
+$d_{\text{free}} = 0$ and $d_{\text{full}} = 1$: any excursion beyond the
+rated range begins narrowing the band immediately, and a full range-length
+outside reaches the floor. There is no grace zone, because a feature the model
+actively uses is one whose extrapolation directly moves the prediction.
+Leverage alone does not capture this cleanly, since a point can have modest
+leverage while still lying beyond every value the user has rated.
 
-\paragraph{Not-in-model range.} Variables that are \emph{not} in the model are
-also checked, with a per-variable tolerance factor. A model that omits wind
-because the user only ever rated calm days should not be silently trusted on a
-forecast gale. Tolerances vary by variable: temperature-like variables use
-1.5 range-lengths, humidity, wind and UV use 2, and precipitation and cloud
-variables use 4, reflecting how strongly each is expected to matter when it
-falls outside the sampled range.
+\paragraph{Not-in-model range.} Every physical variable the model does
+\emph{not} use --- directly or as the parent of a selected hinge or
+interaction --- is checked the same way. A model that omits wind because the
+user only ever rated calm days should not be silently trusted on a forecast
+gale. Here $d_{\text{free}} = 0.5$: a variable the model ignores may stray
+half a range-length beyond what was sampled before anything is lost, which
+keeps ordinary seasonal drift from narrowing every band. The floor
+$d_{\text{full}}$ is the per-variable tolerance in Table~\ref{tab:ranges},
+and it varies by how much a variable is expected to matter when it leaves the
+sampled range. The scale is $\max(|R|, R_{\min})$ rather than $|R|$, with the
+per-variable minimum also given in the table: without that floor, a user whose
+ratings happen to span almost no pressure --- a range length near zero --- would
+see every band collapse on the first hectopascal of change.
 
-\paragraph{Predicted-score range.} A prediction far outside the range of scores
-the user has actually given, or a non-finite prediction, narrows the band to
-the floor.
+The daylight flag is deliberately excluded from these checks. It is binary, so
+"outside the observed range" is not a meaningful distance.
+
+\paragraph{Predicted-score range.} The same ramp is applied to the prediction
+itself against the range of scores the user has actually given, with
+$d_{\text{free}} = 0.5$ and $d_{\text{full}} = 1$. A non-finite prediction,
+which a degenerate fit can produce, goes straight to the floor.
+
+\begin{table}[t]
+\centering
+\caption{Per-variable constants. \emph{Minimum spread} is the observed spread
+a variable must show before a feature built on it may enter the model at all;
+\emph{tolerance} is $d_{\text{full}}$ for the not-in-model check; \emph{range
+floor} is $R_{\min}$, the smallest scale that check will use. Hinges inherit
+their parent's minimum spread, and interactions are judged through both parents
+rather than on the product.}
+\label{tab:ranges}
+\begin{tabular}{lccc}
+\toprule
+Variable & Minimum spread & Tolerance & Range floor \\
+\midrule
+Apparent, dry-bulb, wet-bulb, dew point (\textdegree C) & 3 & 1.5 & 2 \\
+Relative humidity (0--1)      & 0.1  & 2 & 0.1 \\
+Wind speed (kph)              & 5    & 2 & 3 \\
+UV index                      & 3    & 2 & 3 \\
+Sun, activity, dress (ordinal) & 1   & 1 & 1 \\
+Precipitation (mm)            & 2    & 4 & 1 \\
+Precipitation probability (0--1) & 0.2 & 4 & 0.1 \\
+Cloud cover, total and by level (0--1) & 0.2 & 4 & 0.2 \\
+Station pressure (Pa)         & 1000 & 4 & 1000 \\
+Derived differences (\textdegree C) & 1 & --- & --- \\
+Daylight (0/1)                & 1    & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 The resulting width is encoded geometrically rather than by transparency
 wherever possible: the hourly band's thickness about its centre line, and the
