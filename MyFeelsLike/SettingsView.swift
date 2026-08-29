@@ -563,9 +563,10 @@ struct RatingExport: Codable {
     /// Hat-matrix diagonal h = x'(X'X)⁻¹x — how far this point is from
     /// the training centroid in feature space.
     let leverage_h: Double?
-    /// Visual opacity of the model prediction (1 = fully reliable, 0 = beyond
-    /// extrapolation threshold).
-    let predictionOpacity: Double?
+    /// Leverage-based reliability width of the model prediction
+    /// (1 = fully reliable, 0.15 = beyond the extrapolation threshold, where
+    /// the displayed band is at its narrowest).
+    let predictionWidth: Double?
 
     init(from r: Rating, state: RegressionState?) {
         id                   = r.id
@@ -594,11 +595,11 @@ struct RatingExport: Codable {
         if let state {
             modelPredictionScore = state.predict(r)
             leverage_h           = state.leverage(r)
-            predictionOpacity    = state.predictionOpacity(r)
+            predictionWidth    = state.predictionWidth(r)
         } else {
             modelPredictionScore = nil
             leverage_h           = nil
-            predictionOpacity    = nil
+            predictionWidth    = nil
         }
     }
 }

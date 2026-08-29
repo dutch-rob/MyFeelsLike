@@ -54,16 +54,16 @@ struct InferenceTests {
         if let h = state.leverage(inSample) {
             #expect(h >= 0 && h <= 1.0001)   // hat-diagonal of a training point
         }
-        #expect(state.predictionOpacity(inSample) > 0.99)           // in distribution
+        #expect(state.predictionWidth(inSample) > 0.99)           // in distribution
 
         let farOut = StubFeatures(values: [.apparentTempC: 200])    // way outside 10…30
-        #expect(state.predictionOpacity(farOut) < state.predictionOpacity(inSample))
+        #expect(state.predictionWidth(farOut) < state.predictionWidth(inSample))
         // Bottoms out at the shared floor, not at zero: the band is meant to
         // thin to a sliver, never to vanish, and every other width ramps to
         // the same value. A ramp to zero that is clamped afterwards agrees at
         // the ends but narrows faster in between.
-        #expect(state.predictionOpacity(farOut) >= RegressionState.minWidth - 1e-9)
-        #expect(abs(state.predictionOpacity(farOut) - RegressionState.minWidth) < 1e-9)
+        #expect(state.predictionWidth(farOut) >= RegressionState.minWidth - 1e-9)
+        #expect(abs(state.predictionWidth(farOut) - RegressionState.minWidth) < 1e-9)
     }
 
     @Test func leverageWidthRampsToTheFloorNotToZero() {

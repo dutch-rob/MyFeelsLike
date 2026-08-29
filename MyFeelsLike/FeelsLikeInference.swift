@@ -360,7 +360,7 @@ struct RegressionState: Codable, Equatable {
     /// ramp to zero reaches any given width sooner, so leverage narrowed the
     /// band faster than the other three checks did for the same amount of
     /// trouble, and the "each width is in [0.15, 1]" description did not hold.
-    func predictionOpacity(_ src: FeatureSource) -> Double {
+    func predictionWidth(_ src: FeatureSource) -> Double {
         guard let h = leverage(src) else { return 1.0 }
         let mD = Double(selectedFeatures.count + 1)
         let nD = Double(ratingCount)
@@ -434,7 +434,7 @@ struct RegressionState: Codable, Equatable {
     /// not-in-model range and predicted-score range.
     func reliabilityWidth(features src: FeatureSource, physical: PhysicalSource,
                           predicted: Double) -> Double {
-        min(min(predictionOpacity(src), inModelRangeWidth(src)),
+        min(min(predictionWidth(src), inModelRangeWidth(src)),
             min(notInModelRangeWidth(physical), scoreRangeWidth(predicted)))
     }
 
@@ -448,7 +448,7 @@ struct RegressionState: Codable, Equatable {
         func consider(_ w: Double, _ text: @autoclosure () -> String) {
             if w < worst { worst = w; label = text() }
         }
-        consider(predictionOpacity(src), "unusual combination of conditions")
+        consider(predictionWidth(src), "unusual combination of conditions")
         consider(scoreRangeWidth(predicted), "outside the comfort range you've rated")
 
         // In-model features: name the specific one that is furthest outside.

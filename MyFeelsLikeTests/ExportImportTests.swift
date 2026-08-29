@@ -107,7 +107,7 @@ struct ExportImportTests {
         let exported = RatingExport(from: mkDistinctRating(), state: nil)
         #expect(exported.modelPredictionScore == nil)
         #expect(exported.leverage_h == nil)
-        #expect(exported.predictionOpacity == nil)
+        #expect(exported.predictionWidth == nil)
     }
 
     @Test func ratingExportDiagnosticsMatchModelWhenProvided() {
@@ -121,7 +121,7 @@ struct ExportImportTests {
         let exported = RatingExport(from: target, state: state)
         #expect(exported.modelPredictionScore == state.predict(target))
         #expect(exported.leverage_h == state.leverage(target))
-        #expect(exported.predictionOpacity == state.predictionOpacity(target))
+        #expect(exported.predictionWidth == state.predictionWidth(target))
         #expect(exported.leverage_h != nil)   // sanity: this rating was in the training set
     }
 
