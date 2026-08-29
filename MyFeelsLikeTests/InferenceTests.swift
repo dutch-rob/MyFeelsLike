@@ -58,5 +58,19 @@ struct InferenceTests {
 
         let farOut = StubFeatures(values: [.apparentTempC: 200])    // way outside 10…30
         #expect(state.predictionOpacity(farOut) < state.predictionOpacity(inSample))
+        // Bottoms out at the shared floor, not at zero: the band is meant to
+        // thin to a sliver, never to vanish, and every other width ramps to
+        // the same value. A ramp to zero that is clamped afterwards agrees at
+        // the ends but narrows faster in between.
+        #expect(state.predictionOpacity(farOut) >= RegressionState.minWidth - 1e-9)
+        #expect(abs(state.predictionOpacity(farOut) - RegressionState.minWidth) < 1e-9)
+    }
+
+    @Test func leverageWidthRampsToTheFloorNotToZero() {
+        // Halfway between the 2m/n and 3m/n thresholds the width should sit
+        // halfway between 1 and the floor -- 0.575, not the 0.5 a ramp to zero
+        // would give.
+        let mid = 1.0 - (1.0 - RegressionState.minWidth) * 0.5
+        #expect(abs(mid - 0.575) < 1e-9)
     }
 }

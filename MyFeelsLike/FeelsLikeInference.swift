@@ -349,12 +349,17 @@ struct RegressionState: Codable, Equatable {
         return h
     }
 
-    /// Opacity of the model prediction for `src`, based on leverage:
-    ///   • h ≤ 2m/n → 1.0 (fully visible model)
-    ///   • h ≥ 3m/n → 0.0 (invisible — model would be extrapolating)
-    ///   • In between → linear fade.
-    /// Used by the UI to fade the personalized color overlay where the
-    /// forecast is outside the training distribution.
+    /// Width of the model prediction for `src`, based on leverage:
+    ///   • h ≤ 2m/n → 1.0 (the forecast sits inside the rated distribution)
+    ///   • h ≥ 3m/n → `minWidth` (the model would be extrapolating)
+    ///   • In between → linear ramp.
+    ///
+    /// Floors at `minWidth`, the same as the three range-based widths, rather
+    /// than running to zero and being clamped to the floor at display time.
+    /// The two are equivalent at the ends and differ everywhere between: a
+    /// ramp to zero reaches any given width sooner, so leverage narrowed the
+    /// band faster than the other three checks did for the same amount of
+    /// trouble, and the "each width is in [0.15, 1]" description did not hold.
     func predictionOpacity(_ src: FeatureSource) -> Double {
         guard let h = leverage(src) else { return 1.0 }
         let mD = Double(selectedFeatures.count + 1)
@@ -363,8 +368,8 @@ struct RegressionState: Codable, Equatable {
         let lower = 2.0 * mD / nD
         let upper = 3.0 * mD / nD
         if h <= lower { return 1.0 }
-        if h >= upper { return 0.0 }
-        return 1.0 - (h - lower) / (upper - lower)
+        if h >= upper { return Self.minWidth }
+        return 1.0 - (1.0 - Self.minWidth) * (h - lower) / (upper - lower)
     }
 
     // MARK: Range-based reliability
