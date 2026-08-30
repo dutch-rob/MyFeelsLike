@@ -10,6 +10,13 @@ struct InfoView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                // Which build this is, so a tester can say which one they saw
+                // a problem in without digging through Settings.
+                Text(BuildInfo.versionAndDate)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Version \(BuildInfo.versionAndDate)")
+
                 Group {
                     Text("MyFeelsLike learns how the weather actually feels *to you*, and colors the forecast by your own comfort instead of a one-size-fits-all \"feels like\" number. Rate a handful of moments, and from then on the next 24 hours and 10 days are shown as *your* colors — on iPhone and Apple Watch.")
                     Text("**In short:** rate how it feels ▸ the app fits a small personal model ▸ the forecast is colored by your comfort ▸ a thin band means \"don't trust this yet\".")
