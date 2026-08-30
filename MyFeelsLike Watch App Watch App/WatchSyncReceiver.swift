@@ -65,7 +65,6 @@ final class WatchSyncReceiver: NSObject, ObservableObject, WCSessionDelegate {
         let d = UserDefaults.standard
         if let mode = p.colorVisionMode { d.set(mode, forKey: "colorVisionMode") }
         if let clock = p.use12HourClock { d.set(clock, forKey: "use12HourClock") }
-        if let style = p.sunShadeStyle { d.set(style, forKey: "sunShadeStyle") }
     }
 
     // MARK: WCSessionDelegate

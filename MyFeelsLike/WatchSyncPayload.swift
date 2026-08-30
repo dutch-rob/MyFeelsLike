@@ -33,7 +33,6 @@ struct WatchSyncPayload: Codable {
     // it must fall back to the default.
     var colorVisionMode: String? = nil
     var use12HourClock: Bool? = nil
-    var sunShadeStyle: String? = nil
 
     var scenario: Scenario {
         Scenario(activity: scenarioActivity, dress: scenarioDress, sun: scenarioSun)

@@ -41,8 +41,7 @@ final class PhoneWatchSync: NSObject, WCSessionDelegate {
             scenarioActivity: activity, scenarioDress: dress, scenarioSun: sun,
             places: places,
             colorVisionMode: d.string(forKey: SettingsKey.colorVisionMode),
-            use12HourClock: d.object(forKey: SettingsKey.use12HourClock) as? Bool,
-            sunShadeStyle: d.string(forKey: SettingsKey.sunShadeStyle))
+            use12HourClock: d.object(forKey: SettingsKey.use12HourClock) as? Bool)
         lastPayload = payload
         send(payload)
     }

@@ -157,11 +157,12 @@ struct WatchTodayView: View {
         Chart(model.series24h) { p in
             // Cell spans the hour ending at p.date (shifted ~1h left, as on the
             // phone) so it lines up with the temperature curve above.
+            let half = p.myFeelsLikeWidth / 2
             RectangleMark(
                 xStart: .value("t0", p.date.addingTimeInterval(-3600)),
                 xEnd:   .value("t1", p.date),
-                yStart: .value("y0", 0),
-                yEnd:   .value("y1", 1)
+                yStart: .value("y0", 0.5 - half),
+                yEnd:   .value("y1", 0.5 + half)
             )
             .foregroundStyle(watchHeatColor(p))
         }
@@ -181,12 +182,17 @@ struct WatchTodayView: View {
         Chart {
             ForEach(model.series24h) { p in
                 let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date
+                // Each half thins about its own centre line, so an unreliable
+                // hour reads as a sliver in both halves rather than as a
+                // faded block. Narrow, but the watch band is small enough
+                // that fading was harder to see than thinning.
+                let sunHalf = p.myFeelsLikeWidth / 4
                 RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                              yStart: .value("y0", 0.5), yEnd: .value("y1", 1.0))
-                    .foregroundStyle(watchScoreColor(p.myFeelsLikeSunScore, opacity: p.myFeelsLikeSunOpacity))
+                              yStart: .value("y0", 0.75 - sunHalf), yEnd: .value("y1", 0.75 + sunHalf))
+                    .foregroundStyle(watchScoreColor(p.myFeelsLikeSunScore))
                 RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                              yStart: .value("y0", 0.0), yEnd: .value("y1", 0.5))
-                    .foregroundStyle(watchScoreColor(p.myFeelsLikeShadeScore, opacity: p.myFeelsLikeShadeOpacity))
+                              yStart: .value("y0", 0.25 - sunHalf), yEnd: .value("y1", 0.25 + sunHalf))
+                    .foregroundStyle(watchScoreColor(p.myFeelsLikeShadeScore))
             }
             RuleMark(y: .value("mid", 0.5))
                 .foregroundStyle(.white.opacity(0.5))

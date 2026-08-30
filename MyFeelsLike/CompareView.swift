@@ -49,7 +49,6 @@ struct CompareIcon: View {
 struct FeelsBand: View {
     let series: [ForecastPoint]
     var sunSplit: Bool = false
-    @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
 
     private var domain: ClosedRange<Date>? {
         guard let f = series.first?.date, let l = series.last?.date, f < l else { return nil }
@@ -60,27 +59,25 @@ struct FeelsBand: View {
     var body: some View {
         Group {
             if let domain, hasColor {
-                if sunSplit && sunShadeStyle == .separate {
+                if sunSplit {
                     // Two thin bars — in-shade (all hours) over in-sun (daytime
                     // only, night blank) — matching the 24h screen's Separate style.
                     VStack(spacing: 2) {
                         bar(domain: domain) { p in
                             (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
-                                AnyShapeStyle(ColorScale.feelsColor(score: $0, opacity: p.myFeelsLikeShadeOpacity))
+                                AnyShapeStyle(ColorScale.feelsColor(score: $0, opacity: 1))
                             }
                         }
                         bar(domain: domain) { p in
                             // Night hours included: the in-sun value collapses onto shade
                             // after dark (see applySunShadePrediction), so the bar stays whole.
                             guard let s = p.myFeelsLikeSunScore else { return nil }
-                            return AnyShapeStyle(ColorScale.feelsColor(score: s, opacity: p.myFeelsLikeSunOpacity))
+                            return AnyShapeStyle(ColorScale.feelsColor(score: s, opacity: 1))
                         }
                     }
                 } else {
                     bar(domain: domain) { p in
-                        if sunSplit, let g = sunShadeGradient(p, vertical: true) { return AnyShapeStyle(g) }
-                        return AnyShapeStyle(ColorScale.feelsColor(score: p.myFeelsLikeScore,
-                                                                   opacity: p.myFeelsLikeOpacity))
+                        AnyShapeStyle(ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: 1))
                     }
                 }
             } else {
@@ -92,16 +89,19 @@ struct FeelsBand: View {
         .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 
-    /// One full-height strip of cells, filled by `style` (nil leaves an hour
-    /// blank — used to drop night from the in-sun strip).
+    /// One strip of cells, filled by `style` (nil leaves an hour blank — used
+    /// to drop night from the in-sun strip). Each cell's height carries the
+    /// prediction's reliability, exactly as the 24-hour band does, so width
+    /// means the same thing on every screen.
     private func bar(domain: ClosedRange<Date>,
                      style: @escaping (ForecastPoint) -> AnyShapeStyle?) -> some View {
         Chart {
             ForEach(series) { p in
                 if let s = style(p) {
+                    let half = myFeelsLikeReliability(p) / 2
                     RectangleMark(xStart: .value("t0", p.date.addingTimeInterval(-3600)),
                                   xEnd:   .value("t1", p.date),
-                                  yStart: .value("y0", 0), yEnd: .value("y1", 1))
+                                  yStart: .value("y0", 0.5 - half), yEnd: .value("y1", 0.5 + half))
                         .foregroundStyle(s)
                 }
             }

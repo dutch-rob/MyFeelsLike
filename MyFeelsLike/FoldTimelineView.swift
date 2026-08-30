@@ -47,8 +47,6 @@ struct FoldTimelineView: View {
     @AppStorage(GraphKey.sky)      private var graphSky      = true
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
-    @AppStorage(SettingsKey.sunShadeStyle)
-    private var sunShadeStyle = SunShadeStyle.separate
     @AppStorage(SettingsKey.colorVisionMode)
     private var visionMode = ColorScale.ColorVisionMode.full
     @AppStorage(SettingsKey.noColorStyle)
@@ -793,19 +791,12 @@ struct FoldTimelineView: View {
                             // stacked bands at 24-hour and two halves of the day
                             // column at 10-day — the same split the paged screens
                             // draw, carried through the fold.
-                            if sunShadeStyle == .separate {
-                                var top = rect, bottom = rect
-                                top.size.height = rect.height / 2
-                                bottom.origin.y = rect.midY
-                                bottom.size.height = rect.height / 2
-                                layer.fill(Path(top), with: .color(color))
-                                layer.fill(Path(bottom), with: .color(sunColor))
-                            } else {
-                                layer.fill(Path(rect), with: .linearGradient(
-                                    Gradient(colors: [color, sunColor]),
-                                    startPoint: CGPoint(x: rect.midX, y: rect.minY),
-                                    endPoint: CGPoint(x: rect.midX, y: rect.maxY)))
-                            }
+                            var top = rect, bottom = rect
+                            top.size.height = rect.height / 2
+                            bottom.origin.y = rect.midY
+                            bottom.size.height = rect.height / 2
+                            layer.fill(Path(top), with: .color(color))
+                            layer.fill(Path(bottom), with: .color(sunColor))
                         } else {
                             layer.fill(Path(rect), with: .color(color))
                         }

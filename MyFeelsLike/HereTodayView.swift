@@ -46,7 +46,6 @@ struct HereTodayView: View {
     @AppStorage(GraphKey.wind)     private var graphWind     = true
     @AppStorage(GraphKey.gust)     private var graphGust     = true
     @AppStorage(GraphKey.sky)      private var graphSky      = true
-    @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
     @AppStorage(SettingsKey.colorVisionMode)
@@ -122,7 +121,7 @@ struct HereTodayView: View {
     /// scrolling.
     /// Whether the color panel is currently drawn as two stacked bands.
     private var showsTwoBands: Bool {
-        sunFeatureActive && hasModel && sunShadeStyle == .separate
+        sunFeatureActive && hasModel
     }
 
     private func panelHeights(_ h: CGFloat) -> (temp: CGFloat, color: CGFloat, wind: CGFloat) {
@@ -437,23 +436,18 @@ struct HereTodayView: View {
     @ViewBuilder
     private func myFeelsLikePanel(height: CGFloat) -> some View {
         let splitActive = sunFeatureActive && hasModel
-        // In separate style the title sits between the two bands, and in gradient
-        // style it's overlaid inside the band — so it's omitted from the top in
-        // both split modes.
-        let separateSplit = splitActive && sunShadeStyle == .separate
-        let gradientSplit = splitActive && sunShadeStyle == .gradient
+        // When the band splits, the title sits between the two halves instead
+        // of above them.
+        let separateSplit = splitActive
         VStack(alignment: .leading, spacing: 2) {
-            if !separateSplit && !gradientSplit {
+            if !separateSplit {
                 Text("MyFeelsLike by hour")
                     .font(.caption2).foregroundStyle(axisInk)
                     .padding(.leading, 36)
             }
             if hasModel {
                 if comfortAsLineGraph { comfortLineGraph(height: height) }
-                else if sunFeatureActive {
-                    if sunShadeStyle == .separate { separateColorBands(height: height) }
-                    else { splitColorBand(height: height + 14) }   // reclaim the title row
-                }
+                else if sunFeatureActive { separateColorBands(height: height) }
                 else { singleColorBand(height: height) }
             } else {
                 // Frosted material keeps the text legible over the sky background.
@@ -609,46 +603,6 @@ struct HereTodayView: View {
     /// reads vertically. Reliability is carried by cell opacity (the gradient
     /// needs the full height to read). Night cells (sun == shade) fall back to
     /// the solid MyFeelsLike color.
-    private func splitColorBand(height: CGFloat) -> some View {
-        ZStack {
-            Chart {
-                ForEach(series) { p in
-                    let x0 = p.date.addingTimeInterval(-3600)   // hour ending at p.date
-                    let style: AnyShapeStyle = sunShadeGradient(p, vertical: true).map(AnyShapeStyle.init)
-                        ?? AnyShapeStyle(bandColor(p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity))
-                    RectangleMark(xStart: .value("t0", x0), xEnd: .value("t1", p.date),
-                                  yStart: .value("y0", 0), yEnd: .value("y1", 1))
-                        .foregroundStyle(style)
-                }
-            }
-            .chartYScale(domain: 0...1)
-            // Tiny shade/sun markers in the leading gutter (cloud on top, sun below)
-            // cue the vertical direction; they also reserve the leading width so the
-            // band lines up with the temperature chart above.
-            .chartYAxis {
-                AxisMarks(position: .leading, values: [0.25, 0.75]) { v in
-                    AxisValueLabel {
-                        Image(systemName: (v.as(Double.self) ?? 0) > 0.5 ? "cloud.fill" : "sun.max.fill")
-                            .font(.system(size: 9))
-                            .foregroundStyle(axisInk)
-                            .frame(width: 16, alignment: .leading)
-                    }
-                }
-            }
-            .chartXAxis(.hidden)
-            .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
-
-            // Title in the middle of the band, outlined so it stays legible over
-            // whatever colors sit under it (like the watch complication number).
-            // "shade / sun" matches the band's order (in-shade on top, in-sun
-            // below).
-            OutlinedText(text: "MyFeelsLike — shade / sun", fill: .white, outline: .black, width: 1.3)
-                .font(.system(size: 12, weight: .bold))
-                .padding(.leading, 36)
-        }
-        .frame(height: height)
-    }
-
     /// Separate style: two stacked solid bands — in-shade (all hours) above, and
     /// in-sun (daytime only, night left blank) below. Both share the same time
     /// axis, so the sun band lines up under the shade band and simply has gaps
@@ -659,7 +613,7 @@ struct HereTodayView: View {
         return VStack(spacing: 3) {
             soloBand(icon: "cloud.fill", height: barH) { p in
                 (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
-                    ColorScale.feelsColor(score: $0, opacity: p.myFeelsLikeShadeOpacity, floor: 0.2)
+                    ColorScale.feelsColor(score: $0, opacity: 1)
                 }
             }
             // Title centered between the two bands, for symmetry.
@@ -671,7 +625,7 @@ struct HereTodayView: View {
                 // shade after dark, so night hours belong here too. The old isDaylight
                 // guard left this half of the band empty overnight.
                 guard let s = p.myFeelsLikeSunScore else { return nil }
-                return ColorScale.feelsColor(score: s, opacity: p.myFeelsLikeSunOpacity, floor: 0.2)
+                return ColorScale.feelsColor(score: s, opacity: 1)
             }
         }
     }
@@ -706,7 +660,7 @@ struct HereTodayView: View {
         // No title overlay here. Separate style draws two of these bands, so an
         // overlaid title appeared twice, stacked over the single label that
         // already sits between them. The gutter icons (cloud / sun) say which
-        // row is which; splitColorBand carries the title for gradient style.
+        // row is which.
     }
 
     /// Color for a split-band cell: the score's color, opacity carrying

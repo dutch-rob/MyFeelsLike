@@ -11,14 +11,16 @@ import SwiftUI
 import Charts
 
 /// Cell color for the MyFeelsLike color band / heatmap: the score's color,
-/// its opacity carrying prediction reliability. Gray when there's no score.
+/// fully opaque. Reliability is carried by the cell's geometry — the band's
+/// thickness and the heatmap cell's width — as it is on the phone, so that
+/// width means the same thing on every screen.
 func watchHeatColor(_ p: ForecastPoint) -> Color {
-    ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: p.myFeelsLikeOpacity)
+    ColorScale.feelsColor(score: p.myFeelsLikeScore, opacity: 1)
 }
 
-/// Color for a split sun/shade band cell from an explicit score + reliability.
-func watchScoreColor(_ score: Double?, opacity: Double) -> Color {
-    ColorScale.feelsColor(score: score, opacity: opacity, floor: 0.2)
+/// Color for a split sun/shade band cell from an explicit score.
+func watchScoreColor(_ score: Double?) -> Color {
+    ColorScale.feelsColor(score: score, opacity: 1)
 }
 
 // MARK: - Shared axis styling

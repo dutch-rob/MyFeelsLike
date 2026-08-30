@@ -136,9 +136,14 @@ struct WatchTenDayView: View {
             let dayStart = cal.startOfDay(for: p.date)
             let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
             let hour = cal.component(.hour, from: p.date)
+            // Reliability shrinks the cell horizontally toward the centre of
+            // its day column, matching the phone's heatmap.
+            let full = dayEnd.timeIntervalSince(dayStart)
+            let mid = dayStart.addingTimeInterval(full / 2)
+            let half = full / 2 * p.myFeelsLikeWidth
             RectangleMark(
-                xStart: .value("day", dayStart),
-                xEnd:   .value("day end", dayEnd),
+                xStart: .value("day", mid.addingTimeInterval(-half)),
+                xEnd:   .value("day end", mid.addingTimeInterval(half)),
                 yStart: .value("hour", hour),
                 yEnd:   .value("hour end", hour + 1)
             )
@@ -171,8 +176,7 @@ struct WatchTenDayView: View {
 
     private func heatColor(_ p: ForecastPoint) -> Color {
         guard let s = p.myFeelsLikeScore else { return Color.gray.opacity(0.25) }
-        let alpha = max(0.25, min(1, p.myFeelsLikeOpacity))
-        return ColorScale.color(forScore: s).opacity(alpha)
+        return ColorScale.color(forScore: s)
     }
 
     // MARK: Wind / precip

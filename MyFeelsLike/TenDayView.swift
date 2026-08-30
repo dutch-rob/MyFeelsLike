@@ -56,7 +56,6 @@ struct TenDayView: View {
     private var comfortAsLineGraph: Bool {
         visionMode == .noColor && noColorStyle == .lineGraph
     }
-    @AppStorage(SettingsKey.sunShadeStyle) private var sunShadeStyle = SunShadeStyle.separate
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
     @AppStorage(SettingsKey.graphPalette) private var graphPalette = GraphPalette.vivid
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -510,7 +509,7 @@ struct TenDayView: View {
                     .padding(.leading, 36)
                 comfortLineGraph.frame(height: height - 16)
             }
-        } else if hasModel && sunShadeStyle == .separate && hasSunSplit {
+        } else if hasModel && hasSunSplit {
             separateHeatmaps(height: height)
         } else {
             VStack(alignment: .leading, spacing: 2) {
@@ -566,7 +565,7 @@ struct TenDayView: View {
                     .font(.caption2).foregroundStyle(axisInk).padding(.leading, 36)
                 heatGrid(yLo: 0, yHi: 24, yValues: [0, 6, 12, 18, 24]) { p in
                     (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
-                        AnyShapeStyle(ColorScale.feelsColor(score: $0, opacity: p.myFeelsLikeShadeOpacity))
+                        AnyShapeStyle(ColorScale.feelsColor(score: $0, opacity: 1))
                     }
                 }
                 .frame(height: shadeH)
@@ -577,7 +576,7 @@ struct TenDayView: View {
                 heatGrid(yLo: bounds.lo, yHi: bounds.hi,
                          yValues: [bounds.lo, (bounds.lo + bounds.hi) / 2, bounds.hi]) { p in
                     guard p.isDaylight, let s = p.myFeelsLikeSunScore else { return nil }
-                    return AnyShapeStyle(ColorScale.feelsColor(score: s, opacity: p.myFeelsLikeSunOpacity))
+                    return AnyShapeStyle(ColorScale.feelsColor(score: s, opacity: 1))
                 }
                 .frame(height: sunH)
             }
@@ -682,11 +681,10 @@ struct TenDayView: View {
         }
     }
 
-    /// Fill for one heatmap cell in the gradient style: a horizontal in-shade →
-    /// in-sun gradient when the model learned a sun effect, else a solid color.
+    /// Fill for one heatmap cell. The sun/shade split is drawn as two grids
+    /// (see separateHeatmaps), so a single cell is always one solid color.
     private func cellStyle(_ p: ForecastPoint) -> AnyShapeStyle {
-        if let g = sunShadeGradient(p) { return AnyShapeStyle(g) }
-        return AnyShapeStyle(myFeelsLikeHeatColor(p))
+        AnyShapeStyle(myFeelsLikeHeatColor(p))
     }
 
     /// Gray panel shown in place of the heatmap until a personalized model

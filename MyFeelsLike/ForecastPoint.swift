@@ -102,6 +102,15 @@ struct ForecastPoint: Identifiable, Codable {
     /// Compute the in-sun and in-shade variants of the score, for the split
     /// 24h color band. Only worth showing when the model actually learned a
     /// sun effect (`.sun` ∈ selectedFeatures); otherwise both come out equal.
+    /// The width to draw this point's band cell at: the model's reliability
+    /// width, clamped so a cell never vanishes entirely. Lives here rather than
+    /// alongside the phone's chart helpers because the watch draws the same
+    /// bands and cannot see that file.
+    var myFeelsLikeWidth: Double {
+        guard myFeelsLikeScore != nil else { return 1 }
+        return max(0.15, min(1, myFeelsLikeOpacity))
+    }
+
     mutating func applySunShadePrediction(state: RegressionState?, scenario: Scenario) {
         guard let state else {
             myFeelsLikeSunScore = nil;   myFeelsLikeSunOpacity = 0

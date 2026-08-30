@@ -295,20 +295,12 @@ func myFeelsLikeHeatColor(_ p: ForecastPoint) -> Color {
 /// Prediction reliability in 0…1, used to scale a cell's width so uncertain
 /// forecasts read as a thinner band rather than a fainter color. A small
 /// floor keeps even the least reliable cell visible as a sliver.
-func myFeelsLikeReliability(_ p: ForecastPoint) -> Double {
-    guard p.myFeelsLikeScore != nil else { return 1 }
-    return max(0.15, min(1, p.myFeelsLikeOpacity))
-}
+func myFeelsLikeReliability(_ p: ForecastPoint) -> Double { p.myFeelsLikeWidth }
 
 /// How the in-shade vs in-sun difference is drawn in the color band / heatmap.
 /// `separate` (the default) shows two distinct bars/heatmaps — clearest at a
 /// glance; `gradient` blends shade→sun within each cell — more compact and
 /// preferred by some once they know the code.
-enum SunShadeStyle: String, CaseIterable {
-    case separate
-    case gradient
-}
-
 /// Dash patterns that tell the weather curves apart without relying on color,
 /// for "No color" mode. Order matters only in that neighbouring series should
 /// not share a pattern; the names say what each looks like.
@@ -352,36 +344,6 @@ enum ChartSeriesStyle: String, CaseIterable {
     case area
     case lines
 }
-
-/// Shade→sun gradient for one cell: solid in-shade color across the first
-/// quarter, solid in-sun color across the last quarter, and a linear blend in
-/// the middle half. Giving each color a plateau (rather than blending edge to
-/// edge) lets the eye pick out "this is the shade color, this is the sun color"
-/// while still reading the transition. Direction differs by screen: the 10-day
-/// heatmap runs it horizontally (in-shade left → in-sun right), the 24h band
-/// runs it vertically (in-shade top → in-sun bottom, i.e. a heatmap column
-/// rotated 90°). Shared so every screen uses the same shape and colors.
-func sunShadeGradient(shade: Color, sun: Color, vertical: Bool = false) -> LinearGradient {
-    LinearGradient(stops: [
-        .init(color: shade, location: 0.00),
-        .init(color: shade, location: 0.25),
-        .init(color: sun,   location: 0.75),
-        .init(color: sun,   location: 1.00),
-    ], startPoint: vertical ? .top : .leading,
-       endPoint:   vertical ? .bottom : .trailing)
-}
-
-/// The shade/sun gradient for a forecast point, or `nil` when the point has no
-/// distinct sun value (no sun feature, or night where sun == shade) — callers
-/// fall back to the solid MyFeelsLike color in that case.
-func sunShadeGradient(_ p: ForecastPoint, vertical: Bool = false) -> LinearGradient? {
-    guard let sun = p.myFeelsLikeSunScore, let shade = p.myFeelsLikeShadeScore,
-          sun != shade else { return nil }
-    return sunShadeGradient(shade: ColorScale.feelsColor(score: shade, opacity: p.myFeelsLikeShadeOpacity),
-                            sun:   ColorScale.feelsColor(score: sun,   opacity: p.myFeelsLikeSunOpacity),
-                            vertical: vertical)
-}
-
 
 // MARK: - View extension
 

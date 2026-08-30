@@ -28,7 +28,6 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.compareName)     private var compareName   = ""
     @AppStorage(SettingsKey.shareForCompare) private var shareForCompare = true
     @AppStorage(SettingsKey.syncAcrossDevices) private var syncAcrossDevices = false
-    @AppStorage(SettingsKey.sunShadeStyle)   private var sunShadeStyle  = SunShadeStyle.separate
     @AppStorage(SettingsKey.colorVisionMode) private var colorVision = ColorScale.ColorVisionMode.full
     @AppStorage(SettingsKey.noColorStyle)    private var noColorStyle = ColorScale.NoColorStyle.lineGraph
     @AppStorage(SettingsKey.chartSeriesStyle) private var chartStyle = ChartSeriesStyle.lines
@@ -171,17 +170,6 @@ struct SettingsView: View {
                      """)
             }
 
-            Section {
-                Picker("In sun vs in shade", selection: $sunShadeStyle) {
-                    Text("Separate").tag(SunShadeStyle.separate)
-                    Text("Gradient").tag(SunShadeStyle.gradient)
-                }
-                .pickerStyle(.segmented)
-            } header: {
-                Text("Sun / shade")
-            } footer: {
-                Text("How the color band shows in-sun vs in-shade when your model has learned a sun effect. Separate draws two bands (shade, and sun by daytime). Gradient blends shade→sun inside each cell — compact, but takes a moment to read.")
-            }
 
             Section {
                 TextField("Your name", text: $compareName, prompt: Text(defaultCompareName))
