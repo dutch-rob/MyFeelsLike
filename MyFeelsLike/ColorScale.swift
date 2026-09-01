@@ -175,6 +175,25 @@ enum ColorScale {
         ScoreAnchor(score: 1000, color: Color(red: 0.00, green: 0.00, blue: 0.00))   // black
     ]
 
+    /// Candidate palette: the full scale with two extra anchors through the
+    /// blue-to-green stretch. Interpolating straight from blue to green in
+    /// gamma-encoded sRGB loses more blue luminance than it gains in green at
+    /// first, so the scale grows slightly *darker* just past blue (relative
+    /// luminance 0.072 at score 250, 0.064 at 275, still 0.067 at 300) and its
+    /// midpoint teal sits at 0.17 where an even ramp wants 0.39. These two are
+    /// solved to put luminance on a straight line from blue to green. Not yet
+    /// the shipping palette — see ColorScoreColumn's comparison mode.
+    static let brightenedScoreAnchors: [ScoreAnchor] = [
+        ScoreAnchor(score:    0, color: Color(red: 1.00, green: 1.00, blue: 1.00)),  // white
+        ScoreAnchor(score:  250, color: Color(red: 0.00, green: 0.00, blue: 1.00)),  // blue
+        ScoreAnchor(score:  333, color: Color(red: 0.00, green: 0.61, blue: 0.85)),  // azure
+        ScoreAnchor(score:  417, color: Color(red: 0.00, green: 0.85, blue: 0.45)),  // spring green
+        ScoreAnchor(score:  500, color: Color(red: 0.00, green: 1.00, blue: 0.00)),  // green
+        ScoreAnchor(score:  690, color: Color(red: 1.00, green: 1.00, blue: 0.00)),  // yellow
+        ScoreAnchor(score:  880, color: Color(red: 1.00, green: 0.00, blue: 0.00)),  // red
+        ScoreAnchor(score: 1000, color: Color(red: 0.45, green: 0.00, blue: 0.00))   // dark red
+    ]
+
     /// Grayscale: light at the cold end, dark at the hot end. Used where a
     /// color still has to be produced in `noColor` mode (the complication, for
     /// instance) so magnitude survives even when hue carries nothing.
@@ -229,9 +248,15 @@ enum ColorScale {
     /// the `scoreAnchors`. This is the single source for every MyFeelsLike color
     /// — band, heatmap, complication and the rating column alike.
     static func color(forScore score: Double) -> Color {
+        color(forScore: score, palette: activeScoreAnchors)
+    }
+
+    /// Color at a score from an explicit palette. Exists so a candidate scale
+    /// can be drawn next to the shipping one without changing what the app
+    /// uses everywhere else.
+    static func color(forScore score: Double, palette: [ScoreAnchor]) -> Color {
         let s = score.isFinite ? max(minScore, min(maxScore, score)) : minScore
         // Find the bracketing anchors by score position.
-        let palette = activeScoreAnchors
         guard let hiIdx = palette.firstIndex(where: { $0.score >= s }) else {
             return palette.last!.color
         }
