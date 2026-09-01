@@ -54,20 +54,28 @@ struct ComfortCategoryLadder: View {
             // in the open space the zigzag leaves for it.
             for (i, c) in cats.enumerated() {
                 let onLeft = !i.isMultiple(of: 2)
-                var text = ctx.resolve(Text(c.name).font(.system(size: 11, weight: .medium)))
+                // Turned to run along the column instead of across it. The
+                // column is tall and narrow, so horizontal text had only its
+                // width to work with and had to stay small; rotated, the names
+                // have the whole height and can be read at a usable size.
+                var text = ctx.resolve(Text(c.name).font(.system(size: 17, weight: .semibold)))
                 text.shading = .color(.primary)
                 let tSize = text.measure(in: size)
-                let x = onLeft ? left + 4 + tSize.width / 2 : right - 4 - tSize.width / 2
+                let x = onLeft ? left + 4 + tSize.height / 2 : right - 4 - tSize.height / 2
                 let at = CGPoint(x: x, y: y(c.score))
-                // A chip behind the word: the selection indicator sweeps across
-                // the column and crosses each label exactly when that category
-                // is the one being chosen, which is the worst moment for it to
-                // be washed out.
-                let chip = CGRect(x: at.x - tSize.width / 2 - 3, y: at.y - tSize.height / 2 - 1,
-                                  width: tSize.width + 6, height: tSize.height + 2)
-                ctx.fill(Path(roundedRect: chip, cornerRadius: 3),
-                         with: .color(Color(uiColor: .secondarySystemBackground)))
-                ctx.draw(text, at: at, anchor: .center)
+                ctx.drawLayer { layer in
+                    layer.translateBy(x: at.x, y: at.y)
+                    layer.rotate(by: .degrees(-90))
+                    // A chip behind the word: the selection indicator sweeps
+                    // across the column and crosses each label exactly when
+                    // that category is the one being chosen, which is the worst
+                    // moment for it to be washed out.
+                    let chip = CGRect(x: -tSize.width / 2 - 4, y: -tSize.height / 2 - 2,
+                                      width: tSize.width + 8, height: tSize.height + 4)
+                    layer.fill(Path(roundedRect: chip, cornerRadius: 3),
+                               with: .color(Color(uiColor: .secondarySystemBackground)))
+                    layer.draw(text, at: .zero, anchor: .center)
+                }
             }
         }
         .background(Color(uiColor: .secondarySystemBackground))

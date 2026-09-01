@@ -129,7 +129,7 @@ enum DemoMode {
     /// Comfortably wider than the 3 °C a feature needs to be eligible at all,
     /// and sitting in the upper part of the coming day's range so the colder
     /// hours fall outside it.
-    static let ratedApparentBand: ClosedRange<Double> = 10.8...14.2
+    static let ratedApparentBand: ClosedRange<Double> = 9.0...16.5
 
     /// Ratings are sampled from a forecast built at this fixed instant, not
     /// "now". The 10-day series is 240 points over 237 CSV rows, so a few rows
@@ -161,17 +161,34 @@ enum DemoMode {
         // out, and the resulting spread fell just under the 3 °C a feature needs
         // to be eligible at all — so no model was fit and the demo lost its color.
         let sorted = candidates.sorted { $0.apparentTemperatureC < $1.apparentTemperatureC }
-        let wanted = min(14, sorted.count)
+        // More ratings widen every observed range and lower the leverage
+        // thresholds (which scale with m/n), so the band spends less of the
+        // forecast at the 15% floor. The narrowing is still visible at the
+        // extremes, which is the behaviour the demo is meant to show.
+        let wanted = min(24, sorted.count)
         return (0..<wanted).map { i in
             let p = sorted[i * (sorted.count - 1) / max(1, wanted - 1)]
             // ~40 points per °C: steep enough to clear the score-spread gate,
             // gentle enough to stay well inside the plausibility ceiling.
-            let score = 420 + (p.apparentTemperatureC - ratedApparentBand.lowerBound) * 40
             // Vary the self-reports so their rated ranges cover what the forecast
             // will ask for. With sun fixed at 0, every night hour (forced to
             // shade) counted as a scenario never rated, and that dominated the
             // narrowing instead of the temperature difference we want to show.
             let sun = [-1, 0, 1][i % 3]
+            // ~40 points per °C: steep enough to clear the score-spread gate,
+            // gentle enough to stay well inside the plausibility ceiling. The
+            // demo rater also feels the sun: 110 points per step from shade to
+            // full sun, which is a large effect but a real one, and it is what
+            // lets the fitted model select the sun feature at all. Without it
+            // sun varied while the score did not, so the term never earned its
+            // place and the band could not split.
+            let sunEffect = 110.0 * Double(sun)
+            // A little structure that is not explained by either term, so the
+            // fit is not degenerate. Deterministic, so the demo is identical
+            // from run to run.
+            let wobble = [7.0, -5.0, 3.0, -9.0, 5.0][i % 5]
+            let score = 420 + (p.apparentTemperatureC - ratedApparentBand.lowerBound) * 40
+                        + sunEffect + wobble
             return Rating(feelsLikeScore: score, activity: 1, dress: 0, sun: sun, snapshot: p)
         }
     }
