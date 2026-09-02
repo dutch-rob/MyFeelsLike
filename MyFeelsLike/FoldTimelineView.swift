@@ -730,10 +730,9 @@ struct FoldTimelineView: View {
 
     private func foldCanvas(cols: [DayCol], total: Int, plot: CGRect) -> some View {
         let cal = Calendar.current
-        // Show sun/shade whenever the model learned a sun effect. The style
-        // setting picks how — two halves, or a gradient through the strip —
-        // it does not decide whether. Gating on `.separate` here was why the
-        // fold showed a plain band for anyone using Gradient.
+        // Show sun/shade whenever the model learned a sun effect. There is no
+        // longer a style setting to consult: the band always splits into two
+        // halves, so that width alone carries reliability everywhere.
         let splitSunShade = sunFeatureActive
         return Canvas { ctx, _ in
             // During the first layout pass (and while panels resize) the plot can

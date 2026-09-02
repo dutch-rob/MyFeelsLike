@@ -598,12 +598,7 @@ struct HereTodayView: View {
         }
     }
 
-    /// Gradient band: each hour cell runs in-shade (top) → in-sun (bottom) — one
-    /// column of the 10-day heatmap turned 90°, so the day's shade↔sun spread
-    /// reads vertically. Reliability is carried by cell opacity (the gradient
-    /// needs the full height to read). Night cells (sun == shade) fall back to
-    /// the solid MyFeelsLike color.
-    /// Separate style: two stacked solid bands — in-shade (all hours) above, and
+    /// Two stacked solid bands — in-shade (all hours) above, and
     /// in-sun (daytime only, night left blank) below. Both share the same time
     /// axis, so the sun band lines up under the shade band and simply has gaps
     /// where there's no daylight. Cloud/sun markers label each.
