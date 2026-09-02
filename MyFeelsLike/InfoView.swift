@@ -10,12 +10,10 @@ struct InfoView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                // Which build this is, so a tester can say which one they saw
-                // a problem in without digging through Settings.
-                Text(BuildInfo.versionAndDate)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Version \(BuildInfo.versionAndDate)")
+                    Text(BuildInfo.versionAndDate)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Version \(BuildInfo.versionAndDate)")
 
                 Group {
                     Text("MyFeelsLike learns how the weather actually feels *to you*, and colors the forecast by your own comfort instead of a one-size-fits-all \"feels like\" number. Rate a handful of moments, and from then on the next 24 hours and 10 days are shown as *your* colors — on iPhone and Apple Watch.")
@@ -58,7 +56,7 @@ struct InfoView: View {
                     Text("Rating how it feels").font(.headline).id("rating-how-it-feels")
                     Text("Tap **Rate Feels Like**, scroll the color column until the strip across the middle shows how this moment feels, then set your activity, clothing and sun/shade. Save.")
                     Text("The whole scale runs coldest to hottest:")
-                    Image("InfoScaleBar").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 90).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The whole comfort scale, coldest at the left through blue, green and yellow to hottest at the right")
+                    Image("InfoScaleBar").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The whole comfort scale, coldest at the left through blue, green and yellow to hottest at the right")
                     Text("The column shows a stretch of it at a time, so you can settle on a point precisely:")
                     Image("InfoRatingColumn").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 380).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The rating column, with the ruler marks and the indicator across the middle")
                     DisclosureGroup("Show more — Getting a good model quickly") {
@@ -176,10 +174,7 @@ struct InfoView: View {
 
                 Group {
                     Text("More").font(.headline).id("more")
-                    HStack(spacing: 4) {
-                        Text("Link:")
-                        Link("Developer documentation on GitHub", destination: URL(string: "https://github.com/dutch-rob/MyFeelsLike/blob/main/ARCHITECTURE.md")!)
-                    }
+                    Text("Link: [Developer documentation on GitHub](https://github.com/dutch-rob/MyFeelsLike/blob/main/ARCHITECTURE.md)")
                 }
                 }
                 .padding(.horizontal, 16)

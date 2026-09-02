@@ -224,6 +224,14 @@ def generate(items: list) -> str:
         "        ScrollViewReader { proxy in",
         "            ScrollView {",
         "                VStack(alignment: .leading, spacing: 16) {",
+        # Which build this is, so a tester can say which one they saw a problem
+        # in. A runtime value rather than README content, so it is emitted here
+        # instead of being parsed out of the Markdown.
+        "                    Text(BuildInfo.versionAndDate)",
+        "                        .font(.caption2)",
+        "                        .foregroundStyle(.secondary)",
+        "                        .accessibilityLabel(\"Version \\(BuildInfo.versionAndDate)\")",
+        "",
     ]
 
     for group in groups:
