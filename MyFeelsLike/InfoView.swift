@@ -57,6 +57,9 @@ struct InfoView: View {
                 Group {
                     Text("Rating how it feels").font(.headline).id("rating-how-it-feels")
                     Text("Tap **Rate Feels Like**, scroll the color column until the strip across the middle shows how this moment feels, then set your activity, clothing and sun/shade. Save.")
+                    Text("The whole scale runs coldest to hottest:")
+                    Image("InfoScaleBar").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 90).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The whole comfort scale, coldest at the left through blue, green and yellow to hottest at the right")
+                    Text("The column shows a stretch of it at a time, so you can settle on a point precisely:")
                     Image("InfoRatingColumn").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 380).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The rating column, with the ruler marks and the indicator across the middle")
                     DisclosureGroup("Show more — Getting a good model quickly") {
                         VStack(alignment: .leading, spacing: 10) {
@@ -84,7 +87,7 @@ struct InfoView: View {
                 Group {
                     Text("The 10-day screen").font(.headline).id("the-10-day-screen")
                     Text("The same temperature panel stretched over ten days (the recent past drawn dashed), plus a heatmap of your comfort: one column per day, hour-of-day up the side, so the good times of day stand out.")
-                    Image("InfoHeatmap").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The 10-day heat map: one column per day, hours of the day up the side")
+                    Image("InfoRotation3").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The 10-day heat map: one column per day, hours of the day up the side")
                 }
 
                 Group {
@@ -143,11 +146,15 @@ struct InfoView: View {
                 Group {
                     Text("Settings and units").font(.headline).id("settings-and-units")
                     Text("Choose °C or °F and 12- or 24-hour time, pick which series the graphs show, and switch the chart style between lines and filled bands.")
+                    Text("**Comfort scale** offers three ways of showing the same score, for anyone whose color vision makes the default hard to read. **Colors** is the scale above. **No red** keeps every color up to yellow where it is and darkens the hot end to black instead of turning it red, so red/green confusion cannot make a hot hour read as a mild one. **No color** drops hue altogether: the comfort band becomes either a line graph against six named categories — very cold, cold, mild, warm, very warm, hot — or the same band in shades of gray, the rating scale names the categories and shows the number behind them, and the weather curves are told apart by line pattern rather than color.")
+                    Text("**Fold timeline** is an experimental alternative to the two graph screens: one screen you swipe to morph the 24-hour band into the 10-day heat map, holding anywhere mid-turn.")
                     DisclosureGroup("Show more — The rest of Settings") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("**Muted colors** softens the weather lines for a gentler look. You can show or hide the **table** screen, turn the weather-sky background on or off, set the name others see when comparing, and choose whether to share anonymous data with the developer.")
                             Text("**Fold timeline** is experimental: it replaces the two graph screens with a single one you swipe to morph from the 24-hour view into the 10-day heat map. Swipe part-way and it holds there, mid-turn.")
-                            Image("InfoFoldRotation").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("Mid-swipe: each day's color band turning on its way to becoming a heatmap column")
+                            Image("InfoRotation1").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("Before the turn: the comfort band as one horizontal stripe, time of day along its length")
+                            Image("InfoRotation2").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("Part way through: each day's segment turning")
+                            Image("InfoRotation3").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("After the turn: a heat map, hours of the day up the side and dates across")
                             Spacer(minLength: 0)
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -169,7 +176,10 @@ struct InfoView: View {
 
                 Group {
                     Text("More").font(.headline).id("more")
-                    Link("Developer documentation on GitHub", destination: URL(string: "https://github.com/dutch-rob/MyFeelsLike/blob/main/ARCHITECTURE.md")!)
+                    HStack(spacing: 4) {
+                        Text("Link:")
+                        Link("Developer documentation on GitHub", destination: URL(string: "https://github.com/dutch-rob/MyFeelsLike/blob/main/ARCHITECTURE.md")!)
+                    }
                 }
                 }
                 .padding(.horizontal, 16)

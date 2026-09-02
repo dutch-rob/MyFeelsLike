@@ -43,6 +43,12 @@ Tap **Rate Feels Like**, scroll the color column until the strip across the
 middle shows how this moment feels, then set your activity, clothing and
 sun/shade. Save.
 
+The whole scale runs coldest to hottest:
+
+![The whole comfort scale, coldest at the left through blue, green and yellow to hottest at the right](MyFeelsLike/Assets.xcassets/InfoScaleBar.imageset/InfoScaleBar.png)
+
+The column shows a stretch of it at a time, so you can settle on a point precisely:
+
 ![The rating column, with the ruler marks and the indicator across the middle](MyFeelsLike/Assets.xcassets/InfoRatingColumn.imageset/InfoRatingColumn.png)
 
 ### Getting a good model quickly
@@ -72,7 +78,7 @@ The same temperature panel stretched over ten days (the recent past drawn
 dashed), plus a heatmap of your comfort: one column per day, hour-of-day up the
 side, so the good times of day stand out.
 
-![The 10-day heat map: one column per day, hours of the day up the side](MyFeelsLike/Assets.xcassets/InfoHeatmap.imageset/InfoHeatmap.png)
+![The 10-day heat map: one column per day, hours of the day up the side](MyFeelsLike/Assets.xcassets/InfoRotation3.imageset/InfoRotation3.png)
 
 ## Reading exact values
 **Long-press any graph** to drop a line you can drag along the timeline. A card
@@ -136,6 +142,20 @@ your current color — split into sun and shade when known — on your watch fac
 Choose °C or °F and 12- or 24-hour time, pick which series the graphs show, and
 switch the chart style between lines and filled bands.
 
+**Comfort scale** offers three ways of showing the same score, for anyone whose
+color vision makes the default hard to read. **Colors** is the scale above.
+**No red** keeps every color up to yellow where it is and darkens the hot end to
+black instead of turning it red, so red/green confusion cannot make a hot hour
+read as a mild one. **No color** drops hue altogether: the comfort band becomes
+either a line graph against six named categories — very cold, cold, mild, warm,
+very warm, hot — or the same band in shades of gray, the rating scale names the
+categories and shows the number behind them, and the weather curves are told
+apart by line pattern rather than color.
+
+**Fold timeline** is an experimental alternative to the two graph screens: one
+screen you swipe to morph the 24-hour band into the 10-day heat map, holding
+anywhere mid-turn.
+
 ### The rest of Settings
 **Muted colors** softens the weather lines for a gentler look. You can show or
 hide the **table** screen, turn the weather-sky background on or off, set the
@@ -146,7 +166,11 @@ the developer.
 single one you swipe to morph from the 24-hour view into the 10-day heat map.
 Swipe part-way and it holds there, mid-turn.
 
-![Mid-swipe: each day's color band turning on its way to becoming a heatmap column](MyFeelsLike/Assets.xcassets/InfoFoldRotation.imageset/InfoFoldRotation.png)
+![Before the turn: the comfort band as one horizontal stripe, time of day along its length](MyFeelsLike/Assets.xcassets/InfoRotation1.imageset/InfoRotation1.png)
+
+![Part way through: each day's segment turning](MyFeelsLike/Assets.xcassets/InfoRotation2.imageset/InfoRotation2.png)
+
+![After the turn: a heat map, hours of the day up the side and dates across](MyFeelsLike/Assets.xcassets/InfoRotation3.imageset/InfoRotation3.png)
 
 ## Your data
 Your ratings and your personal model stay on your device.
@@ -160,7 +184,7 @@ Nothing leaves your device unless you turn on **Share data with developers**
 no name, no location, no place.
 
 ## More
-[Developer documentation on GitHub](https://github.com/dutch-rob/MyFeelsLike/blob/main/ARCHITECTURE.md)
+Link: [Developer documentation on GitHub](https://github.com/dutch-rob/MyFeelsLike/blob/main/ARCHITECTURE.md)
 <!-- INFO_SCREEN_END -->
 
 ---
