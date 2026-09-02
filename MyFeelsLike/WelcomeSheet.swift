@@ -17,8 +17,14 @@ enum AppVersion {
     }
 
     /// One-line summary shown after an update. Edit this per release.
-    static let whatsNew =
-        "Compare your MyFeelsLike with people nearby, see in-sun vs in-shade in the color band, and read the day's range on the watch complication."
+    static let whatsNew = """
+        Options for color vision deficiency: a red-free scale, and a no-color \
+        scale that names the comfort categories instead.
+
+        The color scale is brighter through the change from blue to green, \
+        which used to darken there. Blue, green and yellow have not moved, so \
+        a rating still means what it did.
+        """
 }
 
 struct WelcomeSheet: View {

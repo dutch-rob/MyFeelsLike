@@ -8,6 +8,13 @@
 //  where both scales share their anchors), so the tests check colors, not just
 //  numbers.
 //
+//  The color check runs against a frozen copy of the palette as it stood when
+//  the migration was written, not against the live one. What the migration
+//  promises is that it maps a score to the point on *that* scale which the
+//  user had picked; the palette has since been re-lit through the blue-to-green
+//  stretch, and comparing against today's colors would test the palette rather
+//  than the conversion.
+//
 
 import Testing
 import Foundation
@@ -21,6 +28,33 @@ struct ScoreScaleMigrationTests {
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         ui.getRed(&r, green: &g, blue: &b, alpha: &a)
         return (Double(r), Double(g), Double(b))
+    }
+
+    /// The score palette as it was when the migration was designed. Frozen on
+    /// purpose: see the note at the top of this file.
+    private static let migrationEraAnchors: [ColorScale.ScoreAnchor] = [
+        .init(score:    0, color: Color(red: 1.00, green: 1.00, blue: 1.00)),
+        .init(score:  250, color: Color(red: 0.00, green: 0.00, blue: 1.00)),
+        .init(score:  500, color: Color(red: 0.00, green: 1.00, blue: 0.00)),
+        .init(score:  690, color: Color(red: 1.00, green: 1.00, blue: 0.00)),
+        .init(score:  880, color: Color(red: 1.00, green: 0.00, blue: 0.00)),
+        .init(score: 1000, color: Color(red: 0.45, green: 0.00, blue: 0.00))
+    ]
+
+    /// Interpolates the frozen palette the same way ColorScale interpolates the
+    /// live one.
+    private func migrationEraColor(forScore score: Double) -> Color {
+        let anchors = Self.migrationEraAnchors
+        let s = max(0, min(1000, score))
+        guard let hi = anchors.firstIndex(where: { $0.score >= s }) else { return anchors.last!.color }
+        if hi == 0 { return anchors.first!.color }
+        let lo = anchors[hi - 1], up = anchors[hi]
+        let span = up.score - lo.score
+        let t = span > 0 ? (s - lo.score) / span : 0
+        let (r1, g1, b1) = rgb(lo.color), (r2, g2, b2) = rgb(up.color)
+        return Color(red: r1 + (r2 - r1) * t,
+                     green: g1 + (g2 - g1) * t,
+                     blue: b1 + (b2 - b1) * t)
     }
 
     private func distance(_ a: Color, _ b: Color) -> Double {
@@ -48,11 +82,11 @@ struct ScoreScaleMigrationTests {
         var worst = 0.0
         for old in stride(from: 0.0, through: ScoreScaleMigration.legacyRed, by: 5) {
             let d = distance(ColorScale.legacyColor(forScore: old),
-                             ColorScale.color(forScore: ScoreScaleMigration.convert(old)))
+                             migrationEraColor(forScore: ScoreScaleMigration.convert(old)))
             worst = max(worst, d)
         }
-        // Both scales share every anchor below red, including pure green, so
-        // the conversion reproduces the picked color exactly (bar rounding).
+        // Both share every anchor below red, including pure green, so the
+        // conversion reproduces the picked color exactly (bar rounding).
         #expect(worst < 0.01, "worst color distance \(worst)")
     }
 

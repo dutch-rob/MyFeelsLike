@@ -73,33 +73,11 @@ struct RateFeelsLikeView: View {
         NavigationStack {
             HStack(alignment: .top, spacing: 0) {
                 // ── LEFT: scrollable color column ────────────────────────
-#if DEBUG
-                // TEMPORARY, debug builds only: the shipping scale beside the
-                // candidate one, so the two can be judged on a real screen
-                // rather than on paper. Delete this block, and the
-                // paletteOverride it uses, once the scale is decided.
-                HStack(spacing: 10) {
-                    VStack(spacing: 4) {
-                        Text("current").font(.caption2).foregroundStyle(.secondary)
-                        ColorScoreColumn(score: $feelsLikeScore)
-                    }
-                    VStack(spacing: 4) {
-                        Text("brightened").font(.caption2).foregroundStyle(.secondary)
-                        ColorScoreColumn(score: .constant(feelsLikeScore),
-                                         paletteOverride: ColorScale.brightenedScoreAnchors)
-                    }
-                }
-                .frame(width: 260)
-                .padding(.leading, 12)
-                .padding(.trailing, 12)
-                .padding(.vertical, 12)
-#else
                 ColorScoreColumn(score: $feelsLikeScore)
                     .frame(width: 150)
                     .padding(.leading, 16)
                     .padding(.trailing, 16)
                     .padding(.vertical, 12)
-#endif
 
                 // ── RIGHT: questions ──────────────────────────────────────
                 ScrollView {
@@ -287,9 +265,6 @@ private struct HintID: Hashable {
 
 struct ColorScoreColumn: View {
     @Binding var score: Double   // 0…1000
-    /// Draw a named palette instead of the one the settings select. Used only
-    /// by the DEBUG comparison below; nil everywhere else.
-    var paletteOverride: [ColorScale.ScoreAnchor]? = nil
     @AppStorage(SettingsKey.colorVisionMode)
     private var visionMode = ColorScale.ColorVisionMode.full
     @AppStorage(SettingsKey.noColorStyle)
@@ -321,7 +296,7 @@ struct ColorScoreColumn: View {
                                     // the categories line up with the tick marks.
                                     ComfortCategoryLadder(activeTop: h / 2, activeSpan: 2 * h)
                                 } else {
-                                    LinearGradient(gradient: Self.paddedScoreGradient(palette: paletteOverride),
+                                    LinearGradient(gradient: Self.paddedScoreGradient(),
                                                    startPoint: .top, endPoint: .bottom)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
@@ -408,8 +383,7 @@ struct ColorScoreColumn: View {
     /// (black → purple near the top) get proportionally more visible space.
     /// `legacy` builds the previous palette instead, so testers can compare the
     /// two side by side on the rating column.
-    static func paddedScoreGradient(legacy: Bool = false,
-                                    palette: [ColorScale.ScoreAnchor]? = nil) -> Gradient {
+    static func paddedScoreGradient(legacy: Bool = false) -> Gradient {
         let padFrac: Double = 1.0 / 6.0          // (h/2) / (3h)
         let activeRange = 1.0 - 2.0 * padFrac    // 2/3
         let eps: Double = 0.0005
@@ -425,24 +399,11 @@ struct ColorScoreColumn: View {
         for i in 0...steps {
             let f = Double(i) / Double(steps)                 // 0 = top = hottest
             let score = ColorScale.maxScore * (1 - f)
-            let c: Color
-            if legacy {
-                c = ColorScale.legacyColor(forScore: score)
-            } else if let palette {
-                c = ColorScale.color(forScore: score, palette: palette)
-            } else {
-                c = ColorScale.color(forScore: score)
-            }
+            let c = legacy ? ColorScale.legacyColor(forScore: score)
+                           : ColorScale.color(forScore: score)
             stops.append(.init(color: c, location: padFrac + activeRange * f))
         }
-        let cold: Color
-        if legacy {
-            cold = ColorScale.legacyColor(forScore: 0)
-        } else if let palette {
-            cold = ColorScale.color(forScore: 0, palette: palette)
-        } else {
-            cold = ColorScale.color(forScore: 0)
-        }
+        let cold = legacy ? ColorScale.legacyColor(forScore: 0) : ColorScale.color(forScore: 0)
         stops.append(.init(color: cold, location: 1.0 - padFrac + eps))
         stops.append(.init(color: .clear, location: 1.0 - padFrac + 2 * eps))
         stops.append(.init(color: .clear, location: 1.0))

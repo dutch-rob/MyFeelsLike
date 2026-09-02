@@ -47,7 +47,15 @@ enum ScoreScaleMigration {
     }()
 
     /// New-scale positions of the same anchors, cold → hot, up to red.
-    static var newAnchorScores: [Double] { ColorScale.scoreAnchors.map(\.score) }
+    ///
+    /// Frozen, not read from `ColorScale.scoreAnchors`. This describes a
+    /// historical mapping between two fixed scales, and the code below pairs
+    /// legacy anchor *i* with new anchor *i*. Deriving it from the live palette
+    /// meant that adding an anchor renumbered everything: inserting two into the
+    /// blue-to-green stretch moved `newRed` from 880 to 500, so every converted
+    /// score came out wrong. The palette may keep evolving; this list must not
+    /// follow it.
+    static let newAnchorScores: [Double] = [0, 250, 500, 690, 880, 1000]
 
     /// Old score of pure red (R1) — the last anchor the two scales share.
     static var legacyRed: Double { legacyAnchorScores[4] }
