@@ -390,9 +390,17 @@ struct FoldTimelineView: View {
                 // The rotating band grows as it tips upright; a line graph does
                 // not rotate, so it takes one steady share big enough to carry
                 // six named ticks without crushing them.
+                //
+                // The two ends match the paged screens: the taller 24-hour band
+                // and the shorter 10-day heatmap. The change between them is
+                // spent in the first 40% of the rotation rather than spread
+                // across all of it, so the strips settle to their final
+                // thickness early and the later, most-overlapping part of the
+                // turn happens at a steady size.
+                let heightPhase = smoothstep(min(1, rotatePhase / 0.4))
                 let colorH = comfortAsLineGraph
                     ? avail * 0.26
-                    : lerp(avail * 0.10, avail * 0.34, smoothstep(rotatePhase))
+                    : lerp(avail * 0.15, avail * 0.238, heightPhase)
                 let graphsH = avail - colorH
                 // A ScrollView sized to exactly one screen: it never actually
                 // scrolls, but it restores pull-to-refresh (.refreshable only
@@ -478,6 +486,15 @@ struct FoldTimelineView: View {
 
     // MARK: Temperature
 
+    /// Ink for a weather curve. In No color mode every curve is drawn in the
+    /// same ink and told apart by its dash pattern, so hue carries nothing at
+    /// all -- previously they were desaturated to *different* grays, which is
+    /// still a lightness code. Follows the sky like the axes do: literal black
+    /// would be invisible against the night background.
+    private func seriesInk(_ base: Color) -> Color {
+        patternedSeries ? axisInk : base
+    }
+
     @ViewBuilder
     private func temperatureChart(height: CGFloat) -> some View {
         let dom = tempYDomain
@@ -499,7 +516,7 @@ struct FoldTimelineView: View {
                                                  dash: SeriesDash.dashDot) }
                     if graphFeels {
                         LineMark(x: .value("t", p.date), y: .value("app", app), series: .value("s", "app"))
-                            .foregroundStyle(.purple)
+                            .foregroundStyle(seriesInk(.purple))
                             .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
                             .interpolationMethod(.linear)
                     }
@@ -533,13 +550,13 @@ struct FoldTimelineView: View {
                           dash: [CGFloat] = []) -> some ChartContent {
         if linesOnly {
             LineMark(x: .value("t", date), y: .value("y", y), series: .value("s", key))
-                .foregroundStyle(color)
+                .foregroundStyle(seriesInk(color))
                 .lineStyle(SeriesDash.stroke(dash, patterned: patternedSeries))
                 .interpolationMethod(.linear)
         } else {
             AreaMark(x: .value("t", date), yStart: .value("b", base), yEnd: .value("y", y),
                      series: .value("s", key))
-                .foregroundStyle(color).interpolationMethod(.linear)
+                .foregroundStyle(seriesInk(color)).interpolationMethod(.linear)
         }
     }
 
@@ -564,10 +581,10 @@ struct FoldTimelineView: View {
 
     private var tempLegend: [(color: Color, label: String, isArea: Bool)] {
         var e: [(Color, String, Bool)] = []
-        if graphFeels    { e.append((.purple, "Feels like", false)) }
-        if graphTemp     { e.append((.green,  "Temp", false)) }
-        if graphWetBulb  { e.append((.blue,   "Wet Bulb", false)) }
-        if graphDewPoint { e.append((.red,    "Dew Pt", false)) }
+        if graphFeels    { e.append((seriesInk(.purple), "Feels like", false)) }
+        if graphTemp     { e.append((seriesInk(.green),  "Temp", false)) }
+        if graphWetBulb  { e.append((seriesInk(.blue),   "Wet Bulb", false)) }
+        if graphDewPoint { e.append((seriesInk(.red),    "Dew Pt", false)) }
         return e.map { ($0.0, $0.1, $0.2) }
     }
 
@@ -587,7 +604,7 @@ struct FoldTimelineView: View {
                     if graphPrecip {
                         if linesOnly {
                             LineMark(x: .value("t", p.date), y: .value("y", rain), series: .value("s", "rL"))
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(seriesInk(.blue))
                                 .lineStyle(SeriesDash.stroke(SeriesDash.dotted, patterned: patternedSeries))
                                 .interpolationMethod(.linear)
                         } else {
@@ -596,12 +613,12 @@ struct FoldTimelineView: View {
                     }
                     if graphGust {
                         LineMark(x: .value("t", p.date), y: .value("y", gust), series: .value("s", "gL"))
-                            .foregroundStyle(.red.opacity(0.7)).lineStyle(StrokeStyle(lineWidth: 1.6, dash: [3, 2]))
+                            .foregroundStyle(seriesInk(.red).opacity(patternedSeries ? 1 : 0.7)).lineStyle(StrokeStyle(lineWidth: 1.6, dash: [3, 2]))
                             .interpolationMethod(.linear)
                     }
                     if graphWind {
                         LineMark(x: .value("t", p.date), y: .value("y", wind), series: .value("s", "wL"))
-                            .foregroundStyle(.red)
+                            .foregroundStyle(seriesInk(.red))
                             .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
                             .interpolationMethod(.linear)
                     }
@@ -637,14 +654,14 @@ struct FoldTimelineView: View {
     @ChartContentBuilder
     private func windArea(_ date: Date, _ y: Double, _ color: Color, _ key: String) -> some ChartContent {
         AreaMark(x: .value("t", date), yStart: .value("b", 0), yEnd: .value("y", y), series: .value("s", key))
-            .foregroundStyle(color).interpolationMethod(.linear)
+            .foregroundStyle(seriesInk(color)).interpolationMethod(.linear)
     }
 
     private var windLegend: [(color: Color, label: String, isArea: Bool)] {
         var e: [(Color, String, Bool)] = []
-        if graphPrecip { e.append((.blue, "Precip %", true)) }
-        if graphWind   { e.append((.red, useFahrenheit ? "Wind mph" : "Wind kph", false)) }
-        if graphGust   { e.append((.red.opacity(0.5), useFahrenheit ? "Gust mph" : "Gust kph", false)) }
+        if graphPrecip { e.append((seriesInk(.blue), "Precip %", true)) }
+        if graphWind   { e.append((seriesInk(.red), useFahrenheit ? "Wind mph" : "Wind kph", false)) }
+        if graphGust   { e.append((seriesInk(.red).opacity(0.5), useFahrenheit ? "Gust mph" : "Gust kph", false)) }
         return e.map { ($0.0, $0.1, $0.2) }
     }
 

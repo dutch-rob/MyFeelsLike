@@ -79,10 +79,10 @@ struct HereTodayView: View {
 
     private var tempLegendEntries: [(color: Color, label: String, isArea: Bool)] {
         var e: [(color: Color, label: String, isArea: Bool)] = []
-        if graphFeels    { e.append((.purple, "Feels like", false)) }
-        if graphTemp     { e.append((.green,  "Temp",        false)) }
-        if graphWetBulb  { e.append((.blue,   "Wet Bulb",    false)) }
-        if graphDewPoint { e.append((.red,    "Dew Pt",      false)) }
+        if graphFeels    { e.append((seriesInk(.purple), "Feels like", false)) }
+        if graphTemp     { e.append((seriesInk(.green),  "Temp",        false)) }
+        if graphWetBulb  { e.append((seriesInk(.blue),   "Wet Bulb",    false)) }
+        if graphDewPoint { e.append((seriesInk(.red),    "Dew Pt",      false)) }
         return e
     }
 
@@ -109,9 +109,9 @@ struct HereTodayView: View {
 
     private var windLegendEntries: [(color: Color, label: String, isArea: Bool)] {
         var e: [(color: Color, label: String, isArea: Bool)] = []
-        if graphPrecip { e.append((.blue, "Precip %", true)) }
-        if graphWind   { e.append((.red,  useFahrenheit ? "Wind mph" : "Wind kph", false)) }
-        if graphGust   { e.append((.red.opacity(0.5), useFahrenheit ? "Gust mph" : "Gust kph", false)) }
+        if graphPrecip { e.append((seriesInk(.blue), "Precip %", true)) }
+        if graphWind   { e.append((seriesInk(.red),  useFahrenheit ? "Wind mph" : "Wind kph", false)) }
+        if graphGust   { e.append((seriesInk(.red).opacity(0.5), useFahrenheit ? "Gust mph" : "Gust kph", false)) }
         return e
     }
 
@@ -124,12 +124,25 @@ struct HereTodayView: View {
         sunFeatureActive && hasModel
     }
 
+    /// Ink for a weather curve. In No color mode every curve is drawn in the
+    /// same ink and told apart by its dash pattern, so hue carries nothing at
+    /// all -- previously they were desaturated to *different* grays, which is
+    /// still a lightness code. Follows the sky like the axes do: literal black
+    /// would be invisible against the night background.
+    private func seriesInk(_ base: Color) -> Color {
+        patternedSeries ? axisInk : base
+    }
+
     private func panelHeights(_ h: CGFloat) -> (temp: CGFloat, color: CGFloat, wind: CGFloat) {
         let wT = tempPanelVisible ? 0.50 : 0
         // Two bands plus the label between them need roughly twice the share of
         // one band, otherwise splitting turns each row into a sliver.
-        let wC = colorPanelVisible ? (comfortAsLineGraph ? 0.22
-                                      : (showsTwoBands ? 0.16 : 0.08)) : 0
+        // Half again as much room as the band used to get: it is the point of
+        // the screen and was the thinnest thing on it. The weights are
+        // normalised below, so the temperature and wind panels give up the
+        // space and the screen still fills without scrolling.
+        let wC = colorPanelVisible ? (comfortAsLineGraph ? 0.33
+                                      : (showsTwoBands ? 0.24 : 0.12)) : 0
         let wW = windPanelVisible ? 0.36 : 0
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
@@ -688,42 +701,42 @@ struct HereTodayView: View {
                         if linesOnly {
                             LineMark(x: .value("Time", p.date), y: .value("Temp", dry),
                                      series: .value("S", "dry"))
-                                .foregroundStyle(.green).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.green)).interpolationMethod(.linear)
                                 .lineStyle(SeriesDash.stroke(SeriesDash.dashed, patterned: patternedSeries))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
                                      yEnd: .value("Temp", dry),
                                      series: .value("S", "dry"))
-                                .foregroundStyle(.green).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.green)).interpolationMethod(.linear)
                         }
                     }
                     if graphWetBulb {
                         if linesOnly {
                             LineMark(x: .value("Time", p.date), y: .value("Wet Bulb", wet),
                                      series: .value("S", "wet"))
-                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.blue)).interpolationMethod(.linear)
                                 .lineStyle(SeriesDash.stroke(SeriesDash.dotted, patterned: patternedSeries))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
                                      yEnd: .value("Wet Bulb", wet),
                                      series: .value("S", "wet"))
-                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.blue)).interpolationMethod(.linear)
                         }
                     }
                     if graphDewPoint {
                         if linesOnly {
                             LineMark(x: .value("Time", p.date), y: .value("Dew Point", dew),
                                      series: .value("S", "dew"))
-                                .foregroundStyle(.red).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.red)).interpolationMethod(.linear)
                                 .lineStyle(SeriesDash.stroke(SeriesDash.dashDot, patterned: patternedSeries))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
                                      yEnd: .value("Dew Point", dew),
                                      series: .value("S", "dew"))
-                                .foregroundStyle(.red).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.red)).interpolationMethod(.linear)
                         }
                     }
                     // Personalized feels-like (apparent) stays a line, on top.
@@ -732,7 +745,7 @@ struct HereTodayView: View {
                                  y: .value("Apparent",
                                            useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
                                  series: .value("S", "app"))
-                            .foregroundStyle(.purple).interpolationMethod(.linear)
+                            .foregroundStyle(seriesInk(.purple)).interpolationMethod(.linear)
                             .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
                     }
                 }
@@ -741,23 +754,23 @@ struct HereTodayView: View {
                     if graphTemp {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Temp", useFahrenheit ? c.temperatureF : c.temperatureC))
-                            .foregroundStyle(.green).symbolSize(110)
+                            .foregroundStyle(seriesInk(.green)).symbolSize(110)
                     }
                     if graphWetBulb {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Wet Bulb", useFahrenheit ? c.wetBulbF : c.wetBulbC))
-                            .foregroundStyle(.blue).symbolSize(110)
+                            .foregroundStyle(seriesInk(.blue)).symbolSize(110)
                     }
                     if graphDewPoint {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Dew Point", useFahrenheit ? c.dewPointF : c.dewPointC))
-                            .foregroundStyle(.red).symbolSize(110)
+                            .foregroundStyle(seriesInk(.red)).symbolSize(110)
                     }
                     if graphFeels {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Apparent",
                                             useFahrenheit ? c.apparentTemperatureF : c.apparentTemperatureC))
-                            .foregroundStyle(.purple).symbolSize(110)
+                            .foregroundStyle(seriesInk(.purple)).symbolSize(110)
                     }
                 }
                 scrubRule()
@@ -836,40 +849,40 @@ struct HereTodayView: View {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Gust", gust), series: .value("S", "gustA"))
-                            .foregroundStyle(.red.opacity(0.35)).interpolationMethod(.linear)
+                            .foregroundStyle(seriesInk(.red).opacity(0.35)).interpolationMethod(.linear)
                     }
                     if graphWind && !linesOnly {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Wind", wind), series: .value("S", "windA"))
-                            .foregroundStyle(.red).interpolationMethod(.linear)
+                            .foregroundStyle(seriesInk(.red)).interpolationMethod(.linear)
                     }
                     if graphPrecip {
                         if linesOnly {
                             LineMark(x: .value("Time", p.date),
                                      y: .value("Precip %", p.precipProbability * 100),
                                      series: .value("S", "rainL"))
-                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.blue)).interpolationMethod(.linear)
                                 .lineStyle(SeriesDash.stroke(SeriesDash.dotted, patterned: patternedSeries))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
                                      yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
-                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.blue)).interpolationMethod(.linear)
                         }
                     }
                     // Gust dashed + wind solid lines, on top of the areas.
                     if graphGust {
                         LineMark(x: .value("Time", p.date),
                                  y: .value("Gust", gust), series: .value("S", "gustL"))
-                            .foregroundStyle(.red.opacity(0.7)).interpolationMethod(.linear)
+                            .foregroundStyle(seriesInk(.red).opacity(patternedSeries ? 1 : 0.7)).interpolationMethod(.linear)
                             .lineStyle(StrokeStyle(lineWidth: 2.4, dash: [4, 3]))   // already patterned
                             .symbol(Circle()).symbolSize(0)
                     }
                     if graphWind {
                         LineMark(x: .value("Time", p.date),
                                  y: .value("Wind", wind), series: .value("S", "windL"))
-                            .foregroundStyle(.red).interpolationMethod(.linear)
+                            .foregroundStyle(seriesInk(.red)).interpolationMethod(.linear)
                             .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
                             .symbol(Circle()).symbolSize(0)
                     }
@@ -879,12 +892,12 @@ struct HereTodayView: View {
                     if graphGust {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Gust", useFahrenheit ? c.windGustMPH : c.windGustKPH))
-                            .foregroundStyle(.red.opacity(0.45)).symbolSize(90)
+                            .foregroundStyle(seriesInk(.red).opacity(0.45)).symbolSize(90)
                     }
                     if graphWind {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Wind", useFahrenheit ? c.windSpeedMPH : c.windSpeedKPH))
-                            .foregroundStyle(.red).symbolSize(90)
+                            .foregroundStyle(seriesInk(.red)).symbolSize(90)
                     }
                 }
                 scrubRule()

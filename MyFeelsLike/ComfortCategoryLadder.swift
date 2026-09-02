@@ -58,7 +58,7 @@ struct ComfortCategoryLadder: View {
                 // column is tall and narrow, so horizontal text had only its
                 // width to work with and had to stay small; rotated, the names
                 // have the whole height and can be read at a usable size.
-                var text = ctx.resolve(Text(c.name).font(.system(size: 17, weight: .semibold)))
+                var text = ctx.resolve(Text(c.name).font(.system(size: 22, weight: .semibold)))
                 text.shading = .color(.primary)
                 let tSize = text.measure(in: size)
                 let x = onLeft ? left + 4 + tSize.height / 2 : right - 4 - tSize.height / 2

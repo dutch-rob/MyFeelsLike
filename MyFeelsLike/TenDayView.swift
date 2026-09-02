@@ -73,9 +73,21 @@ struct TenDayView: View {
     private var colorPanelVisible: Bool { graphColor }
     private var windPanelVisible: Bool { graphPrecip || graphWind || graphGust }
 
+    /// Ink for a weather curve. In No color mode every curve is drawn in the
+    /// same ink and told apart by its dash pattern, so hue carries nothing at
+    /// all -- previously they were desaturated to *different* grays, which is
+    /// still a lightness code. Follows the sky like the axes do: literal black
+    /// would be invisible against the night background.
+    private func seriesInk(_ base: Color) -> Color {
+        patternedSeries ? axisInk : base
+    }
+
     private func panelHeights(_ h: CGFloat) -> (temp: CGFloat, color: CGFloat, wind: CGFloat) {
         let wT = tempPanelVisible ? 0.42 : 0
-        let wC = colorPanelVisible ? 0.30 : 0
+        // The heatmap was taking nearly a third of the screen and crowding the
+        // curves; a third less suits it, and the other two panels take up the
+        // slack through the normalisation below.
+        let wC = colorPanelVisible ? 0.21 : 0
         let wW = windPanelVisible ? 0.32 : 0
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
@@ -87,10 +99,10 @@ struct TenDayView: View {
 
     private var tempLegendEntries: [(color: Color, label: String, isArea: Bool)] {
         var e: [(color: Color, label: String, isArea: Bool)] = []
-        if graphFeels    { e.append((.purple, "Feels like", false)) }
-        if graphTemp     { e.append((.green,  "Temp",        false)) }
-        if graphWetBulb  { e.append((.blue,   "Wet Bulb",    false)) }
-        if graphDewPoint { e.append((.red,    "Dew Pt",      false)) }
+        if graphFeels    { e.append((seriesInk(.purple), "Feels like", false)) }
+        if graphTemp     { e.append((seriesInk(.green),  "Temp",        false)) }
+        if graphWetBulb  { e.append((seriesInk(.blue),   "Wet Bulb",    false)) }
+        if graphDewPoint { e.append((seriesInk(.red),    "Dew Pt",      false)) }
         return e
     }
 
@@ -116,9 +128,9 @@ struct TenDayView: View {
 
     private var windLegendEntries: [(color: Color, label: String, isArea: Bool)] {
         var e: [(color: Color, label: String, isArea: Bool)] = []
-        if graphPrecip { e.append((.blue, "Precip %", true)) }
-        if graphWind   { e.append((.red,  useFahrenheit ? "Wind mph" : "Wind kph", false)) }
-        if graphGust   { e.append((.red.opacity(0.5), useFahrenheit ? "Gust mph" : "Gust kph", false)) }
+        if graphPrecip { e.append((seriesInk(.blue), "Precip %", true)) }
+        if graphWind   { e.append((seriesInk(.red),  useFahrenheit ? "Wind mph" : "Wind kph", false)) }
+        if graphGust   { e.append((seriesInk(.red).opacity(0.5), useFahrenheit ? "Gust mph" : "Gust kph", false)) }
         return e
     }
 
@@ -394,7 +406,7 @@ struct TenDayView: View {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Temp", useFahrenheit ? p.temperatureF : p.temperatureC),
                          series: .value("S", "A" + suffix))
-                    .foregroundStyle(.green.opacity(fade)).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.green).opacity(fade)).interpolationMethod(.linear)
                     .lineStyle(patternedSeries
                                ? SeriesDash.stroke(SeriesDash.dashed, patterned: true)
                                : StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
@@ -403,7 +415,7 @@ struct TenDayView: View {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Wet Bulb", useFahrenheit ? p.wetBulbF : p.wetBulbC),
                          series: .value("S", "B" + suffix))
-                    .foregroundStyle(.blue.opacity(fade)).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.blue).opacity(fade)).interpolationMethod(.linear)
                     .lineStyle(patternedSeries
                                ? SeriesDash.stroke(SeriesDash.dotted, patterned: true)
                                : StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
@@ -412,7 +424,7 @@ struct TenDayView: View {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Dew Point", useFahrenheit ? p.dewPointF : p.dewPointC),
                          series: .value("S", "C" + suffix))
-                    .foregroundStyle(.red.opacity(fade)).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.red).opacity(fade)).interpolationMethod(.linear)
                     .lineStyle(patternedSeries
                                ? SeriesDash.stroke(SeriesDash.dashDot, patterned: true)
                                : StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
@@ -422,7 +434,7 @@ struct TenDayView: View {
                          y: .value("Apparent",
                                    useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
                          series: .value("S", "D" + suffix))
-                    .foregroundStyle(.purple.opacity(fade)).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.purple).opacity(fade)).interpolationMethod(.linear)
                     .lineStyle(patternedSeries
                                ? SeriesDash.stroke(SeriesDash.solid, patterned: true)
                                : StrokeStyle(lineWidth: seriesLineWidth, dash: dash ?? []))
@@ -443,26 +455,26 @@ struct TenDayView: View {
                 AreaMark(x: .value("Time", p.date),
                          yStart: .value("base", base),
                          yEnd: .value("Temp", dry), series: .value("S", "dryA"))
-                    .foregroundStyle(.green).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.green)).interpolationMethod(.linear)
             }
             if graphWetBulb {
                 AreaMark(x: .value("Time", p.date),
                          yStart: .value("base", base),
                          yEnd: .value("Wet Bulb", wet), series: .value("S", "wetA"))
-                    .foregroundStyle(.blue).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.blue)).interpolationMethod(.linear)
             }
             if graphDewPoint {
                 AreaMark(x: .value("Time", p.date),
                          yStart: .value("base", base),
                          yEnd: .value("Dew Point", dew), series: .value("S", "dewA"))
-                    .foregroundStyle(.red).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.red)).interpolationMethod(.linear)
             }
             if graphFeels {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Apparent",
                                    useFahrenheit ? p.apparentTemperatureF : p.apparentTemperatureC),
                          series: .value("S", "appA"))
-                    .foregroundStyle(.purple).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.purple)).interpolationMethod(.linear)
                     .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
             }
         }
@@ -479,7 +491,7 @@ struct TenDayView: View {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Gust", useFahrenheit ? p.windGustMPH : p.windGustKPH),
                          series: .value("S", "G" + suffix))
-                    .foregroundStyle(.red.opacity(0.7 * fade)).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.red).opacity(patternedSeries ? fade : 0.7 * fade)).interpolationMethod(.linear)
                     .lineStyle(StrokeStyle(lineWidth: 2.4, dash: [4, 3]))
                     .symbol(Circle()).symbolSize(0)
             }
@@ -487,7 +499,7 @@ struct TenDayView: View {
                 LineMark(x: .value("Time", p.date),
                          y: .value("Wind", useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH),
                          series: .value("S", "W" + suffix))
-                    .foregroundStyle(.red.opacity(fade)).interpolationMethod(.linear)
+                    .foregroundStyle(seriesInk(.red).opacity(fade)).interpolationMethod(.linear)
                     .lineStyle(patternedSeries
                                ? SeriesDash.stroke(SeriesDash.solid, patterned: true)
                                : StrokeStyle(lineWidth: seriesLineWidth, dash: windDash ?? []))
@@ -850,26 +862,26 @@ struct TenDayView: View {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Gust", gust), series: .value("S", "gustA"))
-                            .foregroundStyle(.red.opacity(0.35)).interpolationMethod(.linear)
+                            .foregroundStyle(seriesInk(.red).opacity(0.35)).interpolationMethod(.linear)
                     }
                     if graphWind && !linesOnly {
                         AreaMark(x: .value("Time", p.date),
                                  yStart: .value("base", base),
                                  yEnd: .value("Wind", wind), series: .value("S", "windA"))
-                            .foregroundStyle(.red).interpolationMethod(.linear)
+                            .foregroundStyle(seriesInk(.red)).interpolationMethod(.linear)
                     }
                     if graphPrecip {
                         if linesOnly {
                             LineMark(x: .value("Time", p.date),
                                      y: .value("Precip %", p.precipProbability * 100),
                                      series: .value("S", "rainL"))
-                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.blue)).interpolationMethod(.linear)
                                 .lineStyle(StrokeStyle(lineWidth: seriesLineWidth))
                         } else {
                             AreaMark(x: .value("Time", p.date),
                                      yStart: .value("base", base),
                                      yEnd: .value("Precip %", p.precipProbability * 100), series: .value("S", "rainA"))
-                                .foregroundStyle(.blue).interpolationMethod(.linear)
+                                .foregroundStyle(seriesInk(.blue)).interpolationMethod(.linear)
                         }
                     }
                 }
