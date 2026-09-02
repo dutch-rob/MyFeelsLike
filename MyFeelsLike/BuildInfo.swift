@@ -20,11 +20,16 @@ enum BuildInfo {
     }
 
     /// When the bundle was built, taken from the modification date of the
-    /// built Info.plist. Xcode rewrites that file on every build, so it moves
-    /// with the build without needing a run-script phase to stamp a date in.
-    /// Nil if the bundle has no readable Info.plist.
+    /// compiled executable.
+    ///
+    /// Not Info.plist: Xcode only rewrites that when something affecting it
+    /// changes, so on an incremental build it keeps the date of the last clean
+    /// build and the screen shows a stale timestamp. The executable is relinked
+    /// whenever any source file changes, which is exactly the event this is
+    /// meant to report — and if nothing changed, no relink happens and the old
+    /// date is the right answer. Nil if the executable cannot be read.
     static var date: Date? {
-        guard let url = Bundle.main.url(forResource: "Info", withExtension: "plist"),
+        guard let url = Bundle.main.executableURL,
               let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
         else { return nil }
         return attrs[.modificationDate] as? Date
