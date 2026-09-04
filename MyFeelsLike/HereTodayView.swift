@@ -619,7 +619,7 @@ struct HereTodayView: View {
         // Reserve a row for the centered title; split the rest between the bands.
         let barH = max(10, (height - 18) / 2)
         return VStack(spacing: 3) {
-            soloBand(icon: "cloud.fill", height: barH) { p in
+            soloBand(icon: "cloud.fill", height: barH, labelLimit: true) { p in
                 (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
                     ColorScale.feelsColor(score: $0, opacity: 1)
                 }
@@ -640,7 +640,7 @@ struct HereTodayView: View {
 
     /// One solid color band (reliability as thickness). `color` returns nil to
     /// leave an hour blank (used to drop night from the in-sun band).
-    private func soloBand(icon: String, height: CGFloat,
+    private func soloBand(icon: String, height: CGFloat, labelLimit: Bool = false,
                           color: @escaping (ForecastPoint) -> Color?) -> some View {
         Chart {
             ForEach(series) { p in
@@ -664,6 +664,11 @@ struct HereTodayView: View {
         }
         .chartXAxis(.hidden)
         .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        // The narrowing applies to both bands equally -- thickness comes from
+        // myFeelsLikeWidth, which is one value per hour, not per sun setting --
+        // so the reason is drawn on the shade band alone. Drawing it in both
+        // would stack the same sentence twice, the way the title used to.
+        .chartOverlay { proxy in if labelLimit { limitLabel(proxy) } }
         .frame(height: height)
         // No title overlay here. Separate style draws two of these bands, so an
         // overlaid title appeared twice, stacked over the single label that
