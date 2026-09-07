@@ -79,6 +79,17 @@ struct RateFeelsLikeView: View {
                     .padding(.trailing, 16)
                     .padding(.vertical, 12)
 
+                // ── EXPERIMENT: the same score on a picker wheel ──────────
+                // Temporary, sitting beside the column so the two instruments
+                // can be tried against each other on the same rating. Both
+                // drive `feelsLikeScore`, so moving either moves the other.
+                // This pushes the questionnaire off-screen; that is expected
+                // while the comparison is up.
+                ColorScoreWheel(score: $feelsLikeScore)
+                    .frame(width: 120)
+                    .padding(.trailing, 16)
+                    .padding(.vertical, 12)
+
                 // ── RIGHT: questions ──────────────────────────────────────
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
@@ -408,6 +419,96 @@ struct ColorScoreColumn: View {
         stops.append(.init(color: .clear, location: 1.0 - padFrac + 2 * eps))
         stops.append(.init(color: .clear, location: 1.0))
         return Gradient(stops: stops)
+    }
+}
+
+// MARK: - Picker-wheel scale (experiment)
+
+/// EXPERIMENTAL alternative to `ColorScoreColumn`: the same 0…1000 comfort
+/// score on a picker wheel instead of a sliding bar.
+///
+/// Rows every 10 points, matching the fine ticks on the column's ruler, and hot
+/// at the top so the wheel runs the same way round as the gradient. A wheel of
+/// bare colour would have nothing to aim at, so the row nearest each category
+/// anchor carries its name — the same six landmarks the no-colour ladder uses.
+struct ColorScoreWheel: View {
+    @Binding var score: Double   // 0…1000
+
+    @AppStorage(SettingsKey.colorVisionMode)
+    private var visionMode = ColorScale.ColorVisionMode.full
+    @AppStorage(SettingsKey.noColorStyle)
+    private var noColorStyle = ColorScale.NoColorStyle.lineGraph
+
+    /// A wheel shows about seven rows at once, so the step decides how much of
+    /// the scale is visible. At the column's 10-point tick spacing that is 60
+    /// points out of 1000 — seven near-identical greens, telling you nothing
+    /// about where you are. 25 puts roughly 150 points on screen, enough for the
+    /// colour to move under your thumb, and still finer than anyone rates to.
+    private static let stepSize = 25
+    /// Hot first: the wheel reads top-to-bottom like the column's gradient.
+    private static let steps: [Int] =
+        Array(stride(from: Int(ColorScale.maxScore), through: Int(ColorScale.minScore),
+                     by: -stepSize))
+
+    /// Rows that sit closest to a category anchor, which are the ones labelled.
+    private static let landmarks: [Int: String] = {
+        var m: [Int: String] = [:]
+        for c in ColorScale.comfortCategories {
+            let row = Int((c.score / Double(stepSize)).rounded()) * stepSize
+            m[row] = c.name
+        }
+        return m
+    }()
+
+    /// The wheel works in whole steps; the score it drives is continuous.
+    private var selection: Binding<Int> {
+        Binding(get: { Int((score / Double(Self.stepSize)).rounded()) * Self.stepSize },
+                set: { score = Double($0) })
+    }
+
+    /// True when colour carries nothing and the names have to do the work.
+    private var namesOnly: Bool { visionMode == .noColor }
+
+    var body: some View {
+        Picker("Comfort score", selection: selection) {
+            ForEach(Self.steps, id: \.self) { s in
+                row(for: s).tag(s)
+            }
+        }
+        .pickerStyle(.wheel)
+        .labelsHidden()
+        .accessibilityLabel("Comfort scale from hot at the top to very cold at the bottom")
+    }
+
+    @ViewBuilder
+    private func row(for s: Int) -> some View {
+        let name = Self.landmarks[s]
+        if namesOnly {
+            // No colour to read, so every row says where it is: the landmark
+            // name where there is one, a tick elsewhere.
+            Text(name ?? "·")
+                .font(name == nil ? .caption2 : .callout)
+                .foregroundStyle(name == nil ? .secondary : .primary)
+        } else {
+            // Full-bleed and as tall as the row allows: the wheel style fades
+            // and shrinks everything but the selected row, so the colour needs
+            // all the area it can get to survive that.
+            ZStack {
+                Rectangle()
+                    .fill(ColorScale.color(forScore: Double(s)))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 32)
+                if let name {
+                    Text(name)
+                        .font(.caption).fontWeight(.semibold)
+                        // Outlined the way the band labels are, because the row
+                        // colour underneath runs from deep blue to red.
+                        .foregroundStyle(.white)
+                        .shadow(color: .black, radius: 1)
+                        .shadow(color: .black, radius: 1)
+                }
+            }
+        }
     }
 }
 
