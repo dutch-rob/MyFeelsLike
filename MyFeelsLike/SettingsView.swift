@@ -115,21 +115,13 @@ struct SettingsView: View {
             }
 
             Section {
-                Toggle("Fold timeline", isOn: $useFoldTimeline)
-                    .onChange(of: useFoldTimeline) { _, on in
-                        if on {
-                            // Fold mode owns the swipe, so it can't page to the
-                            // table — hide it, remembering the prior choice.
-                            UserDefaults.standard.set(showTable, forKey: SettingsKey.tableBeforeFold)
-                            showTable = false
-                        } else {
-                            showTable = UserDefaults.standard.bool(forKey: SettingsKey.tableBeforeFold)
-                        }
-                    }
+                // Zooming is a pinch now, so the horizontal swipe is free to
+                // scroll time and the table no longer has to be hidden.
+                Toggle("Zoom graph", isOn: $useFoldTimeline)
             } header: {
-                Text("Experimental")
+                Text("Zoom graph")
             } footer: {
-                Text("Fold timeline replaces the two graph screens with one continuous timeline: swipe left/right to morph between 24-hour and 10-day — the color band folds into the heat map while the charts zoom. Long-press a graph to read exact values. (The table screen is hidden while this is on.)")
+                Text("Replaces the paged 24-hour and 10-day screens with one graph you zoom: swipe left/right to scroll through time, and pinch to zoom — from a single day out to ten days, stopping wherever you like. Buttons at the top switch to the table, and long-press a chart to read exact values.")
             }
 
             Section {

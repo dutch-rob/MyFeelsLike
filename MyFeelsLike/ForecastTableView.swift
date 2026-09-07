@@ -11,6 +11,29 @@ struct ForecastTableView: View {
     /// Features currently in the regression model. Used to decide which
     /// scenario adjusters to display (matches the graph screens).
     var activeFeatures: Set<Feature>? = nil
+    /// Called when the user swipes past an end of the table: -1 = previous
+    /// screen, +1 = next. The table owns its own scrolling, so it switches
+    /// screens on over-scroll rather than on any vertical drag.
+    var onSwitchScreen: ((Int) -> Void)? = nil
+    /// The moment showing at the top of the table, shared with the graph
+    /// screens so switching between them keeps the same place in time. Read on
+    /// the way in, written as the user scrolls.
+    @Binding var topDate: Date?
+
+    @State private var atTop = true
+    @State private var atBottom = false
+    /// False until the table has been scrolled to the graph's moment. The scroll
+    /// observer fires during the first layout (reporting the top of the content)
+    /// and would otherwise overwrite the very position we are about to restore.
+    @State private var hasAligned = false
+
+    private struct ScrollEdges: Equatable {
+        var top: Bool
+        var bottom: Bool
+        /// How far down the content we are, 0…1.
+        var fraction: Double
+    }
+
     @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
     @AppStorage(SettingsKey.use12HourClock) private var use12Hour = false
 
@@ -76,11 +99,20 @@ struct ForecastTableView: View {
         return sections
     }
 
-    /// Scroll so the "now" row sits at the top (history above, forecast below).
-    private func scrollToNow(_ proxy: ScrollViewProxy) {
-        guard let id = weatherService.current?.id else { return }
+    /// Scroll to the moment the graph screen was showing, or to "now" when
+    /// there isn't one.
+    private func alignToGraph(_ proxy: ScrollViewProxy) {
+        let target = topDate ?? nowTick
+        guard let id = nearestForecastPoint(to: target, in: allRows)?.id else { return }
+        // Two passes: in a LazyVStack the target row may not exist yet, and a
+        // scrollTo to an unrealised row does nothing. The first jump realises
+        // the rows around it, the second lands on it exactly.
         DispatchQueue.main.async {
             proxy.scrollTo(id, anchor: .top)
+            DispatchQueue.main.async {
+                proxy.scrollTo(id, anchor: .top)
+                hasAligned = true
+            }
         }
     }
 
@@ -142,7 +174,7 @@ struct ForecastTableView: View {
                     ScrollView([.vertical, .horizontal]) {
                         LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
                             if weatherService.historicUnavailable {
-                                Text("Past 24 h not available for this location.")
+                                Text("Past 10 days not available for this location.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal)
@@ -174,10 +206,43 @@ struct ForecastTableView: View {
                         }
                         .frame(minWidth: totalWidth)
                     }
-                    .refreshable { await onRefresh?() }
-                    // Open centered on "now"; re-anchor when a fresh load arrives.
-                    .onAppear { scrollToNow(proxy) }
-                    .onChange(of: weatherService.current?.id) { _, _ in scrollToNow(proxy) }
+                    .onScrollGeometryChange(for: ScrollEdges.self) { g in
+                        let span = max(1, g.contentSize.height - g.containerSize.height)
+                        let f = (g.contentOffset.y + g.contentInsets.top) / span
+                        return ScrollEdges(
+                            top: g.contentOffset.y <= g.contentInsets.top + 1,
+                            bottom: g.contentOffset.y + g.containerSize.height
+                                    >= g.contentSize.height - 1,
+                            fraction: min(1, max(0, f)))
+                    } action: { _, v in
+                        atTop = v.top; atBottom = v.bottom
+                        guard hasAligned else { return }
+                        // Rows are hourly and evenly spaced, so scroll position
+                        // maps almost linearly onto time — close enough to hand
+                        // the graph the moment the user is looking at.
+                        if let f = allRows.first?.date, let l = allRows.last?.date {
+                            topDate = f.addingTimeInterval(v.fraction * l.timeIntervalSince(f))
+                        }
+                    }
+                    // Only an over-scroll past an end switches screens, so normal
+                    // scrolling through the rows is untouched.
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 20)
+                            .onEnded { v in
+                                guard abs(v.translation.height) > abs(v.translation.width) else { return }
+                                if v.translation.height < -70 && atBottom { onSwitchScreen?(1) }
+                                else if v.translation.height > 70 && atTop { onSwitchScreen?(-1) }
+                            }
+                    )
+                    .onDisappear { hasAligned = false }
+                    // Line up with the graph every time the table is opened, not
+                    // just the first time — SwiftUI keeps this view's state
+                    // between visits, so a one-shot guard would only ever work
+                    // once. Falls back to "now": with ten days of history above
+                    // it, the top of the table is no longer where anyone wants
+                    // to start.
+                    .onAppear { alignToGraph(proxy) }
+                    .onChange(of: weatherService.current?.id) { _, _ in alignToGraph(proxy) }
                 }
             }
         }
@@ -333,5 +398,6 @@ struct ForecastTableView: View {
 }
 
 #Preview {
-    ForecastTableView(weatherService: WeatherService(), nowTick: .now)
+    ForecastTableView(weatherService: WeatherService(), nowTick: .now,
+                      topDate: .constant(nil))
 }

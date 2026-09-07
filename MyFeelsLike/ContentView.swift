@@ -407,6 +407,28 @@ struct ContentView: View {
             .buttonStyle(.plain)
 
             HStack {
+                // Refresh lives here because the vertical swipe that used to
+                // pull-to-refresh now switches screens.
+                Button {
+                    Task { await loadWeather(preserveData: true, useFreshLocation: true) }
+                } label: {
+                    Group {
+                        if weather.isRefreshing {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .font(.body)
+                    .foregroundStyle(skyInk)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(weather.isRefreshing)
+                .accessibilityLabel("Refresh forecast")
+                .accessibilityIdentifier("refreshButton")
+
                 Spacer()
                 Button { showInfo = true } label: {
                     Image(systemName: "info.circle")
@@ -906,6 +928,8 @@ struct ContentView: View {
                 errorMessage: weather.lastErrorMessage,
                 attribution: weather.attribution,
                 onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
+                startOffset: $startOffset,
+                onShowTable: showTable ? { goToTable() } : nil,
                 activeFeatures: chipFeatures
             )
         }
@@ -934,7 +958,9 @@ struct ContentView: View {
                 nowTick: nowTick,
                 onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
                 personalize: { self.personalized($0) },
-                activeFeatures: chipFeatures
+                activeFeatures: chipFeatures,
+                onSwitchScreen: { _ in leaveTable(to: nil) },
+                topDate: $tableTopDate
             )
         }
     }

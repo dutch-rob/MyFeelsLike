@@ -5,7 +5,7 @@
 //
 //  Optional "integrated fold" view (Settings → Timeline fold). Instead of
 //  paging between a 24-hour screen and a 10-day screen, one continuous timeline
-//  morphs between them: a segmented control drives a progress value 0…1, and
+//  morphs between them: a zoom level 0…1 drives the morph, and
 //  everything animates together —
 //    • the temperature and precip/wind charts zoom their x-axis from a single
 //      day out to the whole forecast, and
@@ -32,6 +32,12 @@ struct FoldTimelineView: View {
     var errorMessage: String? = nil
     var attribution: WeatherAttributionInfo? = nil
     var onRefresh: (() async -> Void)? = nil
+    /// Left edge of the visible window, as an offset from "now". Shared with
+    /// ContentView so the graph and the table stay on the same moment.
+    @Binding var startOffset: TimeInterval
+    /// Vertical swipe asks for the table screen (wired up only when the table is
+    /// enabled in Settings). Pinch owns zooming now, which frees this up.
+    var onShowTable: (() -> Void)? = nil
     var activeFeatures: Set<Feature> = []
 
     @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit = true
@@ -53,9 +59,19 @@ struct FoldTimelineView: View {
     private var noColorStyle = ColorScale.NoColorStyle.lineGraph
 
     /// 0 = 24-hour view, 1 = 10-day view. Scrubbed by a horizontal swipe.
-    @State private var progress: Double = 0
+    /// Zoom level: 0 = a 24-hour window, 1 = the whole −10d…+10d series. Not
+    /// snapped, so any intermediate zoom is a valid resting place. Also drives
+    /// the fold: the band rotates into the heat map as this rises.
+    @State private var zoom: Double = 0
+    @State private var panBase: TimeInterval? = nil
+    @State private var zoomBase: Double? = nil
+    /// Time held fixed at the centre while zooming.
+    @State private var zoomAnchor: Date? = nil
+    @State private var dragAxis: DragAxis? = nil
+    private enum DragAxis { case horizontal, vertical }
+    /// Plot width, kept so the day axis can decide whether the weekday fits.
+    @State private var plotWidth: CGFloat = 0
     /// Progress captured at the start of the current swipe (nil when not dragging).
-    @State private var dragBase: Double? = nil
     /// The time the user is reading via long-press scrub (nil = not scrubbing).
     /// While set, the transition swipe is suspended and a readout is shown.
     @State private var scrubDate: Date? = nil
@@ -121,38 +137,52 @@ struct FoldTimelineView: View {
     /// Narrow (24-hour) window: a rolling day starting at "now", so it's always
     /// full — matching the 24-hour screen rather than the calendar day (whose
     /// morning is in the past and has no forecast).
-    private var narrowLo: Date { current?.date ?? series.first?.date ?? nowTick }
-    private var narrowHi: Date { narrowLo.addingTimeInterval(24 * 3600) }
-    private var fullLo: Date { allPoints.first?.date ?? narrowLo }
-    private var fullHi: Date { series.last?.date ?? narrowHi }
+    private var dataLo: Date { allPoints.first?.date ?? nowTick }
+    private var dataHi: Date { series.last?.date ?? nowTick.addingTimeInterval(24 * 3600) }
+    /// Widest window: ten days, or less if that is all the data we have.
+    private var fullSpan: TimeInterval {
+        min(240 * 3600, max(24 * 3600, dataHi.timeIntervalSince(dataLo)))
+    }
+    private static let minSpan: TimeInterval = 24 * 3600
+    /// Visible span, interpolated by the zoom level.
+    private var span: TimeInterval { Self.minSpan + (fullSpan - Self.minSpan) * zoom }
 
-    /// End of the first stage: the whole preceding day is in view and the
-    /// forecast reaches +72 h. Up to here the swipe only widens the window (the
-    /// color band just gets thinner as each hour claims less width); past it the
-    /// band starts rotating into the heat map.
+    private func clampStart(_ o: TimeInterval) -> TimeInterval {
+        TimelineScroll.clampStartOffset(o, span: span, now: nowTick,
+                                        dataLo: dataLo, dataHi: dataHi)
+    }
+
+    /// Where the fold changes character. Below this the zoom only widens the
+    /// window (the color band just gets thinner as each hour claims less
+    /// width); above it the band rotates into the heat map. The window's extent
+    /// is no longer tied to this — the pinch sets that — but the morph still is.
     private let foldSplit = 0.4
-    /// Where the first stage stops zooming to: 72 hours ahead of "now".
-    private var midHi: Date { narrowLo.addingTimeInterval(72 * 3600) }
 
     /// 0…1 through the widening stage.
-    private var zoomPhase: Double { min(1, progress / foldSplit) }
+    private var zoomPhase: Double { min(1, zoom / foldSplit) }
     /// 0…1 through the rotating stage (0 until the widening stage is done).
-    private var rotatePhase: Double { max(0, (progress - foldSplit) / (1 - foldSplit)) }
+    private var rotatePhase: Double { max(0, (zoom - foldSplit) / (1 - foldSplit)) }
 
-    private func lerpDate(_ a: Date, _ b: Date, _ t: Double) -> Date {
-        Date(timeIntervalSinceReferenceDate:
-                a.timeIntervalSinceReferenceDate
-                + (b.timeIntervalSinceReferenceDate - a.timeIntervalSinceReferenceDate) * t)
+    /// The window now scrolls freely rather than growing out of "now": its
+    /// width comes from the zoom level and its position from `startOffset`.
+    private var visLo: Date { nowTick.addingTimeInterval(clampStart(startOffset)) }
+    private var visHi: Date { visLo.addingTimeInterval(span) }
+    private var visDomain: ClosedRange<Date> {
+        // Small proportional lead-in so the "now" rings are not clipped at the
+        // left edge; see HereTodayView.visibleRange.
+        let lo = visLo.addingTimeInterval(-span * 0.03)
+        return lo...max(lo.addingTimeInterval(3600), visHi)
     }
-    /// The past comes in during the first stage only, so by the time +72 h is on
-    /// screen the preceding day is fully there and stays put while the rest of
-    /// the forecast arrives.
-    private var visLo: Date { lerpDate(narrowLo, fullLo, zoomPhase) }
-    private var visHi: Date {
-        progress <= foldSplit ? lerpDate(narrowHi, midHi, zoomPhase)
-                              : lerpDate(midHi, fullHi, rotatePhase)
+
+    /// Points inside the visible window. The y-ranges come from these rather
+    /// than the whole ±10 days: scaling to data that is off-screen left the
+    /// charts using only part of their height.
+    private var visibleSeries: [ForecastPoint] {
+        let lo = visLo.addingTimeInterval(-2 * 3600)
+        let hi = visHi.addingTimeInterval(2 * 3600)
+        let inWindow = allPoints.filter { $0.date >= lo && $0.date <= hi }
+        return inWindow.isEmpty ? allPoints : inWindow
     }
-    private var visDomain: ClosedRange<Date> { visLo...max(visLo.addingTimeInterval(3600), visHi) }
 
     // MARK: Y ranges (over all data, stable while zooming)
 
@@ -424,9 +454,11 @@ struct FoldTimelineView: View {
                     // panels. Presses on a panel are caught by its own scrubEntry in
                     // front. The swipe drives the 24h↔10-day morph.
                     .background(scrubGapEntry)
-                    .gesture(scrubGesture(width: geo.size.width))
+                    .gesture(scrubGesture(width: geo.size.width)
+                                .simultaneously(with: zoomGesture()))
                 }
-                .refreshable { await onRefresh?() }
+                .onAppear { plotWidth = geo.size.width }
+                .onChange(of: geo.size.width) { _, w in plotWidth = w }
             }
         }
     }
@@ -435,23 +467,20 @@ struct FoldTimelineView: View {
     /// Since the swipe can now rest anywhere, an end label is only emphasised
     /// when the view is actually at that end; in between, both are dimmed and a
     /// span readout says how much of the forecast is on screen.
+    /// How wide the window is and where it starts. The zoom has no discrete
+    /// modes any more, so a label beats a two-ended indicator.
     private var modeIndicator: some View {
-        let atStart = progress < 0.05, atEnd = progress > 0.95
-        return HStack(spacing: 8) {
-            Text("24-hour").fontWeight(atStart ? .semibold : .regular)
-                .foregroundStyle(atStart ? axisInk : axisInk.opacity(0.5))
-            if atStart || atEnd {
-                Image(systemName: "arrow.left.arrow.right")
-                    .font(.caption2).foregroundStyle(axisInk.opacity(0.5))
-            } else {
-                Text(spanLabel)
-                    .font(.caption2).foregroundStyle(axisInk.opacity(0.75))
-                    .monospacedDigit()
-            }
-            Text("10-day").fontWeight(atEnd ? .semibold : .regular)
-                .foregroundStyle(atEnd ? axisInk : axisInk.opacity(0.5))
+        let f = DateFormatter()
+        f.locale = .current
+        f.setLocalizedDateFormatFromTemplate("EEEd MMM")
+        return HStack(spacing: 6) {
+            Image(systemName: "arrow.left.and.right")
+                .font(.caption2).foregroundStyle(axisInk.opacity(0.5))
+            Text(spanLabel).fontWeight(.semibold).monospacedDigit()
+            Text("from \(f.string(from: visLo))").foregroundStyle(axisInk.opacity(0.6))
         }
         .font(.subheadline)
+        .foregroundStyle(axisInk)
         .frame(maxWidth: .infinity)
     }
 
@@ -462,26 +491,52 @@ struct FoldTimelineView: View {
         return "\(Int((hours / 24).rounded())) days"
     }
 
+    /// Horizontal drag pans through time; a vertical drag asks for the table.
+    /// Zooming is a pinch now, which is the gesture people expect — and it frees
+    /// the horizontal swipe to do what it does on every other screen.
     private func scrubGesture(width: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 12)
+        DragGesture(minimumDistance: 14)
             .onChanged { v in
-                guard scrubDate == nil else { return }   // scrubbing: line is moved by the chart drag layer
-                guard abs(v.translation.width) > abs(v.translation.height) else { return }
-                if dragBase == nil { dragBase = progress }
-                let span = max(1, width * 0.7)
-                progress = clamp((dragBase ?? progress) - v.translation.width / span, 0, 1)
+                guard scrubDate == nil else { return }   // scrubbing wins
+                if dragAxis == nil {
+                    dragAxis = abs(v.translation.width) >= abs(v.translation.height)
+                        ? .horizontal : .vertical
+                }
+                guard dragAxis == .horizontal else { return }
+                if panBase == nil { panBase = startOffset }
+                let dt = -Double(v.translation.width) / Double(max(1, width)) * span
+                startOffset = clampStart((panBase ?? startOffset) + dt)
             }
             .onEnded { v in
+                defer { dragAxis = nil; panBase = nil }
                 guard scrubDate == nil else { return }
-                let span = max(1, width * 0.7)
-                // Rest wherever the swipe lands (with a little momentum) rather
-                // than snapping to 24-hour or 10-day, so any intermediate zoom
-                // is a resting state. Snapping back is a one-line change if the
-                // in-between views don't read well.
-                let projected = clamp((dragBase ?? progress) - v.predictedEndTranslation.width / span, 0, 1)
-                withAnimation(.easeOut(duration: 0.25)) { progress = projected }
-                dragBase = nil
+                if dragAxis == .vertical, abs(v.translation.height) > 40 {
+                    onShowTable?()
+                }
             }
+    }
+
+    /// Pinch to zoom, anchored on the middle of the window so the view does not
+    /// slide sideways while zooming. Nothing snaps: any span is a resting place.
+    private func zoomGesture() -> some Gesture {
+        MagnifyGesture(minimumScaleDelta: 0.01)
+            .onChanged { v in
+                if zoomBase == nil {
+                    zoomBase = zoom
+                    zoomAnchor = visLo.addingTimeInterval(span / 2)
+                }
+                let range = max(1, fullSpan - Self.minSpan)
+                let baseSpan = Self.minSpan + range * (zoomBase ?? zoom)
+                // Pinch out (magnification > 1) shows less time = zoom in.
+                let wanted = baseSpan / max(0.05, v.magnification)
+                let clamped = min(fullSpan, max(Self.minSpan, wanted))
+                zoom = (clamped - Self.minSpan) / range
+                if let c = zoomAnchor {
+                    startOffset = clampStart(c.addingTimeInterval(-span / 2)
+                                                .timeIntervalSince(nowTick))
+                }
+            }
+            .onEnded { _ in zoomBase = nil; zoomAnchor = nil }
     }
 
     // MARK: Temperature
@@ -672,7 +727,7 @@ struct FoldTimelineView: View {
         let cols = dayCols
         let total = max(1, cols.count)
         VStack(alignment: .leading, spacing: 2) {
-            Text(progress > 0.5 ? "MyFeelsLike by time of day" : "MyFeelsLike by hour")
+            Text(zoom > 0.5 ? "MyFeelsLike by time of day" : "MyFeelsLike by hour")
                 .font(.caption2).foregroundStyle(axisInk).padding(.leading, gutter)
             if hasModel && comfortAsLineGraph {
                 // A curve has no fold to perform: it simply keeps the shared
@@ -910,15 +965,17 @@ struct FoldTimelineView: View {
         }
     }
 
-    /// Hour label when zoomed in, weekday when zoomed out.
+    /// Hour label when zoomed in; once the window spans days, the day of the
+    /// month — with the weekday too when the axis is wide enough for both. A
+    /// bare weekday stops identifying a day once the window can scroll across
+    /// weeks.
     private func xLabel(_ d: Date) -> String {
-        let span = visHi.timeIntervalSince(visLo)
-        let cal = Calendar.current
-        if span <= 2 * 86400 {
-            return clockHourLabel(cal.component(.hour, from: d), use12: use12Hour)
+        let visible = visHi.timeIntervalSince(visLo)
+        if visible <= 2 * 86400 {
+            return clockHourLabel(Calendar.current.component(.hour, from: d), use12: use12Hour)
         }
-        let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEE"
-        return String(f.string(from: d).prefix(2))
+        return dayTickLabel(d, includeWeekday: dayAxisFitsWeekday(
+            plotWidth: plotWidth, days: visible / 86400))
     }
 }
 
