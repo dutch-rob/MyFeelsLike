@@ -144,6 +144,9 @@ final class WeatherService: ObservableObject {
     /// True when the historic query returned nothing for this location/time.
     /// Drives a small note in the table; the graphs simply omit history.
     @Published var historicUnavailable: Bool = false
+    /// True once the past-10-days history has been merged in. The scrollable
+    /// screens use it to know whether scrolling back is worth offering yet.
+    @Published var hasHistory: Bool = false
     @Published var placeDescription: String = ""
     @Published var loadProgress: LoadProgress = LoadProgress()
     @Published var lastErrorMessage: String? = nil
@@ -197,6 +200,7 @@ final class WeatherService: ObservableObject {
             historic      = []
             current          = nil
             historicUnavailable = false
+            hasHistory          = false
         }
         finish(.location)
         start(.weather)
@@ -226,27 +230,16 @@ final class WeatherService: ObservableObject {
             }
 
             // Observed past — a separate query that must not break the forecast
-            // if it fails. Empty result → note shown in the table only. Starts
-            // at 00:00 of the previous day so the 10-day heatmap's first daily
-            // column is complete (straight left edge).
-            let cal = Calendar.current
-            let histStart = cal.date(byAdding: .day, value: -1, to: cal.startOfDay(for: now))
-                ?? now.addingTimeInterval(-48 * 3600)
-            let histWeather = try? await withTimeout(10) {
-                try await sharedWeatherService.weather(
-                    for: location,
-                    including: .hourly(startDate: histStart, endDate: now))
-            }
-            guard loadGeneration == gen else { return }
-            if let histWeather {
-                let pts = WeatherMapping.mapPoints(from: histWeather.forecast,
-                                    start: histStart, end: now,
-                                    location: location, kind: .historic)
-                historic = pts
-                historicUnavailable = pts.isEmpty
-            } else {
-                historic = []
-                historicUnavailable = true
+            // if it fails. Empty result → note shown in the table only. Ten days
+            // of it now, because the graphs and the table scroll back that far;
+            // it still starts at 00:00 so the heatmap's first daily column is
+            // complete (straight left edge).
+            //
+            // Detached, unlike the rest of the load: ten days is a much larger
+            // query than the single day it replaced, and the forecast should not
+            // wait behind it. Views pick the points up when `historic` publishes.
+            Task { [weak self] in
+                await self?.loadHistory(location: location, now: now, generation: gen)
             }
 
             guard loadGeneration == gen else { return }
@@ -290,6 +283,37 @@ final class WeatherService: ObservableObject {
             }
             lastErrorMessage = error.localizedDescription
             log.error("Weather load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    // MARK: - History
+
+    /// Fetch the past `days` of observations and publish them as `historic`.
+    /// Failure is silent by design: history is an enhancement, and the forecast
+    /// is already on screen by the time this runs.
+    @MainActor
+    private func loadHistory(location: CLLocation, now: Date, generation gen: Int,
+                             days: Int = Int(TimelineScroll.historyDays)) async {
+        let cal = Calendar.current
+        let histStart = cal.date(byAdding: .day, value: -days, to: cal.startOfDay(for: now))
+            ?? now.addingTimeInterval(-Double(days) * 24 * 3600)
+        let histWeather = try? await withTimeout(20) {
+            try await sharedWeatherService.weather(
+                for: location,
+                including: .hourly(startDate: histStart, endDate: now))
+        }
+        guard loadGeneration == gen else { return }
+        if let histWeather {
+            let pts = WeatherMapping.mapPoints(from: histWeather.forecast,
+                                start: histStart, end: now,
+                                location: location, kind: .historic)
+            historic = pts
+            historicUnavailable = pts.isEmpty
+            hasHistory = !pts.isEmpty
+        } else {
+            historic = []
+            historicUnavailable = true
+            hasHistory = false
         }
     }
 }

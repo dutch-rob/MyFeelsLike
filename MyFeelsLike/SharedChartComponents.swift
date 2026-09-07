@@ -23,6 +23,10 @@ struct LongPressLocator: UIViewRepresentable {
     /// Report the location in the window (global) instead of the layer's bounds.
     var inWindow: Bool = false
     var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
+    /// A plain tap on the chart, used to put the scrubber away. Lives here
+    /// rather than as a SwiftUI .onTapGesture because this view sits on top of
+    /// the chart and would otherwise swallow it.
+    var onTap: (() -> Void)? = nil
 
     func makeUIView(context: Context) -> UIView {
         let v = UIView()
@@ -32,23 +36,32 @@ struct LongPressLocator: UIViewRepresentable {
         lp.minimumPressDuration = minimumDuration
         lp.delegate = context.coordinator
         v.addGestureRecognizer(lp)
+
+        let tap = UITapGestureRecognizer(target: context.coordinator,
+                                         action: #selector(Coordinator.handleTap(_:)))
+        tap.delegate = context.coordinator
+        v.addGestureRecognizer(tap)
         return v
     }
     func updateUIView(_ v: UIView, context: Context) {
         context.coordinator.onEvent = onEvent
         context.coordinator.inWindow = inWindow
+        context.coordinator.onTap = onTap
     }
-    func makeCoordinator() -> Coordinator { Coordinator(onEvent, inWindow) }
+    func makeCoordinator() -> Coordinator { Coordinator(onEvent, inWindow, onTap) }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
         var inWindow: Bool
-        init(_ onEvent: @escaping (CGPoint, UIGestureRecognizer.State) -> Void, _ inWindow: Bool) {
-            self.onEvent = onEvent; self.inWindow = inWindow
+        var onTap: (() -> Void)?
+        init(_ onEvent: @escaping (CGPoint, UIGestureRecognizer.State) -> Void, _ inWindow: Bool,
+             _ onTap: (() -> Void)? = nil) {
+            self.onEvent = onEvent; self.inWindow = inWindow; self.onTap = onTap
         }
         @objc func handle(_ g: UILongPressGestureRecognizer) {
             onEvent(g.location(in: inWindow ? nil : g.view), g.state)
         }
+        @objc func handleTap(_ g: UITapGestureRecognizer) { onTap?() }
         func gestureRecognizer(_ g: UIGestureRecognizer,
                                shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
     }
@@ -169,8 +182,11 @@ struct ChartLegendRow: View {
             ForEach(items, id: \.label) { e in
                 HStack(spacing: 4) {
                     if e.isArea {
+                        // Full strength: the charts draw their bands at full
+                        // opacity, so dimming the swatch made a vivid palette
+                        // look muted in the legend.
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(e.color.opacity(0.4))
+                            .fill(e.color)
                             .frame(width: 18, height: 8)
                     } else if let dash = dash(for: e.label), !dash.isEmpty {
                         Path { p in
@@ -351,5 +367,52 @@ extension View {
     @ViewBuilder
     func ifLet<T, Content: View>(_ value: T?, transform: (Self, T) -> Content) -> some View {
         if let v = value { transform(self, v) } else { self }
+    }
+}
+
+// MARK: - Day axis labels
+
+private let weekdayFmt: DateFormatter = {
+    let f = DateFormatter(); f.locale = .current; f.dateFormat = "EEE"; return f
+}()
+
+/// Label for a day tick on a scrolled/zoomed axis.
+///
+/// Once the window covers many days there isn't room for "Mo 15" on every tick —
+/// two-digit days of the month are the tight case — so the caller works out how
+/// much width each tick gets and we drop the weekday when it won't fit.
+func dayTickLabel(_ date: Date, includeWeekday: Bool) -> String {
+    let day = Calendar.current.component(.day, from: date)
+    guard includeWeekday else { return "\(day)" }
+    let wd = String(weekdayFmt.string(from: date).prefix(2))
+    return "\(wd) \(day)"
+}
+
+/// Whether a day axis has room for the weekday as well as the day number.
+/// `plotWidth` is the chart's width; `days` the number of day ticks across it.
+///
+/// Two-digit days of the month are the binding case, needing about 44 pt. One
+/// threshold is applied to every window rather than switching style as the
+/// month rolls over, which would make labels flicker between forms while
+/// scrolling.
+func dayAxisFitsWeekday(plotWidth: CGFloat, days: Double) -> Bool {
+    guard days > 0 else { return true }
+    return (plotWidth - 56) / days >= 44
+}
+
+// MARK: - "Now" marker
+
+/// Marker for the current time: a ring in the series colour whose centre is cut
+/// out of the page, so it reads as hollow in both light and dark appearance. A
+/// solid dot of the series colour disappeared into the filled band beneath it.
+struct NowMarkerSymbol: View {
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            Circle().fill(Color(.systemBackground))
+            Circle().strokeBorder(color, lineWidth: 2.5)
+        }
+        .frame(width: 13, height: 13)
     }
 }
