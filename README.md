@@ -73,6 +73,19 @@ Once the app has learned that sun makes a difference for you, the comfort band
 splits into an in-sun and an in-shade version, so you can see how much shelter
 is worth on a given day.
 
+## Moving around
+**Swipe left and right to scroll through time.** Both graph screens pan over
+the same stretch — ten days back and ten days forward — and they share a
+position, so scrolling to next Tuesday on one and switching to the other keeps
+you on Tuesday. **Swipe up or down to switch** between the 24-hour and 10-day
+screens.
+
+The past ten days come from observations rather than the forecast, and arrive a
+moment after the forecast does. Day labels carry the date once you are away
+from today, because a bare weekday stops telling you which day you are looking
+at, and a hollow ring on each curve marks the current hour so "now" stays easy
+to find wherever you have scrolled to.
+
 ## The 10-day screen
 The same temperature panel stretched over ten days (the recent past drawn
 dashed), plus a heatmap of your comfort: one column per day, hour-of-day up the
@@ -92,6 +105,11 @@ dismiss.
 Because the long-press readout gives you the exact numbers anywhere you point,
 the full table screen is switched off by default. You can turn it back on in
 Settings if you like scrolling a full table.
+
+When it is on, the table covers the same twenty days as the graphs and opens on
+whatever moment the graph was showing, rather than ten days ago. A button at the
+top of each screen moves between them, and scrolling past either end of the
+table goes back to the graph.
 
 ## When the band goes thin
 A thin comfort band means the app is *not confident* about that hour, and a
@@ -152,9 +170,9 @@ very warm, hot — or the same band in shades of gray, the rating scale names th
 categories and shows the number behind them, and the weather curves are told
 apart by line pattern rather than color.
 
-**Fold timeline** is an experimental alternative to the two graph screens: one
-screen you swipe to morph the 24-hour band into the 10-day heat map, holding
-anywhere mid-turn.
+**Zoom graph** is an alternative to the two graph screens: one screen you pinch
+to zoom, anywhere from a single day out to ten, with the comfort band turning
+into the 10-day heat map as you pull out. It holds anywhere mid-turn.
 
 ### The rest of Settings
 **Muted colors** softens the weather lines for a gentler look. You can show or
@@ -162,9 +180,11 @@ hide the **table** screen, turn the weather-sky background on or off, set the
 name others see when comparing, and choose whether to share anonymous data with
 the developer.
 
-**Fold timeline** is experimental: it replaces the two graph screens with a
-single one you swipe to morph from the 24-hour view into the 10-day heat map.
-Swipe part-way and it holds there, mid-turn.
+**Zoom graph** replaces the two graph screens with a single one you **pinch to
+zoom**: from a 24-hour window out to the full ten days, stopping wherever you
+like. Swiping left and right scrolls through time as it does everywhere else,
+and the band turns into the 10-day heat map as you zoom out — part-way is a
+resting place, mid-turn. Buttons at the top switch to the table.
 
 ![Before the turn: the comfort band as one horizontal stripe, time of day along its length](MyFeelsLike/Assets.xcassets/InfoRotation1.imageset/InfoRotation1.png)
 

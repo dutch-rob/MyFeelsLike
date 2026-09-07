@@ -83,6 +83,12 @@ struct InfoView: View {
                 }
 
                 Group {
+                    Text("Moving around").font(.headline).id("moving-around")
+                    Text("**Swipe left and right to scroll through time.** Both graph screens pan over the same stretch — ten days back and ten days forward — and they share a position, so scrolling to next Tuesday on one and switching to the other keeps you on Tuesday. **Swipe up or down to switch** between the 24-hour and 10-day screens.")
+                    Text("The past ten days come from observations rather than the forecast, and arrive a moment after the forecast does. Day labels carry the date once you are away from today, because a bare weekday stops telling you which day you are looking at, and a hollow ring on each curve marks the current hour so \"now\" stays easy to find wherever you have scrolled to.")
+                }
+
+                Group {
                     Text("The 10-day screen").font(.headline).id("the-10-day-screen")
                     Text("The same temperature panel stretched over ten days (the recent past drawn dashed), plus a heatmap of your comfort: one column per day, hour-of-day up the side, so the good times of day stand out.")
                     Image("InfoRotation3").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The 10-day heat map: one column per day, hours of the day up the side")
@@ -91,10 +97,11 @@ struct InfoView: View {
                 Group {
                     Text("Reading exact values").font(.headline).id("reading-exact-values")
                     Text("**Long-press any graph** to drop a line you can drag along the timeline. A card shows every value for that moment — your comfort score, temperature and feels like, wet bulb, dew point, wind and gusts, precipitation, cloud and UV. Tap to dismiss.")
-                    Image("InfoScrubberReadout").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 380).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The long-press readout, with the dashed line marking the hour it describes")
+                    Image("InfoScrubberReadout").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The long-press readout, with the dashed line marking the hour it describes")
                     DisclosureGroup("Show more — And the table screen") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Because the long-press readout gives you the exact numbers anywhere you point, the full table screen is switched off by default. You can turn it back on in Settings if you like scrolling a full table.")
+                            Text("When it is on, the table covers the same twenty days as the graphs and opens on whatever moment the graph was showing, rather than ten days ago. A button at the top of each screen moves between them, and scrolling past either end of the table goes back to the graph.")
                             Spacer(minLength: 0)
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -145,11 +152,11 @@ struct InfoView: View {
                     Text("Settings and units").font(.headline).id("settings-and-units")
                     Text("Choose °C or °F and 12- or 24-hour time, pick which series the graphs show, and switch the chart style between lines and filled bands.")
                     Text("**Comfort scale** offers three ways of showing the same score, for anyone whose color vision makes the default hard to read. **Colors** is the scale above. **No red** keeps every color up to yellow where it is and darkens the hot end to black instead of turning it red, so red/green confusion cannot make a hot hour read as a mild one. **No color** drops hue altogether: the comfort band becomes either a line graph against six named categories — very cold, cold, mild, warm, very warm, hot — or the same band in shades of gray, the rating scale names the categories and shows the number behind them, and the weather curves are told apart by line pattern rather than color.")
-                    Text("**Fold timeline** is an experimental alternative to the two graph screens: one screen you swipe to morph the 24-hour band into the 10-day heat map, holding anywhere mid-turn.")
+                    Text("**Zoom graph** is an alternative to the two graph screens: one screen you pinch to zoom, anywhere from a single day out to ten, with the comfort band turning into the 10-day heat map as you pull out. It holds anywhere mid-turn.")
                     DisclosureGroup("Show more — The rest of Settings") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("**Muted colors** softens the weather lines for a gentler look. You can show or hide the **table** screen, turn the weather-sky background on or off, set the name others see when comparing, and choose whether to share anonymous data with the developer.")
-                            Text("**Fold timeline** is experimental: it replaces the two graph screens with a single one you swipe to morph from the 24-hour view into the 10-day heat map. Swipe part-way and it holds there, mid-turn.")
+                            Text("**Zoom graph** replaces the two graph screens with a single one you **pinch to zoom**: from a 24-hour window out to the full ten days, stopping wherever you like. Swiping left and right scrolls through time as it does everywhere else, and the band turns into the 10-day heat map as you zoom out — part-way is a resting place, mid-turn. Buttons at the top switch to the table.")
                             Image("InfoRotation1").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("Before the turn: the comfort band as one horizontal stripe, time of day along its length")
                             Image("InfoRotation2").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("Part way through: each day's segment turning")
                             Image("InfoRotation3").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("After the turn: a heat map, hours of the day up the side and dates across")

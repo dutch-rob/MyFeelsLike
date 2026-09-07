@@ -66,10 +66,12 @@ enum DemoMode {
         let s24 = (0..<24).map { makePoint(hoursFromStart: $0) }
         let s10 = (0..<240).map { makePoint(hoursFromStart: $0) }
         let current = makePoint(hoursFromStart: 0, kind: .current)
-        // The past day, so the demo exercises everything that reads history:
-        // the dashed past on the 10-day chart, the complication's whole-day
-        // range, and the fold timeline bringing the preceding day into view.
-        let historic = (-24 ..< 0).map { makePoint(hoursFromStart: $0, kind: .historic) }
+        // The past ten days, matching what the app now fetches, so the demo
+        // exercises everything that reads history: the dashed past on the
+        // 10-day chart, the complication's whole-day range, and — since the
+        // graphs and the table scroll ten days back — something to actually
+        // find there when you scroll.
+        let historic = (-240 ..< 0).map { makePoint(hoursFromStart: $0, kind: .historic) }
         return (s24, s10, current, historic)
     }
 

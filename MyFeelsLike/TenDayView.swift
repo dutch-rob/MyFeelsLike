@@ -728,6 +728,12 @@ struct TenDayView: View {
                 }
             }
         }
+        // Share the temperature chart's window. Without this the grid derived
+        // its own domain from the data, which lined up only while every chart
+        // covered the same range — once the charts became scrollable the
+        // heatmap drifted out of step with the curves above it.
+        .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .chartPlotStyle { $0.clipped() }
     }
 
     /// Fill for one heatmap cell. The sun/shade split is drawn as two grids
