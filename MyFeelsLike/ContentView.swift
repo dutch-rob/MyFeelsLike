@@ -37,7 +37,27 @@ struct ContentView: View {
     @AppStorage(SettingsKey.lastSeenVersion) private var lastSeenVersion = ""
     // Tab indices: 0 = table phantom, 1 = 24h (real), 2 = 10d (real),
     //              3 = table (real), 4 = 24h phantom  — for circular wrap.
-    @State private var selectedTab = 1
+    /// Which screen the paged mode is showing (the vertical swipe walks these).
+    @State private var screen: ForecastScreen = .today
+    /// Left edge of the visible window, as an offset from "now". Shared by both
+    /// graph screens, so panning survives a screen switch.
+    @State private var startOffset: TimeInterval = 0
+    @State private var panBase: TimeInterval? = nil
+    /// Locked once a drag has clearly chosen an axis, so a diagonal swipe
+    /// doesn't both pan and switch screens.
+    @State private var dragAxis: DragAxis? = nil
+    /// How far the screen has been dragged vertically, so the screens move with
+    /// the finger instead of jumping at the end of the gesture.
+    @State private var dragY: CGFloat = 0
+    /// With the zoom graph on, whether the table is showing instead.
+    @State private var zoomShowsTable = false
+    /// The moment showing at the top of the table, so switching between the
+    /// table and a graph keeps the same place in time.
+    @State private var tableTopDate: Date? = nil
+    /// Which graph to come back to from the table.
+    @State private var lastGraph: ForecastScreen = .today
+
+    private enum DragAxis { case horizontal, vertical }
     @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
     @AppStorage(DeveloperDataSync.consentKey) private var shareData: Bool = false
     @AppStorage(SettingsKey.scenarioActivity) private var scenarioActivity: Int = 1
@@ -71,7 +91,7 @@ struct ContentView: View {
     private var onTableScreen: Bool {
         if !anyGraphVisible { return true }          // table is the only screen
         guard showTable else { return false }        // no table tab exists
-        return selectedTab == 0 || selectedTab == 3  // table phantom / real
+        return useFoldTimeline ? zoomShowsTable : screen == .table
     }
 
     // Whole-screen weather-sky background (current conditions), shown behind
@@ -282,7 +302,13 @@ struct ContentView: View {
                 showWelcome = true
             }
         }
-        .onChange(of: showTable) { _, _ in selectedTab = 1 }   // avoid a now-invalid tab tag
+        // Turning the table off while on it would strand the user there.
+        .onChange(of: showTable) { _, on in
+            if !on {
+                if screen == .table { screen = lastGraph }
+                zoomShowsTable = false
+            }
+        }
         .onChange(of: shareData) { _, _ in syncDeveloperData() }   // opt in → upload, opt out → delete
         .onChange(of: useFahrenheit) { _, _ in pushToWatch() }
         .onChange(of: scenarioActivity) { _, _ in pushToWatch() }
@@ -348,6 +374,8 @@ struct ContentView: View {
             if !anyGraphVisible {
                 // #10: every graph disabled → only the table screen remains.
                 forecastTableTab(chipFeatures: activeFeatures)
+            } else if useFoldTimeline && !useDashboardLayout && showTable && zoomShowsTable {
+                forecastTableTab(chipFeatures: activeFeatures)
             } else if useFoldTimeline && !useDashboardLayout {
                 // Experimental single morphing timeline in place of the two paged
                 // graph screens. Its own left/right swipe drives the 24h↔10-day
@@ -356,10 +384,8 @@ struct ContentView: View {
                 foldTimelineTab
             } else if useDashboardLayout {
                 dashboardLayout
-            } else if showTable {
-                tabPagerWithTable
             } else {
-                tabPagerNoTable
+                graphPager
             }
         }
     }
@@ -422,39 +448,186 @@ struct ContentView: View {
     ///   0 = table phantom → real 3, 1 = 24h (default), 2 = 10d, 3 = table,
     ///   4 = 24h phantom → real 1. Phantoms show identical content; onChange
     ///   teleports to the real tab with no animation so the jump is invisible.
-    private var tabPagerWithTable: some View {
-        TabView(selection: $selectedTab) {
-            forecastTableTab(chipFeatures: activeFeatures).tag(0)
-            hereTodayTab(chipFeatures: activeFeatures).tag(1)
-            tenDayTab(chipFeatures: activeFeatures).tag(2)
-            forecastTableTab(chipFeatures: activeFeatures).tag(3)
-            hereTodayTab(chipFeatures: activeFeatures).tag(4)
-        }
-        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-        .onChange(of: selectedTab) { _, tab in
-            guard tab == 0 || tab == 4 else { return }
-            var t = Transaction()
-            t.disablesAnimations = true
-            withTransaction(t) { selectedTab = tab == 0 ? 3 : 1 }
+    /// The graph screens, paged by drag rather than by TabView: a horizontal
+    /// swipe pans time, a vertical swipe switches screen. The table is not in
+    /// the vertical cycle — it is reached from the header, because a screen
+    /// that scrolls ten days needs a way back that isn't a gesture.
+    private var graphPager: some View {
+        GeometryReader { geo in
+            let hgt = geo.size.height
+            ZStack {
+                // The screen being dragged towards, parked just off the edge so
+                // it slides in with the finger.
+                if dragY != 0 {
+                    screenView(screen.advanced(by: dragY < 0 ? 1 : -1,
+                                               includeTable: false))
+                        .offset(y: dragY < 0 ? hgt + dragY : -hgt + dragY)
+                }
+                screenView(screen).offset(y: dragY)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+            .contentShape(Rectangle())
+            // The table owns its own vertical scrolling, so it opts out.
+            .gesture(screen == .table ? nil : graphDrag(size: geo.size))
         }
     }
 
-    /// iPhone pager with the table hidden (#3): 4-tab circular wrap over the two
-    /// graph screens — 0 = 10d phantom → real 2, 1 = 24h (default), 2 = 10d,
-    /// 3 = 24h phantom → real 1.
-    private var tabPagerNoTable: some View {
-        TabView(selection: $selectedTab) {
-            tenDayTab(chipFeatures: activeFeatures).tag(0)
-            hereTodayTab(chipFeatures: activeFeatures).tag(1)
-            tenDayTab(chipFeatures: activeFeatures).tag(2)
-            hereTodayTab(chipFeatures: activeFeatures).tag(3)
+    @ViewBuilder
+    private func screenView(_ s: ForecastScreen) -> some View {
+        switch s {
+        case .today:  hereTodayTab(chipFeatures: activeFeatures)
+        case .tenDay: tenDayTab(chipFeatures: activeFeatures)
+        case .table:  forecastTableTab(chipFeatures: activeFeatures)
         }
-        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-        .onChange(of: selectedTab) { _, tab in
-            guard tab == 0 || tab == 3 else { return }
-            var t = Transaction()
-            t.disablesAnimations = true
-            withTransaction(t) { selectedTab = tab == 0 ? 2 : 1 }
+    }
+
+    /// Horizontal drag pans the time window; vertical drag switches screens.
+    /// The axis is decided once per drag so a diagonal doesn't do both.
+    private func graphDrag(size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 14)
+            .onChanged { v in
+                if dragAxis == nil {
+                    dragAxis = abs(v.translation.width) >= abs(v.translation.height)
+                        ? .horizontal : .vertical
+                }
+                if dragAxis == .vertical {
+                    dragY = v.translation.height
+                    return
+                }
+                if panBase == nil { panBase = startOffset }
+                // Dragging a full screen width pans by one window span.
+                let span = screen.span
+                let dt = -Double(v.translation.width) / Double(max(1, size.width)) * span
+                startOffset = clampedOffset((panBase ?? startOffset) + dt)
+            }
+            .onEnded { v in
+                let axis = dragAxis
+                dragAxis = nil; panBase = nil
+                guard axis == .vertical else { return }
+                let dy = v.translation.height
+                let step = dy < 0 ? 1 : -1
+                // Carry the screen the rest of the way if the swipe was
+                // decisive, otherwise let it fall back.
+                if abs(dy) > 60 {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        dragY = dy < 0 ? -size.height : size.height
+                    } completion: {
+                        screen = screen.advanced(by: step, includeTable: false)
+                        startOffset = clampedOffset(startOffset)
+                        dragY = 0
+                    }
+                } else {
+                    withAnimation(.easeOut(duration: 0.2)) { dragY = 0 }
+                }
+            }
+    }
+
+    private func clampedOffset(_ o: TimeInterval) -> TimeInterval {
+        TimelineScroll.clampStartOffset(o, span: screen.span, now: nowTick,
+                                        dataLo: panSeries.first?.date,
+                                        dataHi: panSeries.last?.date)
+    }
+
+    /// Left edge of the visible window.
+    private var windowStart: Date { nowTick.addingTimeInterval(startOffset) }
+
+    /// The full −10d…+10d series the graph screens pan over. History arrives
+    /// after the forecast, so this is forecast-only for the first moment.
+    private var panSeries: [ForecastPoint] {
+        let hist = weather.historic
+        guard !hist.isEmpty else { return weather.series10d }
+        return hist + weather.series10d
+    }
+
+    /// The slice of `panSeries` a screen actually draws, padded either side so
+    /// curves reach both edges. Slicing before personalising matters: the model
+    /// runs per point, and a pan would otherwise re-predict ten days of hours
+    /// on every frame of the drag.
+    private func panWindow(_ span: TimeInterval) -> [ForecastPoint] {
+        let lo = windowStart.addingTimeInterval(-span * 0.03 - 2 * 3600)
+        let hi = windowStart.addingTimeInterval(span + 2 * 3600)
+        return panSeries.filter { $0.date >= lo && $0.date <= hi }
+    }
+
+    /// The window split back into observed past and forecast. The 10-day screen
+    /// keeps them apart so history stays dashed and the forecast solid.
+    private func panWindowSplit(_ span: TimeInterval)
+        -> (historic: [ForecastPoint], forecast: [ForecastPoint]) {
+        let w = panWindow(span)
+        return (w.filter { $0.kind == .historic }, w.filter { $0.kind != .historic })
+    }
+
+    /// Screen title, with the window's date once the user has scrolled off "now".
+    private func windowLabel(_ s: ForecastScreen) -> String {
+        let drift = abs(windowStart.timeIntervalSince(nowTick))
+        guard drift > 3600 else { return s.title }
+        let f = DateFormatter()
+        f.locale = .current
+        f.setLocalizedDateFormatFromTemplate("EEEd MMM")
+        return "\(s.title) · \(f.string(from: windowStart))"
+    }
+
+    /// Title with buttons to the screens the user is not on. Gestures alone are
+    /// impractical for reaching a screen now that the graphs scroll ten days.
+    private func headerBar(_ title: String,
+                           left: (String, () -> Void)? = nil,
+                           right: (String, () -> Void)? = nil) -> some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(showSky ? skyInk : .secondary)
+                    .lineLimit(1).minimumScaleFactor(0.65)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 78)
+                HStack {
+                    if let left { Button(left.0) { left.1() } }
+                    Spacer()
+                    if let right { Button(right.0) { right.1() } }
+                }
+                .font(.subheadline)
+                .foregroundStyle(showSky ? skyInk : Color.accentColor)
+                .padding(.horizontal, 12)
+            }
+            .padding(.vertical, 5)
+            .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+            if !showSky { Divider() }
+        }
+    }
+
+    /// Entering the table: line it up with the moment the graph is showing.
+    private func goToTable() {
+        tableTopDate = windowStart
+        if screen != .table { lastGraph = screen }
+        withAnimation(.easeInOut(duration: 0.25)) {
+            if useFoldTimeline { zoomShowsTable = true } else { screen = .table }
+        }
+    }
+
+    /// Leaving the table: start the graph at the table's top visible row, so the
+    /// two screens stay on the same moment in time.
+    private func leaveTable(to target: ForecastScreen?) {
+        let dest = target ?? lastGraph
+        if let d = tableTopDate {
+            // Clamp against the span of the screen we are going TO. Using the
+            // table's own ten-day span would pin any future date back to "now",
+            // because a ten-day window cannot start later than that.
+            let span = useFoldTimeline ? ForecastScreen.today.span : dest.span
+            startOffset = TimelineScroll.clampStartOffset(
+                d.timeIntervalSince(nowTick), span: span, now: nowTick,
+                dataLo: panSeries.first?.date,
+                dataHi: panSeries.last?.date)
+        }
+        withAnimation(.easeInOut(duration: 0.25)) {
+            if useFoldTimeline { zoomShowsTable = false } else { screen = dest }
+        }
+    }
+
+    private func goToScreen(_ s: ForecastScreen) {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            screen = s
+            startOffset = clampedOffset(startOffset)
         }
     }
 
@@ -575,8 +748,8 @@ struct ContentView: View {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-UITestScreen"), i + 1 < args.count else { return }
         switch args[i + 1] {
-        case "tenday": selectedTab = 2
-        case "table":  selectedTab = 3          // real table tab (see tabPagerWithTable)
+        case "tenday": screen = .tenDay
+        case "table":  screen = .table
         // The sheets need presenting *after* the first layout settles — SwiftUI
         // drops an isPresented change made this early in the view's life, which
         // is why these used to be captured by tapping the bottom bar instead.
@@ -654,9 +827,21 @@ struct ContentView: View {
 
     private func hereTodayTab(chipFeatures: Set<Feature>, fitsPane: Bool = false) -> some View {
         VStack(spacing: 0) {
-            tabLabel("24 hour forecast")
+            // The dashboard pane keeps the plain forecast slice and its own
+            // label; only the paged screen scrolls.
+            if fitsPane {
+                tabLabel("24 hour forecast")
+            } else {
+                headerBar(windowLabel(.today),
+                          left: ("10-day", { goToScreen(.tenDay) }),
+                          right: showTable ? ("table", { goToTable() }) : nil)
+            }
             HereTodayView(
-                series: weather.isRefreshing ? [] : personalized(weather.series24h, splitSun: true),
+                allSeries: weather.isRefreshing ? []
+                    : personalized(fitsPane ? weather.series24h
+                                            : panWindow(ForecastScreen.today.span), splitSun: true),
+                windowStart: fitsPane ? nil : windowStart,
+                windowSpan: ForecastScreen.today.span,
                 current: weather.isRefreshing ? nil : personalized(weather.current),
                 progress: weather.loadProgress,
                 nowTick: nowTick,
@@ -674,10 +859,24 @@ struct ContentView: View {
 
     private func tenDayTab(chipFeatures: Set<Feature>, fitsPane: Bool = false) -> some View {
         VStack(spacing: 0) {
-            tabLabel("10 day forecast")
+            if fitsPane {
+                tabLabel("10 day forecast")
+            } else {
+                headerBar(windowLabel(.tenDay),
+                          left: ("24h", { goToScreen(.today) }),
+                          right: showTable ? ("table", { goToTable() }) : nil)
+            }
             TenDayView(
-                series: weather.isRefreshing ? [] : personalized(weather.series10d, splitSun: sunFeatureActive),
-                historic: weather.isRefreshing ? [] : personalized(weather.historic, splitSun: sunFeatureActive),
+                series: weather.isRefreshing ? []
+                    : personalized(fitsPane ? weather.series10d
+                                            : panWindowSplit(ForecastScreen.tenDay.span).forecast,
+                                   splitSun: sunFeatureActive),
+                windowStart: fitsPane ? nil : windowStart,
+                windowSpan: ForecastScreen.tenDay.span,
+                historic: weather.isRefreshing ? []
+                    : personalized(fitsPane ? weather.historic
+                                            : panWindowSplit(ForecastScreen.tenDay.span).historic,
+                                   splitSun: sunFeatureActive),
                 current: weather.isRefreshing ? nil : personalized(weather.current),
                 progress: weather.loadProgress,
                 nowTick: nowTick,
@@ -694,9 +893,8 @@ struct ContentView: View {
     }
 
     private func foldTimelineTab(chipFeatures: Set<Feature>) -> some View {
-        // No tab label — the fold timeline reclaims that row for the graphs; the
-        // 24-hour/10-day indicator inside it already says which view you're on.
         VStack(spacing: 0) {
+            headerBar("graph", right: showTable ? ("table", { goToTable() }) : nil)
             FoldTimelineView(
                 series: weather.isRefreshing ? [] : personalized(weather.series10d, splitSun: sunFeatureActive),
                 historic: weather.isRefreshing ? [] : personalized(weather.historic, splitSun: sunFeatureActive),
@@ -723,6 +921,14 @@ struct ContentView: View {
 
     private func forecastTableTab(chipFeatures: Set<Feature>) -> some View {
         VStack(spacing: 0) {
+            if useFoldTimeline {
+                headerBar(ForecastScreen.table.title,
+                          left: ("graph", { leaveTable(to: nil) }))
+            } else {
+                headerBar(ForecastScreen.table.title,
+                          left: ("24h", { leaveTable(to: .today) }),
+                          right: ("10-day", { leaveTable(to: .tenDay) }))
+            }
             ForecastTableView(
                 weatherService: weather,
                 nowTick: nowTick,

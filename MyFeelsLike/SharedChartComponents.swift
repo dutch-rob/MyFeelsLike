@@ -22,11 +22,16 @@ struct LongPressLocator: UIViewRepresentable {
     var minimumDuration: Double = 0.35
     /// Report the location in the window (global) instead of the layer's bounds.
     var inWindow: Bool = false
-    var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
     /// A plain tap on the chart, used to put the scrubber away. Lives here
     /// rather than as a SwiftUI .onTapGesture because this view sits on top of
     /// the chart and would otherwise swallow it.
+    ///
+    /// Declared before `onEvent` deliberately: the memberwise initialiser binds
+    /// a trailing closure to its *last* parameter, so putting this one after
+    /// `onEvent` would silently re-point every existing trailing-closure call
+    /// site at the tap handler instead of the long-press one.
     var onTap: (() -> Void)? = nil
+    var onEvent: (CGPoint, UIGestureRecognizer.State) -> Void
 
     func makeUIView(context: Context) -> UIView {
         let v = UIView()
@@ -368,6 +373,11 @@ extension View {
     func ifLet<T, Content: View>(_ value: T?, transform: (Self, T) -> Content) -> some View {
         if let v = value { transform(self, v) } else { self }
     }
+}
+
+/// The point in `series` closest in time to `date`.
+func nearestForecastPoint(to date: Date, in series: [ForecastPoint]) -> ForecastPoint? {
+    series.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
 }
 
 // MARK: - Day axis labels

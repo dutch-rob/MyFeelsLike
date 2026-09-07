@@ -13,7 +13,33 @@ import Charts
 // MARK: - HereTodayView
 
 struct HereTodayView: View {
-    var series: [ForecastPoint]
+    var allSeries: [ForecastPoint]
+
+    /// Left edge of the visible time window. nil = show the whole `allSeries`
+    /// (the pre-scrolling behaviour, still used by the iPad dashboard). When
+    /// set, the charts pan over the full −10d…+10d series instead of showing a
+    /// fixed forecast slice.
+    var windowStart: Date? = nil
+    /// How much time the window covers.
+    var windowSpan: TimeInterval = 24 * 3600
+
+    /// The window as a range, if scrolling is active.
+    private var visibleRange: ClosedRange<Date>? {
+        guard let s = windowStart else { return nil }
+        // A sliver of lead-in, proportional to the window, so the "now" rings
+        // sit inside the plot instead of being clipped in half by its left edge.
+        return s.addingTimeInterval(-windowSpan * 0.03)...s.addingTimeInterval(windowSpan)
+    }
+
+    /// Points inside the window (padded slightly so curves reach both edges).
+    /// Everything below draws from this, so the y-axis and the scrubber follow
+    /// whatever is on screen.
+    private var series: [ForecastPoint] {
+        guard let r = visibleRange else { return allSeries }
+        let lo = r.lowerBound.addingTimeInterval(-2 * 3600)
+        let hi = r.upperBound.addingTimeInterval(2 * 3600)
+        return allSeries.filter { $0.date >= lo && $0.date <= hi }
+    }
     /// Apple's current-conditions nowcast, drawn as prominent "now" dots in a
     /// small gap to the left of the forecast curves.
     var current: ForecastPoint? = nil
@@ -153,6 +179,7 @@ struct HereTodayView: View {
     /// Domain begins ~1 h before "now" so the forecast curves sit slightly to
     /// the right, leaving a gap on the left for the prominent current dots.
     private var dateDomain: ClosedRange<Date>? {
+        if let r = visibleRange { return r }
         guard let last = series.last?.date else { return nil }
         let lo: Date
         if let c = current?.date {
@@ -244,7 +271,7 @@ struct HereTodayView: View {
     private func scrubEntry(_ proxy: ChartProxy) -> some View {
         GeometryReader { geo in
             let plot = proxy.plotFrame.map { geo[$0] }
-            LongPressLocator { loc, state in
+            LongPressLocator(onTap: { scrubDate = nil }) { loc, state in
                 guard plot != nil else { return }
                 if state == .began || state == .changed {
                     updateScrub(atX: loc.x, proxy: proxy, geo: geo)
@@ -385,7 +412,10 @@ struct HereTodayView: View {
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
-            ScrollView {
+            // Deliberately not a ScrollView: the content is sized to the screen,
+            // and a scroll view would swallow the vertical drag that now
+            // switches screens. Refresh moved to the header bar with it.
+            Group {
                 if series.isEmpty {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
@@ -424,7 +454,6 @@ struct HereTodayView: View {
                     .background(scrubGapEntry)
                 }
             }
-            .refreshable { await onRefresh?() }
         }
         // Screenshot automation: drop the scrub line on a mid-afternoon hour so
         // the readout is in the capture. Keyed off the series arriving, because
@@ -528,6 +557,7 @@ struct HereTodayView: View {
         }
         .chartXAxis(.hidden)
         .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .chartPlotStyle { $0.clipped() }
         .frame(height: height)
     }
 
@@ -558,6 +588,7 @@ struct HereTodayView: View {
         }
         .chartXAxis(.hidden)
         .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .chartPlotStyle { $0.clipped() }
         // Explain the narrowing, in the space the narrowing itself frees up.
         .chartOverlay { proxy in limitLabel(proxy) }
         .frame(height: height)
@@ -664,6 +695,7 @@ struct HereTodayView: View {
         }
         .chartXAxis(.hidden)
         .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .chartPlotStyle { $0.clipped() }
         // The narrowing applies to both bands equally -- thickness comes from
         // myFeelsLikeWidth, which is one value per hour, not per sun setting --
         // so the reason is drawn on the shade band alone. Drawing it in both
@@ -759,23 +791,23 @@ struct HereTodayView: View {
                     if graphTemp {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Temp", useFahrenheit ? c.temperatureF : c.temperatureC))
-                            .foregroundStyle(seriesInk(.green)).symbolSize(110)
+                            .symbol { NowMarkerSymbol(color: seriesInk(.green)) }
                     }
                     if graphWetBulb {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Wet Bulb", useFahrenheit ? c.wetBulbF : c.wetBulbC))
-                            .foregroundStyle(seriesInk(.blue)).symbolSize(110)
+                            .symbol { NowMarkerSymbol(color: seriesInk(.blue)) }
                     }
                     if graphDewPoint {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Dew Point", useFahrenheit ? c.dewPointF : c.dewPointC))
-                            .foregroundStyle(seriesInk(.red)).symbolSize(110)
+                            .symbol { NowMarkerSymbol(color: seriesInk(.red)) }
                     }
                     if graphFeels {
                         PointMark(x: .value("Time", c.date),
                                   y: .value("Apparent",
                                             useFahrenheit ? c.apparentTemperatureF : c.apparentTemperatureC))
-                            .foregroundStyle(seriesInk(.purple)).symbolSize(110)
+                            .symbol { NowMarkerSymbol(color: seriesInk(.purple)) }
                     }
                 }
                 scrubRule()
@@ -810,6 +842,7 @@ struct HereTodayView: View {
                 }
             }
             .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+            .chartPlotStyle { $0.clipped() }
             // Unit annotation just below the topmost y-axis number, in-plot
             // (so the chart area does not need to shrink to make room).
             .overlay(alignment: .topLeading) {
@@ -931,6 +964,7 @@ struct HereTodayView: View {
                 }
             }
             .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+            .chartPlotStyle { $0.clipped() }
             .frame(height: height - 20)
 
             // Legend below the panel (moved from the top), near the largest values.

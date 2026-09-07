@@ -14,6 +14,26 @@ import Charts
 
 struct TenDayView: View {
     var series: [ForecastPoint]
+
+    /// Left edge of the visible time window. nil = show the whole series (the
+    /// pre-scrolling behaviour, still used by the iPad dashboard). When set,
+    /// the charts pan over the −10d…+10d series instead of a fixed slice.
+    /// `series`/`historic` are already sliced to it by the caller; this fixes
+    /// the axis so the window stays put as the data shifts under it.
+    var windowStart: Date? = nil
+    /// How much time the window covers.
+    var windowSpan: TimeInterval = 240 * 3600
+
+    /// The window as a range, if scrolling is active.
+    private var visibleRange: ClosedRange<Date>? {
+        guard let s = windowStart else { return nil }
+        // A sliver of lead-in, proportional to the window, so the "now" ring
+        // sits inside the plot instead of being clipped by its left edge.
+        return s.addingTimeInterval(-windowSpan * 0.03)...s.addingTimeInterval(windowSpan)
+    }
+
+    /// Plot width, kept so the day axis can decide whether the weekday fits.
+    @State private var plotWidth: CGFloat = 0
     /// Observed past ~24 h, drawn dashed to the left of the forecast.
     var historic: [ForecastPoint] = []
     /// "now" boundary point joining the dashed history to the solid forecast.
@@ -218,7 +238,7 @@ struct TenDayView: View {
     private func scrubEntry(_ proxy: ChartProxy) -> some View {
         GeometryReader { geo in
             let plot = proxy.plotFrame.map { geo[$0] }
-            LongPressLocator { loc, state in
+            LongPressLocator(onTap: { scrubDate = nil }) { loc, state in
                 guard plot != nil else { return }
                 if state == .began || state == .changed {
                     updateScrub(atX: loc.x, proxy: proxy, geo: geo)
@@ -361,6 +381,7 @@ struct TenDayView: View {
     }
 
     private var dateDomain: ClosedRange<Date>? {
+        if let r = visibleRange { return r }
         guard let lo = earliestDate, let last = series.last?.date else { return nil }
         return lo...last
     }
@@ -384,11 +405,26 @@ struct TenDayView: View {
         "Thu": "Th", "Fri": "Fr", "Sat": "Sa", "Sun": "Su"
     ]
 
+    /// Day tick label. Carries the day of the month, and the weekday too when
+    /// the axis is wide enough for both — once the window scrolls across weeks,
+    /// a bare weekday no longer says which day you are looking at.
     private func dayLabel(for date: Date) -> String {
         guard let start = startMidnight, date >= start,
               Calendar.current.component(.hour, from: date) == 0 else { return "" }
+        let day = Calendar.current.component(.day, from: date)
+        let days = (windowStart == nil) ? 10 : windowSpan / (24 * 3600)
+        guard dayAxisFitsWeekday(plotWidth: plotWidth, days: days) else { return "\(day)" }
         let key = TenDayView.dayFormatter.string(from: date)
-        return TenDayView.dayAbbreviations[key] ?? String(key.prefix(2))
+        let wd = TenDayView.dayAbbreviations[key] ?? String(key.prefix(2))
+        return "\(wd) \(day)"
+    }
+
+    /// Forecast point closest to "now", drawn as a ring so the current moment is
+    /// obvious once the graph can scroll away from it. nil when "now" is off
+    /// the visible window.
+    private var nowPoint: ForecastPoint? {
+        guard let p = nearestForecastPoint(to: nowTick, in: series) else { return nil }
+        return abs(p.date.timeIntervalSince(nowTick)) <= 3 * 3600 ? p : nil
     }
 
     /// The four temperature lines (temp/wet-bulb/dew/apparent) over a set of
@@ -642,6 +678,7 @@ struct TenDayView: View {
             }
         }
         .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .chartPlotStyle { $0.clipped() }
     }
 
     private var heatmapChart: some View {
@@ -729,7 +766,10 @@ struct TenDayView: View {
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
-            ScrollView {
+            // Deliberately not a ScrollView: the content is sized to the screen,
+            // and a scroll view would swallow the vertical drag that now
+            // switches screens. Refresh moved to the header bar with it.
+            Group {
                 if series.isEmpty {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
@@ -766,7 +806,8 @@ struct TenDayView: View {
                     .background(scrubGapEntry)
                 }
             }
-            .refreshable { await onRefresh?() }
+            .onAppear { plotWidth = geo.size.width }
+            .onChange(of: geo.size.width) { _, w in plotWidth = w }
         }
     }
 
@@ -820,6 +861,7 @@ struct TenDayView: View {
                 }
             }
             .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+            .chartPlotStyle { $0.clipped() }
             // Unit annotation just below the topmost y-axis number.
             .overlay(alignment: .topLeading) {
                 Text(useFahrenheit ? "°F" : "°C")
@@ -918,6 +960,7 @@ struct TenDayView: View {
                 }
             }
             .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+            .chartPlotStyle { $0.clipped() }
             .frame(height: height - 20)
 
             // Legend below the panel (moved from the top), near the largest values.
