@@ -480,13 +480,25 @@ struct ColorScoreWheel: View {
                                     (dragBase ?? score) + Double(v.translation.height) * rate)
                             }
                             .onEnded { v in
-                                // Carry the flick on rather than stopping dead
-                                // under the finger.
-                                let projected = Self.clampScore(
-                                    (dragBase ?? score)
-                                    + Double(v.predictedEndTranslation.height) * rate)
+                                let base = dragBase ?? score
                                 dragBase = nil
-                                withAnimation(.easeOut(duration: 0.35)) { score = projected }
+                                // How much momentum the gesture actually
+                                // carries, in points beyond where the finger
+                                // stopped. Projecting unconditionally was the
+                                // bug that made the wheel feel steppy: a small
+                                // deliberate nudge still carries some
+                                // projection, so every nudge ended in a jump
+                                // and the wheel seemed to move only in lumps.
+                                let flick = v.predictedEndTranslation.height - v.translation.height
+                                if abs(flick) > 60 {
+                                    let projected = Self.clampScore(
+                                        base + Double(v.predictedEndTranslation.height) * rate)
+                                    withAnimation(.easeOut(duration: 0.35)) { score = projected }
+                                } else {
+                                    // Stay exactly under the finger.
+                                    score = Self.clampScore(
+                                        base + Double(v.translation.height) * rate)
+                                }
                             }
                     )
 
@@ -540,9 +552,40 @@ struct ColorScoreWheel: View {
                 y += Self.bandHeight
             }
 
+            // Cylinder shading. Leaving this out was a misread of the brief:
+            // the system picker's fault was fading rows toward the background,
+            // which washes the colour out. Darkening toward the rim is the
+            // opposite -- hue and saturation are untouched, the surface just
+            // turns away from the light, which is what a wheel does. Without it
+            // the scale reads as a flat strip.
+            let shade = Gradient(stops: [
+                .init(color: .black.opacity(0.42), location: 0.00),
+                .init(color: .black.opacity(0.16), location: 0.28),
+                .init(color: .clear,               location: 0.50),
+                .init(color: .black.opacity(0.16), location: 0.72),
+                .init(color: .black.opacity(0.42), location: 1.00)
+            ])
+            ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                     with: .linearGradient(shade,
+                                           startPoint: CGPoint(x: 0, y: 0),
+                                           endPoint: CGPoint(x: 0, y: size.height)))
+            // A soft sheen just above the centre, where a cylinder catches the
+            // light. Small, but it is most of what says "round" rather than
+            // "gradient".
+            let sheen = Gradient(stops: [
+                .init(color: .clear,                location: 0.30),
+                .init(color: .white.opacity(0.20),  location: 0.43),
+                .init(color: .white.opacity(0.05),  location: 0.52),
+                .init(color: .clear,                location: 0.62)
+            ])
+            ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                     with: .linearGradient(sheen,
+                                           startPoint: CGPoint(x: 0, y: 0),
+                                           endPoint: CGPoint(x: 0, y: size.height)))
+
             // Ticks every 50, bunching toward the rim because they are spaced
-            // by angle. This is what reads as curvature, and it does so without
-            // touching the colours.
+            // by angle. Together with the shading this is what reads as
+            // curvature.
             let cx = size.width / 2
             for tick in stride(from: 0.0, through: ColorScale.maxScore, by: 50) {
                 guard let ty = Self.y(forScore: tick, centre: score, radius: radius)
@@ -589,7 +632,6 @@ struct ColorScoreWheel: View {
                 ctx.draw(text, at: CGPoint(x: cx, y: clampedY))
             }
         }
-        .drawingGroup()
     }
 }
 
