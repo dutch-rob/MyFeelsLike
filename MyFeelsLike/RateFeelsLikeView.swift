@@ -422,93 +422,174 @@ struct ColorScoreColumn: View {
     }
 }
 
-// MARK: - Picker-wheel scale (experiment)
+// MARK: - Color wheel scale (experiment)
 
-/// EXPERIMENTAL alternative to `ColorScoreColumn`: the same 0…1000 comfort
-/// score on a picker wheel instead of a sliding bar.
+/// EXPERIMENTAL alternative to `ColorScoreColumn`: the same 0…1000 comfort score
+/// on a wheel we draw ourselves.
 ///
-/// Rows every 10 points, matching the fine ticks on the column's ruler, and hot
-/// at the top so the wheel runs the same way round as the gradient. A wheel of
-/// bare colour would have nothing to aim at, so the row nearest each category
-/// anchor carries its name — the same six landmarks the no-colour ladder uses.
+/// `.pickerStyle(.wheel)` was tried first and fails this job twice over. It fades
+/// and shrinks every row but the selected one, which is precisely what a colour
+/// ramp cannot survive, and it quantises to discrete rows — at a spacing coarse
+/// enough to show any colour range at all, far too coarse to rate with.
+///
+/// Drawing it ourselves fixes both, and buys range as a bonus. The wheel is a
+/// cylinder seen edge-on: a point at angle θ from the centre sits at sin(θ), so
+/// the scale compresses toward the rim exactly as a real wheel does. Pick the
+/// scale-per-radian so a half turn is the whole scale and **all 1000 points are
+/// on screen at once**, magnified where you are looking and squeezed at the
+/// edges — more range than the column shows uniformly, and far more than the
+/// Picker's ~150. Colour is sampled per scanline at full saturation: nothing
+/// fades, and the score is a Double throughout, so there is nothing to snap to.
 struct ColorScoreWheel: View {
     @Binding var score: Double   // 0…1000
 
     @AppStorage(SettingsKey.colorVisionMode)
     private var visionMode = ColorScale.ColorVisionMode.full
-    @AppStorage(SettingsKey.noColorStyle)
-    private var noColorStyle = ColorScale.NoColorStyle.lineGraph
 
-    /// A wheel shows about seven rows at once, so the step decides how much of
-    /// the scale is visible. At the column's 10-point tick spacing that is 60
-    /// points out of 1000 — seven near-identical greens, telling you nothing
-    /// about where you are. 25 puts roughly 150 points on screen, enough for the
-    /// colour to move under your thumb, and still finer than anyone rates to.
-    private static let stepSize = 25
-    /// Hot first: the wheel reads top-to-bottom like the column's gradient.
-    private static let steps: [Int] =
-        Array(stride(from: Int(ColorScale.maxScore), through: Int(ColorScale.minScore),
-                     by: -stepSize))
+    /// Where the drag started, so a drag is absolute rather than incremental.
+    @State private var dragBase: Double? = nil
 
-    /// Rows that sit closest to a category anchor, which are the ones labelled.
-    private static let landmarks: [Int: String] = {
-        var m: [Int: String] = [:]
-        for c in ColorScale.comfortCategories {
-            let row = Int((c.score / Double(stepSize)).rounded()) * stepSize
-            m[row] = c.name
-        }
-        return m
-    }()
+    /// Scale units per radian of turn. A half turn (π) is the full scale, which
+    /// is what puts every point on the wheel at once.
+    private static let scorePerRadian = ColorScale.maxScore / .pi
 
-    /// The wheel works in whole steps; the score it drives is continuous.
-    private var selection: Binding<Int> {
-        Binding(get: { Int((score / Double(Self.stepSize)).rounded()) * Self.stepSize },
-                set: { score = Double($0) })
-    }
-
-    /// True when colour carries nothing and the names have to do the work.
-    private var namesOnly: Bool { visionMode == .noColor }
+    /// Height of one drawn band. 1.5 pt is below the point at which banding
+    /// shows on the gradient and keeps the per-frame fill count in the
+    /// hundreds — a screen-height wheel is under 300 fills.
+    private static let bandHeight: CGFloat = 1.5
 
     var body: some View {
-        Picker("Comfort score", selection: selection) {
-            ForEach(Self.steps, id: \.self) { s in
-                row(for: s).tag(s)
-            }
-        }
-        .pickerStyle(.wheel)
-        .labelsHidden()
-        .accessibilityLabel("Comfort scale from hot at the top to very cold at the bottom")
-    }
+        GeometryReader { geo in
+            let h = max(1, geo.size.height)
+            let radius = h / 2
+            // Scale units per point of finger travel, at the centre where the
+            // wheel is least compressed. Elsewhere the surface moves faster,
+            // but tracking the touch point exactly makes the far edges
+            // uncontrollable; the centre rate is what the thumb expects.
+            let rate = Self.scorePerRadian / Double(radius)
 
-    @ViewBuilder
-    private func row(for s: Int) -> some View {
-        let name = Self.landmarks[s]
-        if namesOnly {
-            // No colour to read, so every row says where it is: the landmark
-            // name where there is one, a tick elsewhere.
-            Text(name ?? "·")
-                .font(name == nil ? .caption2 : .callout)
-                .foregroundStyle(name == nil ? .secondary : .primary)
-        } else {
-            // Full-bleed and as tall as the row allows: the wheel style fades
-            // and shrinks everything but the selected row, so the colour needs
-            // all the area it can get to survive that.
-            ZStack {
-                Rectangle()
-                    .fill(ColorScale.color(forScore: Double(s)))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 32)
-                if let name {
-                    Text(name)
-                        .font(.caption).fontWeight(.semibold)
-                        // Outlined the way the band labels are, because the row
-                        // colour underneath runs from deep blue to red.
-                        .foregroundStyle(.white)
-                        .shadow(color: .black, radius: 1)
-                        .shadow(color: .black, radius: 1)
+            ZStack(alignment: .topLeading) {
+                wheelCanvas
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { v in
+                                if dragBase == nil { dragBase = score }
+                                score = Self.clampScore(
+                                    (dragBase ?? score) + Double(v.translation.height) * rate)
+                            }
+                            .onEnded { v in
+                                // Carry the flick on rather than stopping dead
+                                // under the finger.
+                                let projected = Self.clampScore(
+                                    (dragBase ?? score)
+                                    + Double(v.predictedEndTranslation.height) * rate)
+                                dragBase = nil
+                                withAnimation(.easeOut(duration: 0.35)) { score = projected }
+                            }
+                    )
+
+                // The same indicator the column uses, so the two instruments are
+                // read the same way.
+                IndicatorOverlay()
+                    .frame(width: geo.size.width + 24, height: 16)
+                    .position(x: geo.size.width / 2, y: radius)
+                    .allowsHitTesting(false)
+            }
+            .accessibilityElement()
+            .accessibilityLabel("Comfort scale wheel")
+            .accessibilityValue(ColorScale.categoryName(forScore: score))
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: score = Self.clampScore(score + 25)
+                case .decrement: score = Self.clampScore(score - 25)
+                default: break
                 }
             }
         }
+    }
+
+    private static func clampScore(_ s: Double) -> Double {
+        min(ColorScale.maxScore, max(ColorScale.minScore, s))
+    }
+
+    /// Screen y for a score, or nil when it has turned past the rim.
+    private static func y(forScore s: Double, centre: Double, radius: CGFloat) -> CGFloat? {
+        let theta = (centre - s) / scorePerRadian
+        guard abs(theta) <= .pi / 2 else { return nil }
+        return radius + radius * CGFloat(sin(theta))
+    }
+
+    private var wheelCanvas: some View {
+        Canvas { ctx, size in
+            let radius = max(1, size.height / 2)
+
+            // The surface: one fill per band, colour sampled at that band's
+            // angle. Full saturation everywhere — the fade is the whole reason
+            // the system picker was no good here.
+            var y: CGFloat = 0
+            while y < size.height {
+                let dy = (y + Self.bandHeight / 2) - radius
+                let t = max(-1, min(1, Double(dy / radius)))
+                let s = score - Self.scorePerRadian * asin(t)
+                ctx.fill(
+                    Path(CGRect(x: 0, y: y, width: size.width,
+                                height: Self.bandHeight + 0.6)),
+                    with: .color(ColorScale.color(forScore: s)))
+                y += Self.bandHeight
+            }
+
+            // Ticks every 50, bunching toward the rim because they are spaced
+            // by angle. This is what reads as curvature, and it does so without
+            // touching the colours.
+            let cx = size.width / 2
+            for tick in stride(from: 0.0, through: ColorScale.maxScore, by: 50) {
+                guard let ty = Self.y(forScore: tick, centre: score, radius: radius)
+                else { continue }
+                let major = tick.truncatingRemainder(dividingBy: 250) == 0
+                let len: CGFloat = major ? 14 : 7
+                ctx.fill(Path(CGRect(x: cx - len, y: ty - 0.6,
+                                     width: 2 * len, height: 1.25)),
+                         with: .color(.black.opacity(0.55)))
+            }
+
+            // Category names, so there is something to aim at. Nearest the
+            // selection first, and a name is dropped if it would collide with
+            // one already placed: toward the rim the compression stacks the
+            // anchors within a few points of each other, and two overlapping
+            // labels name neither position.
+            var placed: [CGFloat] = []
+            let byNearest = ColorScale.comfortCategories
+                .sorted { abs($0.score - score) < abs($1.score - score) }
+            for c in byNearest {
+                guard let ty = Self.y(forScore: c.score, centre: score, radius: radius)
+                else { continue }
+                var text = ctx.resolve(
+                    Text(c.name)
+                        .font(.caption2).fontWeight(.semibold)
+                        .foregroundStyle(.white))
+                text.shading = .color(.white)
+                let sz = text.measure(in: size)
+                // Keep the name inside the wheel as it nears the rim.
+                let clampedY = min(max(ty, sz.height / 2 + 2),
+                                   size.height - sz.height / 2 - 2)
+                guard placed.allSatisfy({ abs($0 - clampedY) >= sz.height + 3 })
+                else { continue }
+                placed.append(clampedY)
+                // A dark plate behind it: the ramp runs from deep blue to red,
+                // so neither a light nor a dark name works everywhere.
+                ctx.fill(
+                    Path(roundedRect: CGRect(x: cx - sz.width / 2 - 4,
+                                             y: clampedY - sz.height / 2 - 1,
+                                             width: sz.width + 8,
+                                             height: sz.height + 2),
+                         cornerRadius: 3),
+                    with: .color(.black.opacity(0.45)))
+                ctx.draw(text, at: CGPoint(x: cx, y: clampedY))
+            }
+        }
+        .drawingGroup()
     }
 }
 
