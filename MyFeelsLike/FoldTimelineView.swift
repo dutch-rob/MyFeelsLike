@@ -170,7 +170,19 @@ struct FoldTimelineView: View {
     private var visDomain: ClosedRange<Date> {
         // Small proportional lead-in so the "now" rings are not clipped at the
         // left edge; see HereTodayView.visibleRange.
-        let lo = visLo.addingTimeInterval(-span * 0.03)
+        let sliver = span * 0.03
+        var lo = visLo.addingTimeInterval(-sliver)
+        // That sliver alone is not always enough. The current observation is
+        // timestamped on the hour, so it can sit up to an hour behind "now" —
+        // and with the window starting at "now", its rings then land on or
+        // outside the edge and get sliced in half. Give way to the marker, but
+        // only when it is close enough to the edge to be the one being clipped:
+        // scrolled elsewhere, the window must not stretch back to it.
+        if let n = nowPoint,
+           n.date < lo.addingTimeInterval(sliver),
+           n.date > lo.addingTimeInterval(-3 * sliver) {
+            lo = n.date.addingTimeInterval(-sliver)
+        }
         return lo...max(lo.addingTimeInterval(3600), visHi)
     }
 
@@ -550,6 +562,18 @@ struct FoldTimelineView: View {
         patternedSeries ? axisInk : base
     }
 
+    /// Point the "now" markers sit on: the current observation when there is
+    /// one, else the nearest hour, and nothing at all if that is over an hour
+    /// away. The window scrolls, so unlike the paged screens "now" is often not
+    /// on screen — the x-scale clips the markers when it is not.
+    private var nowPoint: ForecastPoint? {
+        if let c = current { return c }
+        guard let p = allPoints.min(by: {
+            abs($0.date.timeIntervalSince(nowTick)) < abs($1.date.timeIntervalSince(nowTick))
+        }) else { return nil }
+        return abs(p.date.timeIntervalSince(nowTick)) <= 3600 ? p : nil
+    }
+
     @ViewBuilder
     private func temperatureChart(height: CGFloat) -> some View {
         let dom = tempYDomain
@@ -574,6 +598,30 @@ struct FoldTimelineView: View {
                             .foregroundStyle(seriesInk(.purple))
                             .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
                             .interpolationMethod(.linear)
+                    }
+                }
+                // Hollow rings at the current hour, matching the paged screens.
+                if let n = nowPoint {
+                    if graphTemp {
+                        PointMark(x: .value("t", n.date),
+                                  y: .value("y", useFahrenheit ? n.temperatureF : n.temperatureC))
+                            .symbol { NowMarkerSymbol(color: seriesInk(.green)) }
+                    }
+                    if graphWetBulb {
+                        PointMark(x: .value("t", n.date),
+                                  y: .value("y", useFahrenheit ? n.wetBulbF : n.wetBulbC))
+                            .symbol { NowMarkerSymbol(color: seriesInk(.blue)) }
+                    }
+                    if graphDewPoint {
+                        PointMark(x: .value("t", n.date),
+                                  y: .value("y", useFahrenheit ? n.dewPointF : n.dewPointC))
+                            .symbol { NowMarkerSymbol(color: seriesInk(.red)) }
+                    }
+                    if graphFeels {
+                        PointMark(x: .value("t", n.date),
+                                  y: .value("y", useFahrenheit ? n.apparentTemperatureF
+                                                               : n.apparentTemperatureC))
+                            .symbol { NowMarkerSymbol(color: seriesInk(.purple)) }
                     }
                 }
                 nowRule
@@ -676,6 +724,20 @@ struct FoldTimelineView: View {
                             .foregroundStyle(seriesInk(.red))
                             .lineStyle(SeriesDash.stroke(SeriesDash.solid, patterned: patternedSeries))
                             .interpolationMethod(.linear)
+                    }
+                }
+                // Wind and gust get filled dots rather than rings, again as on
+                // the 24-hour screen (there is no "now" precipitation to mark).
+                if let n = nowPoint {
+                    if graphGust {
+                        PointMark(x: .value("t", n.date),
+                                  y: .value("y", useFahrenheit ? n.windGustMPH : n.windGustKPH))
+                            .foregroundStyle(seriesInk(.red).opacity(0.45)).symbolSize(90)
+                    }
+                    if graphWind {
+                        PointMark(x: .value("t", n.date),
+                                  y: .value("y", useFahrenheit ? n.windSpeedMPH : n.windSpeedKPH))
+                            .foregroundStyle(seriesInk(.red)).symbolSize(90)
                     }
                 }
                 nowRule
