@@ -15,6 +15,7 @@ Each section below is a short summary, followed by the detail.
 - [The colors](#the-colors) — comfort as a color, not a number
 - [Rating how it feels](#rating-how-it-feels) — the few taps that teach the app
 - [The 24-hour screen](#the-24-hour-screen) — hourly bands and your comfort band
+- [Moving around](#moving-around) — scrolling through time, and switching screens
 - [The 10-day screen](#the-10-day-screen) — the trend and a time-of-day heatmap
 - [Reading exact values](#reading-exact-values) — long-press any graph
 - [When the band goes thin](#when-the-band-goes-thin) — how sure the app is
