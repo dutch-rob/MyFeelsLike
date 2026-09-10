@@ -28,7 +28,22 @@ struct HereTodayView: View {
         guard let s = windowStart else { return nil }
         // A sliver of lead-in, proportional to the window, so the "now" rings
         // sit inside the plot instead of being clipped in half by its left edge.
-        return s.addingTimeInterval(-windowSpan * 0.03)...s.addingTimeInterval(windowSpan)
+        let sliver = windowSpan * 0.03
+        var lo = s.addingTimeInterval(-sliver)
+        // The sliver alone is not enough. The current observation is stamped on
+        // the hour, so it sits up to an hour behind "now" — on a 24-hour window
+        // the sliver is only about 43 minutes, so for most of every hour the
+        // rings fell outside the domain and were dropped altogether rather than
+        // merely clipped. (It came and went with the clock, which is why it read
+        // as fine when it was checked.) Give way to the marker when it is near
+        // the edge, and only then: scrolled elsewhere the window must not
+        // stretch back to reach it.
+        if let c = current,
+           c.date < lo.addingTimeInterval(sliver),
+           c.date > lo.addingTimeInterval(-3 * sliver) {
+            lo = c.date.addingTimeInterval(-sliver)
+        }
+        return lo...s.addingTimeInterval(windowSpan)
     }
 
     /// Points inside the window (padded slightly so curves reach both edges).

@@ -172,7 +172,8 @@ apart by line pattern rather than color.
 
 **Zoom graph** is an alternative to the two graph screens: one screen you pinch
 to zoom, anywhere from a single day out to ten, with the comfort band turning
-into the 10-day heat map as you pull out. It holds anywhere mid-turn.
+into the 10-day heat map as you pull out. It holds anywhere mid-turn, scrolls
+through time like the other screens, and marks the current hour the same way.
 
 ### The rest of Settings
 **Muted colors** softens the weather lines for a gentler look. You can show or
