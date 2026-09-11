@@ -410,6 +410,20 @@ func dayAxisFitsWeekday(plotWidth: CGFloat, days: Double) -> Bool {
     return (plotWidth - 56) / days >= 44
 }
 
+/// How many days apart labelled day ticks should be, so they do not run into
+/// one another. One per day suits a ten-day window on a phone; the iPad fits
+/// the whole twenty-day series into a half-width pane, where every day
+/// collides however short the label is made.
+func dayAxisStride(plotWidth: CGFloat, days: Double) -> Int {
+    guard days > 0, plotWidth > 56 else { return 1 }
+    // Room for a two-digit day plus a gap. The weekday, if it fits, is decided
+    // separately once the stride has thinned the labels out.
+    let slot: CGFloat = 26
+    let perDay = (plotWidth - 56) / days
+    guard perDay < slot else { return 1 }
+    return max(1, Int((slot / perDay).rounded(.up)))
+}
+
 // MARK: - "Now" marker
 
 /// Marker for the current time: a ring in the series colour whose centre is cut

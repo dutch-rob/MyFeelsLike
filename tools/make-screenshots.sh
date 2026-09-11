@@ -12,6 +12,7 @@
 # Usage:  tools/make-screenshots.sh
 #         DERIVED_DATA=/path/to/dd tools/make-screenshots.sh     # non-default build dir
 #         SKY=day tools/make-screenshots.sh                      # daylight background
+#         ONLY="iPhone 17" tools/make-screenshots.sh              # just matching devices
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -147,6 +148,14 @@ shoot() {   # udid  devname  index  screen  bundle  threshold  platform
 
 for entry in "${DEVICES[@]}"; do
   IFS='|' read -r udid dev platform threshold screens <<< "$entry"
+  # ONLY=<substring> re-runs just the devices whose name matches. One device
+  # failing (a simulator caught mid-"Shutting Down" refuses to install, which
+  # is how the iPhone got skipped once) should not cost a re-capture of the
+  # whole set, especially as every extra erase-and-boot invites the same race.
+  if [ -n "${ONLY:-}" ] && [[ "$dev" != *"$ONLY"* ]]; then
+    echo "== skipping $dev (ONLY=$ONLY) =="
+    continue
+  fi
   if [ "$platform" = "watch" ]; then
     [ -z "$WATCH_APP" ] && continue
     app="$WATCH_APP"; bundle="$WATCH_BUNDLE"

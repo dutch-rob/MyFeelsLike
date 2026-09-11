@@ -408,12 +408,30 @@ struct TenDayView: View {
     /// Day tick label. Carries the day of the month, and the weekday too when
     /// the axis is wide enough for both — once the window scrolls across weeks,
     /// a bare weekday no longer says which day you are looking at.
+    /// Days actually drawn across the axis. Not the same as the window: with no
+    /// window the chart fits the whole series into one pane — twenty days, not
+    /// ten — and taking it for ten was what let the iPad stack "Tu 1We 2Th 3"
+    /// on top of itself.
+    private var axisDays: Double {
+        if windowStart != nil { return windowSpan / (24 * 3600) }
+        guard let lo = allPoints.first?.date, let hi = allPoints.last?.date,
+              hi > lo else { return 10 }
+        return max(1, hi.timeIntervalSince(lo) / (24 * 3600))
+    }
+
+    /// Whole days between labelled ticks.
+    private var dayTickStride: Int {
+        dayAxisStride(plotWidth: plotWidth, days: axisDays)
+    }
+
     private func dayLabel(for date: Date) -> String {
         guard let start = startMidnight, date >= start,
               Calendar.current.component(.hour, from: date) == 0 else { return "" }
         let day = Calendar.current.component(.day, from: date)
-        let days = (windowStart == nil) ? 10 : windowSpan / (24 * 3600)
-        guard dayAxisFitsWeekday(plotWidth: plotWidth, days: days) else { return "\(day)" }
+        // Judge the weekday against how many labels there will actually be,
+        // which the stride has already thinned.
+        let labels = axisDays / Double(max(1, dayTickStride))
+        guard dayAxisFitsWeekday(plotWidth: plotWidth, days: labels) else { return "\(day)" }
         let key = TenDayView.dayFormatter.string(from: date)
         let wd = TenDayView.dayAbbreviations[key] ?? String(key.prefix(2))
         return "\(wd) \(day)"
@@ -721,7 +739,7 @@ struct TenDayView: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: 1)) { value in
+            AxisMarks(values: .stride(by: .day, count: dayTickStride)) { value in
                 AxisValueLabel {
                     Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "")
                         .font(.caption).foregroundStyle(axisInk)
@@ -857,7 +875,7 @@ struct TenDayView: View {
                 }
             }
             .chartXAxis {
-                AxisMarks(values: .stride(by: .day, count: 1)) { value in
+                AxisMarks(values: .stride(by: .day, count: dayTickStride)) { value in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
                     AxisTick().foregroundStyle(axisInk.opacity(0.6))
                     AxisValueLabel {
