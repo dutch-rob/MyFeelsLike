@@ -108,9 +108,9 @@ struct ForecastTableView: View {
         // scrollTo to an unrealised row does nothing. The first jump realises
         // the rows around it, the second lands on it exactly.
         DispatchQueue.main.async {
-            proxy.scrollTo(id, anchor: .top)
+            proxy.scrollTo(id, anchor: .topLeading)
             DispatchQueue.main.async {
-                proxy.scrollTo(id, anchor: .top)
+                proxy.scrollTo(id, anchor: .topLeading)
                 hasAligned = true
             }
         }

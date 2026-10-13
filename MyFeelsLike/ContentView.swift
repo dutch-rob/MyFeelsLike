@@ -130,11 +130,65 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
+    /// Size of the area the forecast is drawn in, measured rather than assumed.
+    @State private var canvasSize: CGSize = .zero
+
+    private enum LayoutMode {
+        /// One screen at a time, swiped between — a phone, or an unfolded
+        /// foldable's outer screen.
+        case pager
+        /// Two panes side by side, on a canvas too small for the full dashboard.
+        case splitPane
+        /// The full iPad dashboard: both graphs side by side, table below.
+        case dashboard
+    }
+
+    /// Smallest short side that still carries the three-pane dashboard.
+    ///
+    /// Measured on the short side rather than the width, because the width
+    /// changes with orientation and the device does not: an unfolded iPhone Duo
+    /// is 669 x 951 pt, so in landscape it is 951 pt wide and sails past any
+    /// width test, taking a dashboard built for a 13-inch iPad. Its short side
+    /// is 669 pt whichever way up it is held, against 744 pt for the smallest
+    /// iPad, so the gap holds in both orientations.
+    private static let dashboardMinShortSide: CGFloat = 700
+
+    /// Which root layout to use. Size class alone cannot decide this any more:
+    /// an unfolded foldable reports regular in *both* dimensions exactly as an
+    /// iPad does, while being barely half its width, so without the measurement
+    /// it would inherit a dashboard built for a 13-inch screen.
+    private var layoutMode: LayoutMode {
+        guard horizontalSizeClass == .regular, verticalSizeClass == .regular else { return .pager }
+        // Before the first layout pass there is nothing to measure; keep the
+        // iPad's existing behaviour rather than flashing a narrower one.
+        guard canvasSize.width > 0, canvasSize.height > 0 else { return .dashboard }
+        let shortSide = min(canvasSize.width, canvasSize.height)
+        return shortSide >= Self.dashboardMinShortSide ? .dashboard : .splitPane
+    }
+
     /// Full-size iPad (not a narrow split view): show all three forecast
     /// screens on one dashboard instead of paging between them.
-    private var useDashboardLayout: Bool {
-        horizontalSizeClass == .regular && verticalSizeClass == .regular
-    }
+    private var useDashboardLayout: Bool { layoutMode == .dashboard }
+
+    /// On the unfolded big screen the table is simply always there, in its own
+    /// half. Nothing navigates to it, so the buttons that would are hidden and
+    /// the Settings switch does not apply: the table lives there and nowhere
+    /// else on this device.
+    private var tableAlongside: Bool { layoutMode == .splitPane }
+
+    /// Whether a button should offer to reach the table from a graph screen.
+    private var tableIsReachable: Bool { showTable && !tableAlongside }
+
+    /// Debug only: `-UITestCanvas 669x951` pins the layout to a given size, so
+    /// the unfolded-foldable layout can be seen on an ordinary simulator. Absent
+    /// the argument this is nil and nothing is constrained.
+    private static let debugCanvas: CGSize? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-UITestCanvas"), i + 1 < args.count else { return nil }
+        let parts = args[i + 1].lowercased().split(separator: "x")
+        guard parts.count == 2, let w = Double(parts[0]), let h = Double(parts[1]) else { return nil }
+        return CGSize(width: w, height: h)
+    }()
 
     private var scenario: Scenario {
         Scenario(activity: scenarioActivity, dress: scenarioDress, sun: scenarioSun)
@@ -367,6 +421,12 @@ struct ContentView: View {
 
     @ViewBuilder
     private var forecastContent: some View {
+        measuredForecastContent
+            .frame(width: Self.debugCanvas?.width, height: Self.debugCanvas?.height)
+    }
+
+    @ViewBuilder
+    private var measuredForecastContent: some View {
         VStack(spacing: 0) {
             titleButton
             if !showSky { Divider() }
@@ -374,20 +434,25 @@ struct ContentView: View {
             if !anyGraphVisible {
                 // #10: every graph disabled → only the table screen remains.
                 forecastTableTab(chipFeatures: activeFeatures)
-            } else if useFoldTimeline && !useDashboardLayout && showTable && zoomShowsTable {
+            } else if useFoldTimeline && layoutMode == .pager && showTable && zoomShowsTable {
                 forecastTableTab(chipFeatures: activeFeatures)
-            } else if useFoldTimeline && !useDashboardLayout {
+            } else if useFoldTimeline && layoutMode == .pager {
                 // Experimental single morphing timeline in place of the two paged
                 // graph screens. Its own left/right swipe drives the 24h↔10-day
                 // morph, so it takes over paging (the table isn't reachable here
                 // yet — the scrubber readout covers reading exact values).
                 foldTimelineTab
+            } else if layoutMode == .splitPane {
+                splitPaneLayout
             } else if useDashboardLayout {
                 dashboardLayout
             } else {
                 graphPager
             }
         }
+        // Measure what we actually got, rather than inferring it from the
+        // device. This is what tells an unfolded foldable from an iPad.
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { canvasSize = $0 }
     }
 
     /// Fixed place name – taps open the places sheet.
@@ -443,6 +508,37 @@ struct ContentView: View {
             }
         }
         .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
+    }
+
+    /// Unfolded foldable: the table beside the screen you were already on, so
+    /// opening the device adds to what you were looking at rather than
+    /// replacing it. Which half each lands on is still open — swapping the two
+    /// is a matter of reordering this HStack.
+    @ViewBuilder
+    private var splitPaneLayout: some View {
+        ScenarioStrip(activeFeatures: activeFeatures)
+        // Exact halves, because the halves are physical: the right one has to
+        // land on the panel that carries the outer screen, so that opening the
+        // device reads as the folding half turning transparent rather than as
+        // the layout rearranging itself. A split sized by content would drift
+        // off the crease.
+        GeometryReader { geo in
+            let half = geo.size.width / 2
+            HStack(spacing: 0) {
+                forecastTableTab(chipFeatures: [])
+                    .frame(width: half)
+                Divider()
+                phoneContentPane
+                    .frame(width: half)
+            }
+        }
+    }
+
+    /// Whatever the outer screen shows: the paged graphs, or the zoom graph
+    /// when that is switched on.
+    @ViewBuilder
+    private var phoneContentPane: some View {
+        if useFoldTimeline { foldTimelineTab } else { graphPager }
     }
 
     /// iPad dashboard: 24h + 10-day side by side, table below (scrolling in its
@@ -856,7 +952,7 @@ struct ContentView: View {
             } else {
                 headerBar(windowLabel(.today),
                           left: ("10-day", { goToScreen(.tenDay) }),
-                          right: showTable ? ("table", { goToTable() }) : nil)
+                          right: tableIsReachable ? ("table", { goToTable() }) : nil)
             }
             HereTodayView(
                 allSeries: weather.isRefreshing ? []
@@ -886,7 +982,7 @@ struct ContentView: View {
             } else {
                 headerBar(windowLabel(.tenDay),
                           left: ("24h", { goToScreen(.today) }),
-                          right: showTable ? ("table", { goToTable() }) : nil)
+                          right: tableIsReachable ? ("table", { goToTable() }) : nil)
             }
             TenDayView(
                 series: weather.isRefreshing ? []
@@ -916,7 +1012,7 @@ struct ContentView: View {
 
     private func foldTimelineTab(chipFeatures: Set<Feature>) -> some View {
         VStack(spacing: 0) {
-            headerBar("graph", right: showTable ? ("table", { goToTable() }) : nil)
+            headerBar("graph", right: tableIsReachable ? ("table", { goToTable() }) : nil)
             FoldTimelineView(
                 series: weather.isRefreshing ? [] : personalized(weather.series10d, splitSun: sunFeatureActive),
                 historic: weather.isRefreshing ? [] : personalized(weather.historic, splitSun: sunFeatureActive),
@@ -929,7 +1025,7 @@ struct ContentView: View {
                 attribution: weather.attribution,
                 onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
                 startOffset: $startOffset,
-                onShowTable: showTable ? { goToTable() } : nil,
+                onShowTable: tableIsReachable ? { goToTable() } : nil,
                 activeFeatures: chipFeatures
             )
         }
@@ -945,7 +1041,10 @@ struct ContentView: View {
 
     private func forecastTableTab(chipFeatures: Set<Feature>) -> some View {
         VStack(spacing: 0) {
-            if useFoldTimeline {
+            if tableAlongside {
+                // Nothing to leave to: the graph is already in the other half.
+                headerBar(ForecastScreen.table.title)
+            } else if useFoldTimeline {
                 headerBar(ForecastScreen.table.title,
                           left: ("graph", { leaveTable(to: nil) }))
             } else {
@@ -959,7 +1058,9 @@ struct ContentView: View {
                 onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
                 personalize: { self.personalized($0) },
                 activeFeatures: chipFeatures,
-                onSwitchScreen: { _ in leaveTable(to: nil) },
+                // Beside the graph, over-scrolling the table just means you
+                // reached the end of the table — it must not change screens.
+                onSwitchScreen: tableAlongside ? nil : { _ in leaveTable(to: nil) },
                 topDate: $tableTopDate
             )
         }

@@ -200,7 +200,7 @@ struct FoldTimelineView: View {
 
     private var tempYDomain: ClosedRange<Double> {
         var v: [Double] = []
-        for p in allPoints {
+        for p in visibleSeries {
             if graphTemp     { v.append(useFahrenheit ? p.temperatureF : p.temperatureC) }
             if graphWetBulb  { v.append(useFahrenheit ? p.wetBulbF : p.wetBulbC) }
             if graphDewPoint { v.append(useFahrenheit ? p.dewPointF : p.dewPointC) }
@@ -212,7 +212,7 @@ struct FoldTimelineView: View {
     }
     private var windYMax: Double {
         var v: [Double] = []
-        for p in allPoints {
+        for p in visibleSeries {
             if graphPrecip { v.append(p.precipProbability * 100) }
             if graphGust   { v.append(useFahrenheit ? p.windGustMPH : p.windGustKPH) }
             if graphWind   { v.append(useFahrenheit ? p.windSpeedMPH : p.windSpeedKPH) }
@@ -1014,7 +1014,7 @@ struct FoldTimelineView: View {
     }
 
     private func xAxis(labels: Bool) -> some AxisContent {
-        AxisMarks(values: .automatic(desiredCount: 6)) { value in
+        AxisMarks(values: .automatic(desiredCount: 9)) { value in
             AxisGridLine().foregroundStyle(axisInk.opacity(0.22))
             AxisTick().foregroundStyle(axisInk.opacity(0.55))
             if labels {
