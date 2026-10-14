@@ -1019,8 +1019,13 @@ struct HereTodayView: View {
             // bar), so the wind/rain areas hang downward and share the hour
             // labels of the temperature chart above. Lines mode reads the normal
             // way up (zero at the bottom), matching the temperature panel.
-            .chartYScale(domain: linesOnly ? [dom.lowerBound, dom.upperBound]
-                                            : [dom.upperBound, dom.lowerBound])
+            // Filled areas hang downward from the top when this chart sits
+            // under the temperatures, which is what the inverted domain is for.
+            // Standing on its own in landscape it reads as an ordinary chart,
+            // so zero goes back to the bottom.
+            .chartYScale(domain: (linesOnly || standalone)
+                         ? [dom.lowerBound, dom.upperBound]
+                         : [dom.upperBound, dom.lowerBound])
             .chartYAxis {
                 AxisMarks(position: .leading, values: .stride(by: 5)) { _ in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))

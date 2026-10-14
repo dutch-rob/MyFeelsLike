@@ -553,6 +553,9 @@ struct ContentView: View {
         // table underneath the button bar.
         HStack(spacing: 0) {
             forecastTableTab(chipFeatures: [])
+                // A little air at the screen edge: the score column was running
+                // straight into it.
+                .padding(.leading, 8)
                 // Capped rather than fixed: the table's content is wider than
                 // either half, so it fills to the cap, which is the crease.
                 .frame(maxWidth: creaseLeftWidth > 0 ? creaseLeftWidth : .infinity)
