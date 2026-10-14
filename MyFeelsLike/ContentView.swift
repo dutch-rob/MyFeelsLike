@@ -264,16 +264,13 @@ struct ContentView: View {
         }
         .task { posture.start() }
         .background { skyBackground }
-        // The whole panel, status corner and all. Taken from a layer that
-        // ignores the safe area, because that is the only thing whose width is
-        // the display's rather than what is left after the insets.
+        // The whole panel, status corner and all — from the window, since a
+        // SwiftUI background reports what is left after the safe area and
+        // ignoresSafeArea() does not change that.
         .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear { displayWidth = proxy.size.width }
-                    .onChange(of: proxy.size.width) { _, w in displayWidth = w }
-            }
-            .ignoresSafeArea()
+            WindowWidthReader { displayWidth = $0 }
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
         }
         .sheet(isPresented: $showPlaces) {
             NavigationStack {
@@ -577,9 +574,11 @@ struct ContentView: View {
                 // A little air at the screen edge: the score column was running
                 // straight into it.
                 .padding(.leading, 8)
-                // Capped rather than fixed: the table's content is wider than
-                // either half, so it fills to the cap, which is the crease.
-                .frame(maxWidth: creaseLeftWidth > 0 ? creaseLeftWidth : .infinity)
+                // Fixed, not capped: a cap only stops the pane growing past the
+                // crease, and the stack was handing it less than that anyway —
+                // which left the graph starting before the fold even though the
+                // crease itself was worked out correctly.
+                .frame(width: creaseLeftWidth > 0 ? creaseLeftWidth : nil)
                 // End the table above the button bar rather than letting it
                 // scroll underneath. A scroll view is happy to run its content
                 // under a floating bar — which is right for one screen you
