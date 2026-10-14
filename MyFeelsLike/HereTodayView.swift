@@ -436,14 +436,30 @@ struct HereTodayView: View {
                         .padding()
                         .frame(minHeight: h)
                 } else if verticalSizeClass == .compact {
-                    // iPhone landscape: an optional thin MyFeelsLike strip on
-                    // top, the enabled charts side by side below it.
-                    VStack(spacing: 8) {
+                    // Landscape: the charts side by side, each with a comfort
+                    // band beneath it sharing that chart's time axis. The band
+                    // used to be one strip across the top, which read as a
+                    // separate thing from either chart; under a chart it reads
+                    // as that chart's hours coloured in.
+                    let split = splitComfortBands
+                    let chartH = colorPanelVisible ? h * 0.64 : h * 0.9
+                    let barH = max(12, h * 0.18)
+                    VStack(spacing: 6) {
                         ScenarioStrip(activeFeatures: activeFeatures)
-                        if colorPanelVisible { myFeelsLikePanel(height: h * 0.16) }
                         HStack(spacing: 12) {
-                            if tempPanelVisible { temperatureChart(height: colorPanelVisible ? h * 0.72 : h * 0.9) }
-                            if windPanelVisible { precipWindChart(height: colorPanelVisible ? h * 0.72 : h * 0.9) }
+                            if tempPanelVisible {
+                                VStack(spacing: 2) {
+                                    temperatureChart(height: chartH)
+                                    if colorPanelVisible { leadingComfort(height: barH, split: split) }
+                                }
+                            }
+                            if windPanelVisible {
+                                VStack(spacing: 2) {
+                                    precipWindChart(height: chartH)
+                                    // Only the split has a second band to place.
+                                    if colorPanelVisible && split { shadeComfortBand(height: barH) }
+                                }
+                            }
                         }
                         if let attribution {
                             WeatherAttributionLink(info: attribution)
@@ -490,6 +506,36 @@ struct HereTodayView: View {
     /// time with the temperature chart's plot area via the leading padding.
     /// When the model has learned a sun effect it splits into two half-height
     /// rows: in-shade on top, in-sun below.
+    /// True when there are two bands to place rather than one: a sun effect the
+    /// model has actually learned, drawn as colour rather than as a line graph.
+    private var splitComfortBands: Bool {
+        sunFeatureActive && hasModel && !comfortAsLineGraph
+    }
+
+    /// What sits under the temperature chart in landscape: the in-sun band when
+    /// the model has split them, and otherwise whatever single thing there is
+    /// to show — one band, the line graph, or the "not yet" placeholder.
+    @ViewBuilder
+    private func leadingComfort(height: CGFloat, split: Bool) -> some View {
+        if split {
+            soloBand(icon: "sun.max.fill", height: height) { p in
+                guard let s = p.myFeelsLikeSunScore else { return nil }
+                return ColorScale.feelsColor(score: s, opacity: 1)
+            }
+        } else {
+            myFeelsLikePanel(height: height)
+        }
+    }
+
+    /// The in-shade band, which in landscape goes under the wind chart.
+    private func shadeComfortBand(height: CGFloat) -> some View {
+        soloBand(icon: "cloud.fill", height: height, labelLimit: true) { p in
+            (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
+                ColorScale.feelsColor(score: $0, opacity: 1)
+            }
+        }
+    }
+
     @ViewBuilder
     private func myFeelsLikePanel(height: CGFloat) -> some View {
         let splitActive = sunFeatureActive && hasModel
