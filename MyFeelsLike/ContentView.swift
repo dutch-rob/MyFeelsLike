@@ -136,6 +136,10 @@ struct ContentView: View {
     /// last rows out from under it.
     @State private var bottomBarHeight: CGFloat = 0
 
+    /// How the device is folded and how flat it lies. Only read for now: the
+    /// thresholds that would drive a layout off it are still guesses.
+    @StateObject private var posture = DevicePosture()
+
     private enum LayoutMode {
         /// One screen at a time, swiped between — a phone, or an unfolded
         /// foldable's outer screen.
@@ -243,6 +247,13 @@ struct ContentView: View {
             bottomBar
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
         }
+        .background {
+            // Zero-sized host for the hinge interaction, which is UIKit-only.
+            HingeReader { angle, status in posture.apply(angle: angle, status: status) }
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
+        }
+        .task { posture.start() }
         .background { skyBackground }
         .sheet(isPresented: $showPlaces) {
             NavigationStack {
@@ -440,6 +451,10 @@ struct ContentView: View {
     @ViewBuilder
     private var measuredForecastContent: some View {
         VStack(spacing: 0) {
+            if PostureReadout.enabled {
+                PostureReadout(posture: posture)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             titleButton
             if !showSky { Divider() }
 
