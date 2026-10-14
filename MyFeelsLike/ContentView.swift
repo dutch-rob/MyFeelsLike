@@ -163,7 +163,13 @@ struct ContentView: View {
         // iPad's existing behaviour rather than flashing a narrower one.
         guard canvasSize.width > 0, canvasSize.height > 0 else { return .dashboard }
         let shortSide = min(canvasSize.width, canvasSize.height)
-        return shortSide >= Self.dashboardMinShortSide ? .dashboard : .splitPane
+        guard shortSide < Self.dashboardMinShortSide else { return .dashboard }
+        // Only split across the crease. Open like a book the fold is vertical
+        // and the panels sit side by side, which is the pose the split is for.
+        // Turned upright the panels are above and below each other, so a
+        // left/right split would straddle the fold — show the outer screen's
+        // single-pane layout instead and leave the crease alone.
+        return canvasSize.width > canvasSize.height ? .splitPane : .pager
     }
 
     /// Full-size iPad (not a narrow split view): show all three forecast
@@ -517,20 +523,21 @@ struct ContentView: View {
     @ViewBuilder
     private var splitPaneLayout: some View {
         ScenarioStrip(activeFeatures: activeFeatures)
-        // Exact halves, because the halves are physical: the right one has to
+        // Even halves, because the halves are physical: the right one has to
         // land on the panel that carries the outer screen, so that opening the
         // device reads as the folding half turning transparent rather than as
-        // the layout rearranging itself. A split sized by content would drift
-        // off the crease.
-        GeometryReader { geo in
-            let half = geo.size.width / 2
-            HStack(spacing: 0) {
-                forecastTableTab(chipFeatures: [])
-                    .frame(width: half)
-                Divider()
-                phoneContentPane
-                    .frame(width: half)
-            }
+        // the layout rearranging itself.
+        //
+        // Both panes are simply flexible rather than measured by a
+        // GeometryReader: the reader took the full height and laid its children
+        // out inside it, which swallowed the bottom safe-area inset and ran the
+        // table underneath the button bar.
+        HStack(spacing: 0) {
+            forecastTableTab(chipFeatures: [])
+                .frame(maxWidth: .infinity)
+            Divider()
+            phoneContentPane
+                .frame(maxWidth: .infinity)
         }
     }
 
