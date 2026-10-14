@@ -428,6 +428,9 @@ struct ContentView: View {
         // this subtree do — CompareView takes `systemScheme` to undo it.
         .environment(\.colorScheme, chromeScheme)
         .environment(\.skyIsVisible, showSky)
+        // Publish the same flag the sky itself is drawn from, so no subview
+        // can reach a different conclusion about which ink is legible.
+        .environment(\.skyIsDay, skyIsDay)
     }
 
     /// A color-band series: a given model applied to *our* local 24h forecast

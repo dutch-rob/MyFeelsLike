@@ -221,10 +221,8 @@ struct FoldTimelineView: View {
         return hi + max(1, hi * 0.08)
     }
 
-    private var skyIsDay: Bool {
-        if let sr = sunrise, let ss = sunset { return nowTick >= sr && nowTick < ss }
-        return (series.first ?? current)?.isDaylight ?? true
-    }
+    /// Taken from whoever drew the sky; see SkyIsDayKey.
+    @Environment(\.skyIsDay) private var skyIsDay
     @Environment(\.skyIsVisible) private var skyIsVisible
     /// The sky is only behind us when the user wants it *and* the screen we
     /// are on actually draws it (the table screen does not).

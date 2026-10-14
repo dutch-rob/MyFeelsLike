@@ -154,6 +154,11 @@ struct WeatherSkyView: View {
         }
         // Rasterise once so the many cloud fills don't re-run during swipes.
         .drawingGroup()
+        // Daytime skies are busy — blue behind white clouds is a lot of
+        // contrast to put under a graph. A white wash keeps the weather
+        // recognisable while letting the curves sit in front of it. Night is
+        // already dark and quiet, so it is left alone.
+        .overlay { if isDay { Color.white.opacity(0.35).allowsHitTesting(false) } }
     }
 }
 

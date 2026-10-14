@@ -244,13 +244,10 @@ struct HereTodayView: View {
         return 0...(hi + max(1, hi * 0.08))
     }
 
-    /// Whether it's daytime *right now* — follows iOS's automatic-appearance
-    /// timing by using the actual sunrise/sunset; falls back to the current
-    /// hour's daylight flag when sun times aren't available (e.g. demo).
-    private var skyIsDay: Bool {
-        if let sr = sunrise, let ss = sunset { return nowTick >= sr && nowTick < ss }
-        return (series.first ?? current)?.isDaylight ?? true
-    }
+    /// Whether the sky on screen is the daytime one. Taken from whoever drew
+    /// it: deciding again here, from this view's own slice of the series, is
+    /// how the ink came to disagree with the background.
+    @Environment(\.skyIsDay) private var skyIsDay
     /// Ink for axis text/legends/titles: black by day, white by night when the
     /// sky is shown; otherwise the system color (adapts to light/dark mode).
     @Environment(\.skyIsVisible) private var skyIsVisible

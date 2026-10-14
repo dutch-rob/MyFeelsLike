@@ -289,10 +289,23 @@ func clockHourLabel(_ hour: Int, use12: Bool) -> String {
 /// setting.
 private struct SkyIsVisibleKey: EnvironmentKey { static let defaultValue = true }
 
+/// Whether the sky being drawn is the daytime one.
+///
+/// Published by whoever draws the sky, rather than worked out again in each
+/// view. Every view used to decide for itself from its own sunrise/sunset and
+/// its own first forecast point — and since each graph gets a different slice
+/// of the series once the screens scroll, they could disagree with the sky
+/// actually on screen, leaving white text on a bright blue morning.
+private struct SkyIsDayKey: EnvironmentKey { static let defaultValue = true }
+
 extension EnvironmentValues {
     var skyIsVisible: Bool {
         get { self[SkyIsVisibleKey.self] }
         set { self[SkyIsVisibleKey.self] = newValue }
+    }
+    var skyIsDay: Bool {
+        get { self[SkyIsDayKey.self] }
+        set { self[SkyIsDayKey.self] = newValue }
     }
 }
 
