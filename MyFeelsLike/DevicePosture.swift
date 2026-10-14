@@ -33,17 +33,21 @@ final class DevicePosture: ObservableObject {
 
     /// Within this many degrees of flat counts as resting on a surface.
     static let flatWithin: Double = 25
-    /// This far back from fully open counts as deliberately folded.
-    static let foldWithin: Double = 25
+    /// This far back from fully open counts as deliberately folded. 35 degrees
+    /// puts the line at 145 degrees of fold (2.53 rad): far enough that a
+    /// device still being held open flat is not mistaken for one propped on a
+    /// table, near enough that a genuine prop is caught.
+    static let foldWithin: Double = 35
 
     private let motion = CMMotionManager()
 
     /// Fold angle in degrees, 180 being flat open.
     ///
-    /// The header documents no unit for `UIHinge.angle`. A hinge cannot open
-    /// past about 180 degrees, so a value small enough to be π is read as
-    /// radians. The debug readout prints the raw figure too, so a real device
-    /// can settle this rather than leaving it a guess.
+    /// `UIHinge.angle` is in **radians** — the header documents no unit, but
+    /// the simulator reports 0 closed, 2.225 at its "almost fully open" stop
+    /// (127 degrees) and 3.142 fully open. The conversion is kept defensive
+    /// anyway: anything small enough to be π is treated as radians, so a device
+    /// that reported degrees would still read correctly.
     var foldDegrees: Double? {
         guard let raw = hingeAngleRaw else { return nil }
         return raw <= 3.3 ? raw * 180 / .pi : raw
