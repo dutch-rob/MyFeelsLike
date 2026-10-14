@@ -135,8 +135,15 @@ struct ContentView: View {
     /// Measured height of the floating button bar, so the table can keep its
     /// last rows out from under it.
     @State private var bottomBarHeight: CGFloat = 0
+    /// Full width of the panel, safe areas included — the crease is its middle.
+    @State private var displayWidth: CGFloat = 0
+    /// Where the split pane starts within that panel.
+    @State private var splitOriginX: CGFloat = 0
     /// Width the left pane needs so the divider lands on the crease.
-    @State private var creaseLeftWidth: CGFloat = 0
+    private var creaseLeftWidth: CGFloat {
+        guard displayWidth > 0 else { return 0 }
+        return max(0, displayWidth / 2 - splitOriginX)
+    }
 
     /// How the device is folded and how flat it lies. Only read for now: the
     /// thresholds that would drive a layout off it are still guesses.
@@ -257,6 +264,17 @@ struct ContentView: View {
         }
         .task { posture.start() }
         .background { skyBackground }
+        // The whole panel, status corner and all. Taken from a layer that
+        // ignores the safe area, because that is the only thing whose width is
+        // the display's rather than what is left after the insets.
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { displayWidth = proxy.size.width }
+                    .onChange(of: proxy.size.width) { _, w in displayWidth = w }
+            }
+            .ignoresSafeArea()
+        }
         .sheet(isPresented: $showPlaces) {
             NavigationStack {
                 PlacesListView(
@@ -572,15 +590,13 @@ struct ContentView: View {
             phoneContentPane
                 .frame(maxWidth: .infinity)
         }
-        // The crease is the middle of the *panel*, not the middle of the area
-        // left over after the status corner is taken out. Splitting the content
-        // in half put the divider left of the fold and ran the graph across it,
-        // so the physical width is reconstructed from the insets and halved.
+        // The crease is the middle of the panel. Reconstructing the panel width
+        // from safe-area insets was guesswork and landed the divider left of
+        // the fold; the panel is measured directly instead (see displayWidth),
+        // and this reports where the split starts inside it.
         .onGeometryChange(for: CGFloat.self) { proxy in
-            let full = proxy.size.width
-                + proxy.safeAreaInsets.leading + proxy.safeAreaInsets.trailing
-            return max(0, full / 2 - proxy.safeAreaInsets.leading)
-        } action: { creaseLeftWidth = $0 }
+            proxy.frame(in: .global).minX
+        } action: { splitOriginX = $0 }
     }
 
     /// Whatever the outer screen shows: the paged graphs, or the zoom graph
