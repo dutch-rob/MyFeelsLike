@@ -132,6 +132,9 @@ struct ContentView: View {
 
     /// Size of the area the forecast is drawn in, measured rather than assumed.
     @State private var canvasSize: CGSize = .zero
+    /// Measured height of the floating button bar, so the table can keep its
+    /// last rows out from under it.
+    @State private var bottomBarHeight: CGFloat = 0
 
     private enum LayoutMode {
         /// One screen at a time, swiped between — a phone, or an unfolded
@@ -236,7 +239,10 @@ struct ContentView: View {
 
     var body: some View {
         mainContent
-        .safeAreaInset(edge: .bottom) { bottomBar }
+        .safeAreaInset(edge: .bottom) {
+            bottomBar
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
+        }
         .background { skyBackground }
         .sheet(isPresented: $showPlaces) {
             NavigationStack {
@@ -535,6 +541,12 @@ struct ContentView: View {
         HStack(spacing: 0) {
             forecastTableTab(chipFeatures: [])
                 .frame(maxWidth: .infinity)
+                // End the table above the button bar rather than letting it
+                // scroll underneath. A scroll view is happy to run its content
+                // under a floating bar — which is right for one screen you
+                // scroll, and wrong for a pane sitting permanently beside
+                // another, where rows just disappear behind the buttons.
+                .padding(.bottom, bottomBarHeight)
             Divider()
             phoneContentPane
                 .frame(maxWidth: .infinity)
