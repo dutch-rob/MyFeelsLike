@@ -135,6 +135,8 @@ struct ContentView: View {
     /// Measured height of the floating button bar, so the table can keep its
     /// last rows out from under it.
     @State private var bottomBarHeight: CGFloat = 0
+    /// Width the left pane needs so the divider lands on the crease.
+    @State private var creaseLeftWidth: CGFloat = 0
 
     /// How the device is folded and how flat it lies. Only read for now: the
     /// thresholds that would drive a layout off it are still guesses.
@@ -451,10 +453,6 @@ struct ContentView: View {
     @ViewBuilder
     private var measuredForecastContent: some View {
         VStack(spacing: 0) {
-            if PostureReadout.enabled {
-                PostureReadout(posture: posture)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
             titleButton
             if !showSky { Divider() }
 
@@ -555,7 +553,9 @@ struct ContentView: View {
         // table underneath the button bar.
         HStack(spacing: 0) {
             forecastTableTab(chipFeatures: [])
-                .frame(maxWidth: .infinity)
+                // Capped rather than fixed: the table's content is wider than
+                // either half, so it fills to the cap, which is the crease.
+                .frame(maxWidth: creaseLeftWidth > 0 ? creaseLeftWidth : .infinity)
                 // End the table above the button bar rather than letting it
                 // scroll underneath. A scroll view is happy to run its content
                 // under a floating bar — which is right for one screen you
@@ -566,6 +566,15 @@ struct ContentView: View {
             phoneContentPane
                 .frame(maxWidth: .infinity)
         }
+        // The crease is the middle of the *panel*, not the middle of the area
+        // left over after the status corner is taken out. Splitting the content
+        // in half put the divider left of the fold and ran the graph across it,
+        // so the physical width is reconstructed from the insets and halved.
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            let full = proxy.size.width
+                + proxy.safeAreaInsets.leading + proxy.safeAreaInsets.trailing
+            return max(0, full / 2 - proxy.safeAreaInsets.leading)
+        } action: { creaseLeftWidth = $0 }
     }
 
     /// Whatever the outer screen shows: the paged graphs, or the zoom graph

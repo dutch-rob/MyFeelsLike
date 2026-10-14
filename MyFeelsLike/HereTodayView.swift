@@ -455,7 +455,7 @@ struct HereTodayView: View {
                             }
                             if windPanelVisible {
                                 VStack(spacing: 2) {
-                                    precipWindChart(height: chartH)
+                                    precipWindChart(height: chartH, standalone: true)
                                     // Only the split has a second band to place.
                                     if colorPanelVisible && split { shadeComfortBand(height: barH) }
                                 }
@@ -527,9 +527,12 @@ struct HereTodayView: View {
         }
     }
 
-    /// The in-shade band, which in landscape goes under the wind chart.
+    /// The in-shade band, which in landscape goes under the wind chart. Built
+    /// exactly like its in-sun counterpart so the pair match: same frame, same
+    /// label treatment. (How thick the coloured stripe is *within* that frame
+    /// still varies — that is the reliability, and it is meant to differ.)
     private func shadeComfortBand(height: CGFloat) -> some View {
-        soloBand(icon: "cloud.fill", height: height, labelLimit: true) { p in
+        soloBand(icon: "cloud.fill", height: height) { p in
             (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
                 ColorScale.feelsColor(score: $0, opacity: 1)
             }
@@ -932,11 +935,19 @@ struct HereTodayView: View {
     }
 
     @ViewBuilder
-    private func precipWindChart(height: CGFloat) -> some View {
+    /// `standalone` is for the landscape layout, where this chart sits beside
+    /// the temperature one instead of beneath it: it then needs its own hour
+    /// labels, and its legend goes on top to match its neighbour.
+    private func precipWindChart(height: CGFloat, standalone: Bool = false) -> some View {
         // Compute the domain once (O(n)); reading it per-point would be O(n²).
         let dom = windYDomain
         let base = dom.lowerBound
         VStack(alignment: .leading, spacing: 2) {
+            if standalone {
+                ChartLegendRow(entries: windLegendEntries, dashes: windLegendDashes,
+                               ink: axisInk, singleLine: true)
+                    .padding(.leading, 36)
+            }
             Chart {
                 ForEach(series) { p in
                     let gust = useFahrenheit ? p.windGustMPH : p.windGustKPH
@@ -1018,19 +1029,29 @@ struct HereTodayView: View {
                 }
             }
             .chartXAxis {
-                // Grid lines only — the hour labels are shared with the chart above.
-                AxisMarks(values: .stride(by: .hour, count: 2)) { _ in
+                // Grid lines only when the chart above carries the hour labels;
+                // side by side in landscape it has to label its own axis.
+                AxisMarks(values: .stride(by: .hour, count: 2)) { value in
                     AxisGridLine().foregroundStyle(axisInk.opacity(0.25))
                     AxisTick().foregroundStyle(axisInk.opacity(0.6))
+                    if standalone {
+                        AxisValueLabel {
+                            Text(value.as(Date.self).map { hourLabel(for: $0) } ?? "")
+                                .font(.caption).foregroundStyle(axisInk)
+                        }
+                    }
                 }
             }
             .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
             .chartPlotStyle { $0.clipped() }
             .frame(height: height - 20)
 
-            // Legend below the panel (moved from the top), near the largest values.
-            ChartLegendRow(entries: windLegendEntries, dashes: windLegendDashes, ink: axisInk)
-                .padding(.leading, 36)
+            // Legend below the panel (moved from the top), near the largest
+            // values — except standalone, where it is already above.
+            if !standalone {
+                ChartLegendRow(entries: windLegendEntries, dashes: windLegendDashes, ink: axisInk)
+                    .padding(.leading, 36)
+            }
         }
         .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .brightness(seriesBrightness)

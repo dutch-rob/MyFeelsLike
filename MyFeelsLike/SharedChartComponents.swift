@@ -163,8 +163,22 @@ struct ChartLegendRow: View {
     /// Text color — follows the sky (black by day, white by night) so labels
     /// stay legible on the weather background.
     var ink: Color = .secondary
+    /// Keep every entry on one line, shrinking the text to fit rather than
+    /// wrapping onto a second. Used where a second line would cost chart
+    /// height that a short landscape panel cannot spare.
+    var singleLine: Bool = false
 
     var body: some View {
+        if singleLine {
+            row(entries)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        } else {
+            wrapping
+        }
+    }
+
+    private var wrapping: some View {
         // One line when the panel is wide enough; two lines in narrow panels
         // (e.g. three-across iPhone landscape) instead of wrapping mid-word.
         ViewThatFits(in: .horizontal) {

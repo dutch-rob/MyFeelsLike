@@ -113,28 +113,3 @@ struct HingeReader: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {}
 }
-
-/// Live posture readout, shown only with `-UITestPosture`. The thresholds are
-/// guesses until they can be watched on real hardware, so the figures they rest
-/// on are put on screen rather than inferred from behaviour.
-struct PostureReadout: View {
-    @ObservedObject var posture: DevicePosture
-
-    static var enabled: Bool {
-        ProcessInfo.processInfo.arguments.contains("-UITestPosture")
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("hinge: \(posture.hingeStatus)")
-            Text(posture.hingeAngleRaw.map { String(format: "angle: %.3f raw", $0) } ?? "angle: —")
-            Text(posture.foldDegrees.map { String(format: "fold: %.0f°", $0) } ?? "fold: —")
-            Text(posture.tiltFromFlat.map { String(format: "tilt: %.0f° off flat", $0) } ?? "tilt: — (no motion)")
-            Text("tabletop: \(posture.isTabletop ? "yes" : "no")").bold()
-        }
-        .font(.system(size: 11, design: .monospaced))
-        .padding(6)
-        .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 6))
-        .foregroundStyle(.white)
-    }
-}

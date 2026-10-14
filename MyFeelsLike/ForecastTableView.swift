@@ -117,7 +117,7 @@ struct ForecastTableView: View {
     }
 
     // Column widths (tweaked for narrower cloud column + extra space after MyFeel)
-    private let wMyFL:   CGFloat = 70
+    private let wMyFL:   CGFloat = 58   // just wide enough for "MyFeels" unsplit
     private let wTime:   CGFloat = 48
     private let wSym:    CGFloat = 26
     private let wUV:     CGFloat = 30
