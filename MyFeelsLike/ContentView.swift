@@ -137,8 +137,9 @@ struct ContentView: View {
     @State private var bottomBarHeight: CGFloat = 0
     /// Full size of the panel, safe areas included — the crease is its middle,
     /// and half its height is the part of a propped-open device you can see.
-    @State private var windowSize: CGSize = .zero
-    private var displayWidth: CGFloat { windowSize.width }
+    @State private var metrics = WindowMetrics()
+    private var windowSize: CGSize { metrics.size }
+    private var displayWidth: CGFloat { metrics.size.width }
     /// Where the split pane starts within that panel.
     @State private var splitOriginX: CGFloat = 0
     /// Width the left pane needs so the divider lands on the crease.
@@ -198,6 +199,29 @@ struct ContentView: View {
     /// Full-size iPad (not a narrow split view): show all three forecast
     /// screens on one dashboard instead of paging between them.
     private var useDashboardLayout: Bool { layoutMode == .dashboard }
+
+    /// The big inner screen, where the status corner sits above the content
+    /// rather than beside it.
+    private var onInnerDisplay: Bool { min(metrics.size.width, metrics.size.height) > 600 }
+    private var portraitPanel: Bool { metrics.size.height > metrics.size.width }
+
+    /// Portrait on the inner screen: the chrome rises into the status strip the
+    /// way Safari's does, and the info button steps left of the clock.
+    private var liftsIntoStatusStrip: Bool { onInnerDisplay && portraitPanel }
+
+    /// Room to keep clear for the clock and wifi corner when drawing beside it.
+    /// iOS exposes no rectangle for it — statusBarManager reports a 2 pt strip
+    /// the full width of the window — so this is measured from the device.
+    private static let statusCornerAllowance: CGFloat = 130
+
+    /// Width the graphs may take back from the strip the system reserves on the
+    /// trailing side: 84 pt on the open panel, and the same corner on the
+    /// folded one. Only the graphs take it. The buttons stay inside the safe
+    /// area, because on the folded screen that strip is where the camera is,
+    /// and a button that slides under the camera is worse than a narrow graph.
+    private var graphTrailingBonus: CGFloat {
+        liftsIntoStatusStrip ? 0 : max(0, metrics.safeInsets.right)
+    }
 
     /// Propped open on a surface with the fold horizontal, so the half facing
     /// you is the top one. Only this pose: open flat, or held with the fold
@@ -268,6 +292,11 @@ struct ContentView: View {
 
     var body: some View {
         mainContent
+        // Portrait on the open panel: the strip holding the clock is the app's
+        // to draw in — Safari uses everything to the left of the clock — and on
+        // the propped-open device those points are the difference between the
+        // comfort bands clearing the fold and straddling it.
+        .ignoresSafeArea(.container, edges: liftsIntoStatusStrip ? .top : [])
         .safeAreaInset(edge: .bottom) {
             bottomBar
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
@@ -301,7 +330,7 @@ struct ContentView: View {
             // layout pass, so it reported the window it was born in and kept
             // reporting it. Unfolding then left the split sized to half the
             // *outer* screen, a quarter of the way across the panel.
-            WindowSizeReader { windowSize = $0 }
+            WindowMetricsReader { metrics = $0 }
                 .allowsHitTesting(false)
         }
         .sheet(isPresented: $showPlaces) {
@@ -516,13 +545,13 @@ struct ContentView: View {
                 // graph screens. Its own left/right swipe drives the 24h↔10-day
                 // morph, so it takes over paging (the table isn't reachable here
                 // yet — the scrubber readout covers reading exact values).
-                foldTimelineTab
+                foldTimelineTab.padding(.trailing, -graphTrailingBonus)
             } else if layoutMode == .splitPane {
                 splitPaneLayout
             } else if useDashboardLayout {
                 dashboardLayout
             } else {
-                graphPager
+                graphPager.padding(.trailing, -graphTrailingBonus)
             }
         }
         // Measure what we actually got, rather than inferring it from the
@@ -580,6 +609,9 @@ struct ContentView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("About MyFeelsLike")
                 .accessibilityIdentifier("infoButton")
+                // Sitting in the strip now, so it steps left of the clock
+                // rather than under it.
+                .padding(.trailing, liftsIntoStatusStrip ? Self.statusCornerAllowance : 0)
             }
         }
         .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
@@ -624,6 +656,10 @@ struct ContentView: View {
             Divider()
             phoneContentPane
                 .frame(maxWidth: .infinity)
+                // Out to the panel edge, under the clock. The left edge is
+                // pinned to the crease, so this is width the graph gains
+                // rather than a shift sideways.
+                .padding(.trailing, -graphTrailingBonus)
         }
         // The crease is the middle of the panel. Reconstructing the panel width
         // from safe-area insets was guesswork and landed the divider left of
