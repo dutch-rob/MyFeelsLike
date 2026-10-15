@@ -669,6 +669,13 @@ struct FoldTimelineView: View {
                     scrubReadoutTop(p).padding(6).transition(.opacity)
                 }
             }
+            // Keep the marks inside the plot. Stacked full-width this never
+            // showed, because there was nothing beside them to bleed onto;
+            // side by side, each chart drew its fills clean across its
+            // neighbour and the two appeared to be stacked on top of each
+            // other. The axes were right the whole time, which is what gave
+            // this away.
+            .chartPlotStyle { $0.clipped() }
             .frame(height: height - 20)
             .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .brightness(seriesBrightness)
@@ -786,6 +793,13 @@ struct FoldTimelineView: View {
                     scrubReadoutBottom(p).padding(6).transition(.opacity)
                 }
             }
+            // Keep the marks inside the plot. Stacked full-width this never
+            // showed, because there was nothing beside them to bleed onto;
+            // side by side, each chart drew its fills clean across its
+            // neighbour and the two appeared to be stacked on top of each
+            // other. The axes were right the whole time, which is what gave
+            // this away.
+            .chartPlotStyle { $0.clipped() }
             .frame(height: height - 20)
             .saturation(visionMode == .noColor ? 0 : graphPalette.saturation)
             .brightness(seriesBrightness)
