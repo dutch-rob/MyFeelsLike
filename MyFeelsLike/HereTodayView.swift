@@ -446,7 +446,7 @@ struct HereTodayView: View {
                     let split = splitComfortBands
                     let chartH = colorPanelVisible ? h * 0.64 : h * 0.9
                     let barH = max(12, h * 0.18)
-                    VStack(spacing: 6) {
+                    VStack(spacing: forceLandscapeLayout ? 2 : 6) {
                         ScenarioStrip(activeFeatures: activeFeatures)
                         HStack(spacing: 12) {
                             if tempPanelVisible {
@@ -752,10 +752,14 @@ struct HereTodayView: View {
         }
         .chartYScale(domain: 0...1)
         .chartYAxis {
-            AxisMarks(position: .leading, values: [0.5]) { _ in
+            // Centred normally. Propped on a table the bands sit right at the
+            // fold, so the icon moves to the top of its band, where it stays
+            // readable even when the band's lower edge crosses the crease.
+            AxisMarks(position: .leading, values: [forceLandscapeLayout ? 1.0 : 0.5]) { _ in
                 AxisValueLabel {
                     Image(systemName: icon).font(.system(size: 9))
                         .foregroundStyle(axisInk).frame(width: 16, alignment: .leading)
+                        .offset(y: forceLandscapeLayout ? 6 : 0)
                 }
             }
         }

@@ -268,17 +268,21 @@ struct ContentView: View {
 
     var body: some View {
         mainContent
-            // Propped on a table, the lower half is lying flat and facing the
-            // ceiling; everything worth reading belongs in the half tilted
-            // toward you — pinned to the top of the panel, not floating in the
-            // middle of it.
-            .frame(maxHeight: isTabletopPose ? windowSize.height / 2 : nil,
-                   alignment: .top)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .safeAreaInset(edge: .bottom) {
             bottomBar
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
         }
+        // Propped on a table, the lower half lies flat facing the ceiling;
+        // everything worth reading belongs in the half tilted toward you,
+        // pinned to the top of the panel rather than floating in the middle.
+        //
+        // The button bar has to be inside that cap, not outside it. Capping the
+        // content alone left the bar attached to the foot of the whole panel,
+        // which both put the controls in the half you cannot see and pushed the
+        // graphs past the fold by the bar's own height.
+        .frame(maxHeight: isTabletopPose ? windowSize.height / 2 : nil,
+               alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             // Zero-sized host for the hinge interaction, which is UIKit-only.
             HingeReader { angle, status, partlyOpen in
@@ -289,9 +293,6 @@ struct ContentView: View {
         }
         .task { posture.start() }
         .background { skyBackground }
-        // The half lying on the table shows nothing, so it should look like
-        // nothing: black, rather than a bright slab of empty app.
-        .background { if isTabletopPose { Color.black.ignoresSafeArea() } }
         // The whole panel, status corner and all — from the window, since a
         // SwiftUI background reports what is left after the safe area and
         // ignoresSafeArea() does not change that.
@@ -540,7 +541,7 @@ struct ContentView: View {
                     .fontWeight(.semibold)
                     .foregroundStyle(skyInk)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, isTabletopPose ? 3 : 10)
                     .padding(.horizontal)
             }
             .buttonStyle(.plain)
@@ -605,6 +606,10 @@ struct ContentView: View {
                 // A little air at the screen edge: the score column was running
                 // straight into it.
                 .padding(.leading, 8)
+                // And at the fold, where the last column was running straight
+                // into the crease. The pane's width is fixed, so this insets
+                // the table without moving the divider or the graph.
+                .padding(.trailing, 10)
                 // Fixed, not capped: a cap only stops the pane growing past the
                 // crease, and the stack was handing it less than that anyway —
                 // which left the graph starting before the fold even though the
@@ -817,7 +822,7 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 12)
             }
-            .padding(.vertical, 5)
+            .padding(.vertical, isTabletopPose ? 1 : 5)
             .background(showSky ? AnyShapeStyle(.clear) : AnyShapeStyle(.bar))
             if !showSky { Divider() }
         }
