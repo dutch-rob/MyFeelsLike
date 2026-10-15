@@ -75,7 +75,23 @@ struct ContentView: View {
     /// #3: when off, the table screen is dropped from the pager so swiping only
     /// cycles between the two graph screens.
     @AppStorage(SettingsKey.showTable)       private var showTable     = false
-    @AppStorage(SettingsKey.useFoldTimeline) private var useFoldTimeline = false
+    @AppStorage(SettingsKey.useFoldTimeline) private var storedUseFoldTimeline = false
+
+    /// The zoom graph, with `-UITestZoom on|off` able to override the setting.
+    /// Driving the settings screen through synthetic taps to flip one switch is
+    /// slow and unreliable; this matches the `-UITestDemo` / `-UITestSky` hooks
+    /// already here, and a launch argument no shipping build passes.
+    private var useFoldTimeline: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "-UITestZoom"), i + 1 < args.count {
+            switch args[i + 1] {
+            case "on":  return true
+            case "off": return false
+            default:    break
+            }
+        }
+        return storedUseFoldTimeline
+    }
     @Environment(\.scenePhase) private var scenePhase
 
     /// True when at least one forecast graph is enabled. When false, the 24h

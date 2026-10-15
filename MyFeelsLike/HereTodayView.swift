@@ -543,10 +543,9 @@ struct HereTodayView: View {
 
     @ViewBuilder
     private func myFeelsLikePanel(height: CGFloat) -> some View {
-        let splitActive = sunFeatureActive && hasModel
-        // When the band splits, the title sits between the two halves instead
-        // of above them.
-        let separateSplit = splitActive
+        // The split bar carries its own title now that it is a single bar, so
+        // the panel only titles the unsplit cases.
+        let separateSplit = sunFeatureActive && hasModel
         VStack(alignment: .leading, spacing: 2) {
             if !separateSplit {
                 Text("MyFeelsLike by hour")
@@ -712,26 +711,58 @@ struct HereTodayView: View {
     /// in-sun (daytime only, night left blank) below. Both share the same time
     /// axis, so the sun band lines up under the shade band and simply has gaps
     /// where there's no daylight. Cloud/sun markers label each.
+    /// One bar for the hour, cut across the middle: in shade above the line, in
+    /// sun below it. Each half grows out from that line, so the thickness of
+    /// the colour still reads as how far the model can be trusted for the hour.
+    ///
+    /// Two separate bars, stacked with a title wedged between them, read as two
+    /// different measurements rather than two sides of the same hour — and the
+    /// second bar had to be paid for out of the first one's height.
     private func separateColorBands(height: CGFloat) -> some View {
-        // Reserve a row for the centered title; split the rest between the bands.
-        let barH = max(10, (height - 18) / 2)
-        return VStack(spacing: 3) {
-            soloBand(icon: "cloud.fill", height: barH, labelLimit: true) { p in
-                (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
-                    ColorScale.feelsColor(score: $0, opacity: 1)
-                }
-            }
-            // Title centered between the two bands, for symmetry.
+        VStack(alignment: .leading, spacing: 2) {
             Text("MyFeelsLike by hour")
                 .font(.caption2).foregroundStyle(axisInk)
                 .padding(.leading, 36)
-            soloBand(icon: "sun.max.fill", height: barH) { p in
-                // See CompareView/the watch: the in-sun value already collapses onto
-                // shade after dark, so night hours belong here too. The old isDaylight
-                // guard left this half of the band empty overnight.
-                guard let s = p.myFeelsLikeSunScore else { return nil }
-                return ColorScale.feelsColor(score: s, opacity: 1)
+            Chart {
+                ForEach(series) { p in
+                    let half = myFeelsLikeReliability(p) / 2
+                    if let s = p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore {
+                        RectangleMark(xStart: .value("t0", p.date.addingTimeInterval(-3600)),
+                                      xEnd:   .value("t1", p.date),
+                                      yStart: .value("y0", 0.5),
+                                      yEnd:   .value("y1", 0.5 + half))
+                            .foregroundStyle(ColorScale.feelsColor(score: s, opacity: 1))
+                    }
+                    // The in-sun value already collapses onto shade after dark,
+                    // so night hours belong here too; an isDaylight guard used
+                    // to leave this half empty overnight.
+                    if let s = p.myFeelsLikeSunScore {
+                        RectangleMark(xStart: .value("t0", p.date.addingTimeInterval(-3600)),
+                                      xEnd:   .value("t1", p.date),
+                                      yStart: .value("y0", 0.5 - half),
+                                      yEnd:   .value("y1", 0.5))
+                            .foregroundStyle(ColorScale.feelsColor(score: s, opacity: 1))
+                    }
+                }
             }
+            .chartYScale(domain: 0...1)
+            .chartYAxis {
+                // One icon per half, in the gutter, saying which side is which.
+                AxisMarks(position: .leading, values: [0.75, 0.25]) { value in
+                    AxisValueLabel {
+                        Image(systemName: (value.as(Double.self) ?? 0) > 0.5
+                              ? "cloud.fill" : "sun.max.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(axisInk)
+                            .frame(width: 16, alignment: .leading)
+                    }
+                }
+            }
+            .chartXAxis(.hidden)
+            .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+            .chartPlotStyle { $0.clipped() }
+            .chartOverlay { proxy in limitLabel(proxy) }
+            .frame(height: max(10, height - 16))
         }
     }
 
