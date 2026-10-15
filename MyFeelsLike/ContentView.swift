@@ -230,17 +230,21 @@ struct ContentView: View {
     /// the full width of the window — so this is measured from the device.
     private static let statusCornerAllowance: CGFloat = 130
 
-    /// Whether the graphs may spread into the strips the system reserves at the
-    /// sides. Only the graphs do. The buttons stay inside the safe area,
+    /// How far the graphs may spread into the strips the system reserves at
+    /// each side. Only the graphs do: the buttons stay inside the safe area,
     /// because on the folded screen those strips are where the camera is, and a
     /// button sliding under the camera is worse than a narrow graph.
     ///
-    /// Done by waiving the safe area rather than with negative padding.
-    /// Negative padding pushed the content past the window edge instead of into
-    /// the reserved strip, so the chart came out clipped on the right — and it
-    /// only ever widened the trailing side, while the reserved corner changes
-    /// sides with the device's orientation.
-    private var graphsUseReservedStrips: Bool { !liftsIntoStatusStrip }
+    /// Each side gets exactly its own inset back, so the content ends up the
+    /// width of the window and no wider. The two things this is not:
+    /// `ignoresSafeArea`, which let every chart in a row take the full window
+    /// width and so laid them on top of each other; and one negative trailing
+    /// pad, which pushed content past the window's edge whenever the reserved
+    /// corner was on the leading side instead.
+    private var graphInsetBonus: (leading: CGFloat, trailing: CGFloat) {
+        guard !liftsIntoStatusStrip else { return (0, 0) }
+        return (max(0, metrics.safeInsets.left), max(0, metrics.safeInsets.right))
+    }
 
     /// On the open panel the scenario chips move up beside the place name.
     /// They govern both halves of the screen, and sitting above one graph made
@@ -571,16 +575,16 @@ struct ContentView: View {
                 // morph, so it takes over paging (the table isn't reachable here
                 // yet — the scrubber readout covers reading exact values).
                 foldTimelineTab
-                    .ignoresSafeArea(.container,
-                                     edges: graphsUseReservedStrips ? .horizontal : [])
+                    .padding(.leading, -graphInsetBonus.leading)
+                    .padding(.trailing, -graphInsetBonus.trailing)
             } else if layoutMode == .splitPane {
                 splitPaneLayout
             } else if useDashboardLayout {
                 dashboardLayout
             } else {
                 graphPager
-                    .ignoresSafeArea(.container,
-                                     edges: graphsUseReservedStrips ? .horizontal : [])
+                    .padding(.leading, -graphInsetBonus.leading)
+                    .padding(.trailing, -graphInsetBonus.trailing)
             }
         }
         // Measure what we actually got, rather than inferring it from the
@@ -700,11 +704,10 @@ struct ContentView: View {
             Divider()
             phoneContentPane
                 .frame(maxWidth: .infinity)
-                // Out to the panel edge, under the clock. Only the window's
-                // own edge is waived, so the pane's left edge stays pinned to
-                // the crease: width gained, not a shift sideways.
-                .ignoresSafeArea(.container,
-                                 edges: graphsUseReservedStrips ? .horizontal : [])
+                // Out to the panel edge, under the clock. The pane's left edge
+                // is pinned to the crease, so this is width gained on the
+                // right rather than a shift sideways.
+                .padding(.trailing, -graphInsetBonus.trailing)
         }
         // The crease is the middle of the panel. Reconstructing the panel width
         // from safe-area insets was guesswork and landed the divider left of
