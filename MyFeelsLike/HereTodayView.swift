@@ -903,6 +903,7 @@ struct HereTodayView: View {
                     AxisTick().foregroundStyle(axisInk.opacity(0.6))
                     AxisValueLabel {
                         Text(value.as(Date.self).map { hourLabel(for: $0) } ?? "")
+                            .fixedSize()            // never ellipsise to "…"
                             .font(.caption).foregroundStyle(axisInk)
                     }
                 }
@@ -1044,7 +1045,8 @@ struct HereTodayView: View {
                     if standalone {
                         AxisValueLabel {
                             Text(value.as(Date.self).map { hourLabel(for: $0) } ?? "")
-                                .font(.caption).foregroundStyle(axisInk)
+                                .font(.caption2).foregroundStyle(axisInk)
+                                .fixedSize()        // never ellipsise to "…"
                         }
                     }
                 }

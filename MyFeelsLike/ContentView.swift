@@ -296,8 +296,11 @@ struct ContentView: View {
         // SwiftUI background reports what is left after the safe area and
         // ignoresSafeArea() does not change that.
         .background {
+            // Full-size, not zero-size: a view with no dimensions never gets a
+            // layout pass, so it reported the window it was born in and kept
+            // reporting it. Unfolding then left the split sized to half the
+            // *outer* screen, a quarter of the way across the panel.
             WindowSizeReader { windowSize = $0 }
-                .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
         }
         .sheet(isPresented: $showPlaces) {
@@ -780,6 +783,22 @@ struct ContentView: View {
 
     /// Title with buttons to the screens the user is not on. Gestures alone are
     /// impractical for reaching a screen now that the graphs scroll ten days.
+    /// A header button that looks like one. Plain text in the sky ink was the
+    /// same white as the title beside it, so "10-day" read as a caption for the
+    /// graph rather than the way to reach it.
+    private func headerButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .background(chipFill, in: Capsule())
+                .overlay(Capsule().strokeBorder(chipStroke, lineWidth: 0.8))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(showSky ? skyInk : Color.accentColor)
+    }
+
     private func headerBar(_ title: String,
                            left: (String, () -> Void)? = nil,
                            right: (String, () -> Void)? = nil) -> some View {
@@ -792,12 +811,10 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 78)
                 HStack {
-                    if let left { Button(left.0) { left.1() } }
+                    if let left { headerButton(left.0, action: left.1) }
                     Spacer()
-                    if let right { Button(right.0) { right.1() } }
+                    if let right { headerButton(right.0, action: right.1) }
                 }
-                .font(.subheadline)
-                .foregroundStyle(showSky ? skyInk : Color.accentColor)
                 .padding(.horizontal, 12)
             }
             .padding(.vertical, 5)
@@ -879,6 +896,23 @@ struct ContentView: View {
     /// Frosted-capsule chip style shared by every bottom-bar control (matches the
     /// scenario chips at the top of the screens). A 44 pt min tap target wraps
     /// the smaller visible capsule.
+    /// Over a night sky the frosted material renders dark on dark and the
+    /// controls all but vanish, worst of all where there are no clouds behind
+    /// them. A pale translucent fill reads as a control against any sky, and
+    /// unlike "brighter than the clouds" it does not depend on the weather.
+    private var overNightSky: Bool { showSky && !skyIsDay }
+    /// A pale fill was the first attempt and it backfired: the labels are drawn
+    /// in the accent blue, which reads well on dark and poorly on light. So the
+    /// fill stays dark — darker than the sky, in fact, so the capsule separates
+    /// from it — and a bright edge is what says "control".
+    private var chipFill: AnyShapeStyle {
+        overNightSky ? AnyShapeStyle(Color.black.opacity(0.5))
+                     : AnyShapeStyle(.regularMaterial)
+    }
+    private var chipStroke: Color {
+        overNightSky ? .white.opacity(0.7) : .secondary.opacity(0.3)
+    }
+
     private func bottomChip<V: View>(_ content: V) -> some View {
         content
             .font(.caption.weight(.medium))
@@ -886,8 +920,8 @@ struct ContentView: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(.regularMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(.secondary.opacity(0.3), lineWidth: 0.5))
+            .background(chipFill, in: Capsule())
+            .overlay(Capsule().strokeBorder(chipStroke, lineWidth: 0.8))
             .frame(minHeight: 44)
             .contentShape(Capsule())
     }
