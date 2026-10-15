@@ -329,6 +329,12 @@ struct ContentView: View {
         .safeAreaInset(edge: .bottom) {
             bottomBar
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
+                // On the folded screen the row sits a little above the camera.
+                // Half the bottom inset brings it down to about that line
+                // without putting the buttons on the home indicator; the open
+                // panel is left alone, where there is no camera to line up
+                // with and the bar already sits where it should.
+                .padding(.bottom, onInnerDisplay ? 0 : -min(14, max(0, metrics.safeInsets.bottom) / 2))
         }
         // Propped on a table, the lower half lies flat facing the ceiling;
         // everything worth reading belongs in the half tilted toward you,

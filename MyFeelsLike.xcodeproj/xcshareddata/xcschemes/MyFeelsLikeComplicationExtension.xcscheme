@@ -78,7 +78,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "155ADB942FE9F22100339B99"
             BuildableName = "MyFeelsLikeComplicationExtension.appex"
-            BlueprintName = "MyFeelsLikeComplicationExtension"
             ReferencedContainer = "container:MyFeelsLike.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -121,7 +120,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "155ADB942FE9F22100339B99"
             BuildableName = "MyFeelsLikeComplicationExtension.appex"
-            BlueprintName = "MyFeelsLikeComplicationExtension"
             ReferencedContainer = "container:MyFeelsLike.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

@@ -70,7 +70,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "155ADB652FE9F0FC00339B99"
             BuildableName = "MyFeelsLike Watch App Watch App.app"
-            BlueprintName = "MyFeelsLike Watch App Watch App"
             ReferencedContainer = "container:MyFeelsLike.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -87,7 +86,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "155ADB652FE9F0FC00339B99"
             BuildableName = "MyFeelsLike Watch App Watch App.app"
-            BlueprintName = "MyFeelsLike Watch App Watch App"
             ReferencedContainer = "container:MyFeelsLike.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

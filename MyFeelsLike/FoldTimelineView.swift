@@ -778,7 +778,11 @@ struct FoldTimelineView: View {
                 scrubRule()
             }
             .chartLegend(.hidden)
-            .chartYScale(domain: linesOnly ? [0, hi] : [hi, 0])   // area mode hangs downward
+            // Filled areas hang downward only when this chart sits *under* the
+            // temperatures and shares their hour labels. Side by side it stands
+            // on its own, so zero goes back to the bottom and it reads as an
+            // ordinary chart — the rule the paged screen already follows.
+            .chartYScale(domain: (linesOnly || landscapeLayout) ? [0, hi] : [hi, 0])
             .chartXScale(domain: visDomain)
             .chartYAxis { gridYAxis() }
             .chartXAxis { xAxis(labels: true) }
