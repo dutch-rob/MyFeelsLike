@@ -17,6 +17,7 @@ Each section below is a short summary, followed by the detail.
 - [The 24-hour screen](#the-24-hour-screen) — hourly bands and your comfort band
 - [Moving around](#moving-around) — scrolling through time, and switching screens
 - [The 10-day screen](#the-10-day-screen) — the trend and a time-of-day heatmap
+- [On a bigger screen](#on-a-bigger-screen) — iPad, and phones that fold
 - [Reading exact values](#reading-exact-values) — long-press any graph
 - [When the band goes thin](#when-the-band-goes-thin) — how sure the app is
 - [Scenarios](#scenarios) — activity, clothing, sun or shade
@@ -93,6 +94,26 @@ dashed), plus a heatmap of your comfort: one column per day, hour-of-day up the
 side, so the good times of day stand out.
 
 ![The 10-day heat map: one column per day, hours of the day up the side](MyFeelsLike/Assets.xcassets/InfoRotation3.imageset/InfoRotation3.png)
+
+## On a bigger screen
+An iPad shows all three screens at once — the 24-hour and 10-day graphs beside
+each other with the table underneath — so there is nothing to swipe between.
+
+A folding phone opened out is laid out around the crease instead. The table
+takes the left half and the graphs the right, with the divider landing on the
+fold itself, so opening the phone reads as the second half turning transparent
+rather than as the screen rearranging itself. The scenario chips move up beside
+the place name, since they now apply to both halves. Held the other way up, with
+the fold running across rather than down, the graphs keep the whole screen: a
+left-and-right split would sit astride the crease.
+
+Fold it part way and stand it on a table and everything moves into the half
+tilted towards you, laid out the way it would be in landscape — that half is
+wider than it is tall — leaving the half lying flat to the sky.
+
+On any phone, turning it on its side sets the two charts beside each other
+rather than stacked, each with the half of your comfort band that belongs to it
+underneath.
 
 ## Reading exact values
 **Long-press any graph** to drop a line you can drag along the timeline. A card

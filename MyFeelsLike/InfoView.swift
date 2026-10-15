@@ -29,6 +29,7 @@ struct InfoView: View {
                         Button { withAnimation { proxy.scrollTo("the-24-hour-screen", anchor: .top) } } label: { Text("The 24-hour screen — hourly bands and your comfort band").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("moving-around", anchor: .top) } } label: { Text("Moving around — scrolling through time, and switching screens").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("the-10-day-screen", anchor: .top) } } label: { Text("The 10-day screen — the trend and a time-of-day heatmap").frame(maxWidth: .infinity, alignment: .leading) }
+                        Button { withAnimation { proxy.scrollTo("on-a-bigger-screen", anchor: .top) } } label: { Text("On a bigger screen — iPad, and phones that fold").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("reading-exact-values", anchor: .top) } } label: { Text("Reading exact values — long-press any graph").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("when-the-band-goes-thin", anchor: .top) } } label: { Text("When the band goes thin — how sure the app is").frame(maxWidth: .infinity, alignment: .leading) }
                         Button { withAnimation { proxy.scrollTo("scenarios", anchor: .top) } } label: { Text("Scenarios — activity, clothing, sun or shade").frame(maxWidth: .infinity, alignment: .leading) }
@@ -93,6 +94,14 @@ struct InfoView: View {
                     Text("The 10-day screen").font(.headline).id("the-10-day-screen")
                     Text("The same temperature panel stretched over ten days (the recent past drawn dashed), plus a heatmap of your comfort: one column per day, hour-of-day up the side, so the good times of day stand out.")
                     Image("InfoRotation3").resizable().scaledToFit().frame(maxWidth: .infinity).frame(maxHeight: 240).clipShape(RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary)).accessibilityLabel("The 10-day heat map: one column per day, hours of the day up the side")
+                }
+
+                Group {
+                    Text("On a bigger screen").font(.headline).id("on-a-bigger-screen")
+                    Text("An iPad shows all three screens at once — the 24-hour and 10-day graphs beside each other with the table underneath — so there is nothing to swipe between.")
+                    Text("A folding phone opened out is laid out around the crease instead. The table takes the left half and the graphs the right, with the divider landing on the fold itself, so opening the phone reads as the second half turning transparent rather than as the screen rearranging itself. The scenario chips move up beside the place name, since they now apply to both halves. Held the other way up, with the fold running across rather than down, the graphs keep the whole screen: a left-and-right split would sit astride the crease.")
+                    Text("Fold it part way and stand it on a table and everything moves into the half tilted towards you, laid out the way it would be in landscape — that half is wider than it is tall — leaving the half lying flat to the sky.")
+                    Text("On any phone, turning it on its side sets the two charts beside each other rather than stacked, each with the half of your comfort band that belongs to it underneath.")
                 }
 
                 Group {
