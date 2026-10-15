@@ -39,6 +39,15 @@ struct FoldTimelineView: View {
     /// enabled in Settings). Pinch owns zooming now, which frees this up.
     var onShowTable: (() -> Void)? = nil
     var activeFeatures: Set<Feature> = []
+    /// Use the landscape arrangement even in a nominally regular height — see
+    /// HereTodayView.forceLandscapeLayout.
+    var forceLandscapeLayout: Bool = false
+
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    /// Charts side by side rather than stacked: a short, wide area.
+    private var landscapeLayout: Bool {
+        verticalSizeClass == .compact || forceLandscapeLayout
+    }
 
     @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit = true
     @AppStorage(SettingsKey.use12HourClock) private var use12Hour = false
@@ -450,9 +459,29 @@ struct FoldTimelineView: View {
                     VStack(spacing: 8) {
                         ScenarioStrip(activeFeatures: activeFeatures)
                         modeIndicator
-                        if tempVisible { temperatureChart(height: graphsH * 0.56) }
-                        if graphColor { colorPanel(height: colorH) }
-                        if windVisible { precipWindChart(height: graphsH * 0.44) }
+                        if landscapeLayout {
+                            // Side by side, with the comfort panel under the
+                            // temperatures. Unlike the paged screens this panel
+                            // is not split between the two columns: it morphs
+                            // from band to heat map as you zoom out, and pulling
+                            // the halves apart would break that.
+                            HStack(spacing: 12) {
+                                if tempVisible {
+                                    VStack(spacing: 2) {
+                                        temperatureChart(height: graphsH * 0.78)
+                                        if graphColor { colorPanel(height: colorH) }
+                                    }
+                                }
+                                if windVisible {
+                                    precipWindChart(height: graphsH * 0.78
+                                                    + (graphColor ? colorH : 0))
+                                }
+                            }
+                        } else {
+                            if tempVisible { temperatureChart(height: graphsH * 0.56) }
+                            if graphColor { colorPanel(height: colorH) }
+                            if windVisible { precipWindChart(height: graphsH * 0.44) }
+                        }
                         if let attribution { WeatherAttributionLink(info: attribution) }
                         Spacer(minLength: 0)
                     }

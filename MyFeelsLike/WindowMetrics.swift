@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-//  The width of the window itself, which is not something SwiftUI will tell
+//  The size of the window itself, which is not something SwiftUI will tell
 //  you. A background layer reports the width left after the safe area is taken
 //  out, and `ignoresSafeArea()` on it does not change that — so on a foldable,
 //  where the status corner is carved out of one side, halving what SwiftUI
@@ -12,17 +12,17 @@
 import SwiftUI
 import UIKit
 
-struct WindowWidthReader: UIViewRepresentable {
-    var onChange: (CGFloat) -> Void
+struct WindowSizeReader: UIViewRepresentable {
+    var onChange: (CGSize) -> Void
 
     final class ReportingView: UIView {
-        var onChange: ((CGFloat) -> Void)?
-        private var last: CGFloat = 0
+        var onChange: ((CGSize) -> Void)?
+        private var last: CGSize = .zero
 
         private func report() {
-            guard let width = window?.bounds.width, width != last else { return }
-            last = width
-            onChange?(width)
+            guard let size = window?.bounds.size, size != last else { return }
+            last = size
+            onChange?(size)
         }
         override func didMoveToWindow() { super.didMoveToWindow(); report() }
         override func layoutSubviews() { super.layoutSubviews(); report() }

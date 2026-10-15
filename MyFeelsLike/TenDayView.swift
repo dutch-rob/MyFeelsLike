@@ -55,6 +55,9 @@ struct TenDayView: View {
     /// True when embedded in a fixed-height dashboard pane (iPad): panel
     /// fractions shrink so everything fits without scrolling.
     var fitsPane: Bool = false
+    /// Use the landscape arrangement even in a nominally regular height — see
+    /// HereTodayView.forceLandscapeLayout.
+    var forceLandscapeLayout: Bool = false
 
     @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
     @AppStorage(SettingsKey.use12HourClock) private var use12Hour = false
@@ -564,6 +567,34 @@ struct TenDayView: View {
     /// color = personalized feels-like. Separated from the temperature curves
     /// so day-to-day and time-of-day patterns are legible (the curves' x-axis
     /// is time; this grid's y-axis is hour-of-day).
+    /// What goes under the temperature chart in landscape: the in-sun map when
+    /// the model has split sun from shade, otherwise whatever single thing
+    /// there is to show.
+    @ViewBuilder
+    private func leadingComfortMap(height: CGFloat, split: Bool) -> some View {
+        if split {
+            let b = daylightHourBounds
+            heatGrid(yLo: b.lo, yHi: b.hi,
+                     yValues: [b.lo, (b.lo + b.hi) / 2, b.hi]) { p in
+                guard p.isDaylight, let s = p.myFeelsLikeSunScore else { return nil }
+                return AnyShapeStyle(ColorScale.feelsColor(score: s, opacity: 1))
+            }
+            .frame(height: height)
+        } else {
+            feelsLikeHeatmap(height: height)
+        }
+    }
+
+    /// The in-shade map, which in landscape goes under the wind chart.
+    private func shadeHeatmap(height: CGFloat) -> some View {
+        heatGrid(yLo: 0, yHi: 24, yValues: [0, 6, 12, 18, 24]) { p in
+            (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
+                AnyShapeStyle(ColorScale.feelsColor(score: $0, opacity: 1))
+            }
+        }
+        .frame(height: height)
+    }
+
     @ViewBuilder
     private func feelsLikeHeatmap(height: CGFloat) -> some View {
         if hasModel && comfortAsLineGraph {
@@ -796,14 +827,28 @@ struct TenDayView: View {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
                         .frame(minHeight: h)
-                } else if verticalSizeClass == .compact {
-                    // iPhone landscape: the enabled panels side by side.
-                    VStack(spacing: 8) {
+                } else if verticalSizeClass == .compact || forceLandscapeLayout {
+                    // Landscape: the charts side by side, each with the comfort
+                    // map that belongs to it underneath, sharing its days.
+                    // Three panels abreast left each one too narrow to read.
+                    let split = hasModel && hasSunSplit && !comfortAsLineGraph
+                    let chartH = colorPanelVisible ? h * 0.58 : h * 0.9
+                    let mapH = max(40, h * 0.28)
+                    VStack(spacing: 6) {
                         ScenarioStrip(activeFeatures: activeFeatures)
                         HStack(spacing: 12) {
-                            if tempPanelVisible { temperatureChart(height: h * 0.9) }
-                            if colorPanelVisible { feelsLikeHeatmap(height: h * 0.9) }
-                            if windPanelVisible { precipWindChart(height: h * 0.9) }
+                            if tempPanelVisible {
+                                VStack(spacing: 2) {
+                                    temperatureChart(height: chartH)
+                                    if colorPanelVisible { leadingComfortMap(height: mapH, split: split) }
+                                }
+                            }
+                            if windPanelVisible {
+                                VStack(spacing: 2) {
+                                    precipWindChart(height: chartH)
+                                    if colorPanelVisible && split { shadeHeatmap(height: mapH) }
+                                }
+                            }
                         }
                         if let attribution {
                             WeatherAttributionLink(info: attribution)

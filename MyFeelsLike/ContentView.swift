@@ -135,8 +135,10 @@ struct ContentView: View {
     /// Measured height of the floating button bar, so the table can keep its
     /// last rows out from under it.
     @State private var bottomBarHeight: CGFloat = 0
-    /// Full width of the panel, safe areas included — the crease is its middle.
-    @State private var displayWidth: CGFloat = 0
+    /// Full size of the panel, safe areas included — the crease is its middle,
+    /// and half its height is the part of a propped-open device you can see.
+    @State private var windowSize: CGSize = .zero
+    private var displayWidth: CGFloat { windowSize.width }
     /// Where the split pane starts within that panel.
     @State private var splitOriginX: CGFloat = 0
     /// Width the left pane needs so the divider lands on the crease.
@@ -191,6 +193,15 @@ struct ContentView: View {
     /// Full-size iPad (not a narrow split view): show all three forecast
     /// screens on one dashboard instead of paging between them.
     private var useDashboardLayout: Bool { layoutMode == .dashboard }
+
+    /// Propped open on a surface with the fold horizontal, so the half facing
+    /// you is the top one. Only this pose: open flat, or held with the fold
+    /// vertical, and the usual layouts apply.
+    private var isTabletopPose: Bool {
+        posture.isTabletop
+            && windowSize.height > windowSize.width        // panels above and below
+            && min(windowSize.width, windowSize.height) < Self.dashboardMinShortSide
+    }
 
     /// On the unfolded big screen the table is simply always there, in its own
     /// half. Nothing navigates to it, so the buttons that would are hidden and
@@ -252,6 +263,11 @@ struct ContentView: View {
 
     var body: some View {
         mainContent
+            // Propped on a table, the lower half is lying flat and facing the
+            // ceiling; everything worth reading belongs in the half tilted
+            // toward you.
+            .frame(maxHeight: isTabletopPose ? windowSize.height / 2 : nil,
+                   alignment: .top)
         .safeAreaInset(edge: .bottom) {
             bottomBar
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
@@ -268,7 +284,7 @@ struct ContentView: View {
         // SwiftUI background reports what is left after the safe area and
         // ignoresSafeArea() does not change that.
         .background {
-            WindowWidthReader { displayWidth = $0 }
+            WindowSizeReader { windowSize = $0 }
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
         }
@@ -1034,7 +1050,8 @@ struct ContentView: View {
                 onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
                 activeFeatures: chipFeatures,
                 sunFeatureActive: sunFeatureActive,
-                fitsPane: fitsPane
+                fitsPane: fitsPane,
+                forceLandscapeLayout: isTabletopPose
             )
         }
     }
@@ -1069,7 +1086,8 @@ struct ContentView: View {
                 onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
                 activeFeatures: chipFeatures,
                 modelReasons: modelReasons,
-                fitsPane: fitsPane
+                fitsPane: fitsPane,
+                forceLandscapeLayout: isTabletopPose
             )
         }
     }
@@ -1090,7 +1108,8 @@ struct ContentView: View {
                 onRefresh: { await loadWeather(preserveData: true, useFreshLocation: true) },
                 startOffset: $startOffset,
                 onShowTable: tableIsReachable ? { goToTable() } : nil,
-                activeFeatures: chipFeatures
+                activeFeatures: chipFeatures,
+                forceLandscapeLayout: isTabletopPose
             )
         }
     }

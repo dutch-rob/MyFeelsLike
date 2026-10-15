@@ -56,8 +56,13 @@ final class DevicePosture: ObservableObject {
     /// The device looks propped open on a surface, the lower half lying flat
     /// and the upper half angled up to be read.
     var isTabletop: Bool {
-        guard let fold = foldDegrees, let tilt = tiltFromFlat else { return false }
-        return tilt < Self.flatWithin && fold < 180 - Self.foldWithin
+        guard let fold = foldDegrees else { return false }
+        // No motion data at all means the simulator, which synthesises none.
+        // Taking that as "lying flat" is what makes this pose reachable in
+        // testing; on a device the gravity term is what stops a phone held
+        // half-open in the air from being mistaken for one on a table.
+        let lyingFlat = tiltFromFlat.map { $0 < Self.flatWithin } ?? true
+        return lyingFlat && fold < 180 - Self.foldWithin
     }
 
     func start() {

@@ -75,6 +75,11 @@ struct HereTodayView: View {
     /// True when embedded in a fixed-height dashboard pane (iPad): panel
     /// fractions shrink so everything fits without scrolling.
     var fitsPane: Bool = false
+    /// Use the landscape arrangement even in a nominally regular height. Set
+    /// when the device is propped open on a table and only its top half is in
+    /// view: that half is wider than it is tall, whatever the size class says
+    /// about the panel as a whole.
+    var forceLandscapeLayout: Bool = false
 
     @AppStorage(SettingsKey.useFahrenheit) private var useFahrenheit: Bool = true
     @AppStorage(SettingsKey.use12HourClock) private var use12Hour = false
@@ -432,7 +437,7 @@ struct HereTodayView: View {
                     ForecastLoadingView(progress: progress, nowTick: nowTick, errorMessage: errorMessage)
                         .padding()
                         .frame(minHeight: h)
-                } else if verticalSizeClass == .compact {
+                } else if verticalSizeClass == .compact || forceLandscapeLayout {
                     // Landscape: the charts side by side, each with a comfort
                     // band beneath it sharing that chart's time axis. The band
                     // used to be one strip across the top, which read as a
