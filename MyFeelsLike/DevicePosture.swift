@@ -27,6 +27,8 @@ final class DevicePosture: ObservableObject {
     @Published private(set) var hingeAngleRaw: Double?
     /// Hinge status, as a short string for the debug readout.
     @Published private(set) var hingeStatus: String = "—"
+    /// The hinge is somewhere between shut and flat open.
+    @Published private(set) var isPartlyOpen: Bool = false
     /// How far the reference half is from lying face-up and flat, in degrees:
     /// 0 is flat on a table, 90 is upright, 180 is face-down.
     @Published private(set) var tiltFromFlat: Double?
@@ -56,7 +58,10 @@ final class DevicePosture: ObservableObject {
     /// The device looks propped open on a surface, the lower half lying flat
     /// and the upper half angled up to be read.
     var isTabletop: Bool {
-        guard let fold = foldDegrees else { return false }
+        // A shut device reads 0 degrees, which is "far from flat open" by any
+        // angle test — so the angle alone called a closed phone a tabletop. The
+        // hinge has to actually be part way open.
+        guard isPartlyOpen, let fold = foldDegrees else { return false }
         // No motion data at all means the simulator, which synthesises none.
         // Taking that as "lying flat" is what makes this pose reachable in
         // testing; on a device the gravity term is what stops a phone held
@@ -81,15 +86,16 @@ final class DevicePosture: ObservableObject {
         if motion.isDeviceMotionActive { motion.stopDeviceMotionUpdates() }
     }
 
-    func apply(angle: Double?, status: String) {
+    func apply(angle: Double?, status: String, partlyOpen: Bool) {
         hingeAngleRaw = angle
         hingeStatus = status
+        isPartlyOpen = partlyOpen
     }
 }
 
 /// Hosts the UIKit hinge interaction, which has no SwiftUI equivalent.
 struct HingeReader: UIViewRepresentable {
-    var onUpdate: (Double?, String) -> Void
+    var onUpdate: (Double?, String, Bool) -> Void
 
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
@@ -97,7 +103,7 @@ struct HingeReader: UIViewRepresentable {
         if #available(iOS 27.1, *) {
             let interaction = UIHingeInteraction { _, update in
                 guard let hinge = update.hinge else {
-                    onUpdate(nil, "no hinge")
+                    onUpdate(nil, "no hinge", false)
                     return
                 }
                 let name: String
@@ -107,11 +113,11 @@ struct HingeReader: UIViewRepresentable {
                 case .fullyOpen:     name = "fully open"
                 default:             name = "unknown"
                 }
-                onUpdate(Double(hinge.angle), name)
+                onUpdate(Double(hinge.angle), name, hinge.status == .partiallyOpen)
             }
             view.addInteraction(interaction)
         } else {
-            onUpdate(nil, "needs iOS 27.1")
+            onUpdate(nil, "needs iOS 27.1", false)
         }
         return view
     }

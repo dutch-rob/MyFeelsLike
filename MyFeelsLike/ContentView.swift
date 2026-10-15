@@ -176,6 +176,11 @@ struct ContentView: View {
     /// iPad does, while being barely half its width, so without the measurement
     /// it would inherit a dashboard built for a 13-inch screen.
     private var layoutMode: LayoutMode {
+        // Propped on a table there is one visible half and it shows graphs. Not
+        // negotiable by measurement: halving the height makes the measured
+        // canvas wider than it is tall, which would otherwise be read as room
+        // for the table beside them.
+        if isTabletopPose { return .pager }
         guard horizontalSizeClass == .regular, verticalSizeClass == .regular else { return .pager }
         // Before the first layout pass there is nothing to measure; keep the
         // iPad's existing behaviour rather than flashing a narrower one.
@@ -265,21 +270,28 @@ struct ContentView: View {
         mainContent
             // Propped on a table, the lower half is lying flat and facing the
             // ceiling; everything worth reading belongs in the half tilted
-            // toward you.
+            // toward you — pinned to the top of the panel, not floating in the
+            // middle of it.
             .frame(maxHeight: isTabletopPose ? windowSize.height / 2 : nil,
                    alignment: .top)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .safeAreaInset(edge: .bottom) {
             bottomBar
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomBarHeight = $0 }
         }
         .background {
             // Zero-sized host for the hinge interaction, which is UIKit-only.
-            HingeReader { angle, status in posture.apply(angle: angle, status: status) }
+            HingeReader { angle, status, partlyOpen in
+                posture.apply(angle: angle, status: status, partlyOpen: partlyOpen)
+            }
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
         }
         .task { posture.start() }
         .background { skyBackground }
+        // The half lying on the table shows nothing, so it should look like
+        // nothing: black, rather than a bright slab of empty app.
+        .background { if isTabletopPose { Color.black.ignoresSafeArea() } }
         // The whole panel, status corner and all — from the window, since a
         // SwiftUI background reports what is left after the safe area and
         // ignoresSafeArea() does not change that.
