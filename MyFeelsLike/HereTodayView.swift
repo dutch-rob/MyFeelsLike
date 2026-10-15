@@ -192,7 +192,12 @@ struct HereTodayView: View {
         let wW = windPanelVisible ? 0.36 : 0
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
-        let usable = h * (fitsPane ? 0.90 : 0.84)
+        // Beside the table the pane no longer carries a scenario strip — the
+        // chips moved up to the title row — so the share held back for one was
+        // simply emptiness under the wind chart. The graphs take it, which also
+        // brings their bottom edge down to where it sits on the folded screen,
+        // so opening the device reads as the far half turning transparent.
+        let usable = h * (fitsPane ? 0.96 : 0.84)
         return (usable * wT / tot, usable * wC / tot, usable * wW / tot)
     }
 

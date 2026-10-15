@@ -115,8 +115,10 @@ struct TenDayView: View {
         let tot = wT + wC + wW
         guard tot > 0 else { return (0, 0, 0) }
         // usable < 1 leaves room for the three panel labels + scenario strip +
-        // attribution so the bottom panel's x-axis isn't clipped.
-        let usable = h * (fitsPane ? 0.90 : 0.82)
+        // attribution so the bottom panel's x-axis isn't clipped. Beside the
+        // table there is no scenario strip to leave room for — the chips moved
+        // up to the title row — so the panels there take that share back.
+        let usable = h * (fitsPane ? 0.96 : 0.82)
         return (usable * wT / tot, usable * wC / tot, usable * wW / tot)
     }
 
