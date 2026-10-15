@@ -645,36 +645,72 @@ struct TenDayView: View {
     /// in-sun heatmap cropped to daylight hours (no sun at night). Heights are
     /// split so both grids keep roughly the same cell size.
     @ViewBuilder
+    /// One grid, each day column cut down the middle: in shade on the left of
+    /// the day, in sun on the right.
+    ///
+    /// Stacking two grids gave the in-sun one a sliver of the height — it only
+    /// covers daylight hours, so its share of the split was always small — and
+    /// it read as an afterthought rather than the other half of the same
+    /// reading. Side by side within the day, the two are directly comparable at
+    /// a glance, hour for hour.
+    private func splitHeatGrid() -> some View {
+        let cal = Calendar.current
+        return Chart(allPoints) { p in
+            let hour = cal.component(.hour, from: p.date)
+            let dayStart = cal.startOfDay(for: p.date)
+            let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+            // Reliability still shrinks the pair toward the middle of the day,
+            // so an uncertain hour reads as a narrow sliver either side.
+            let full = dayEnd.timeIntervalSince(dayStart)
+            let mid = dayStart.addingTimeInterval(full / 2)
+            let half = full / 2 * myFeelsLikeReliability(p)
+            if let shade = p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore {
+                RectangleMark(
+                    xStart: .value("Day", mid.addingTimeInterval(-half)),
+                    xEnd:   .value("Day end", mid),
+                    yStart: .value("Hour", hour),
+                    yEnd:   .value("Hour end", hour + 1)
+                )
+                .foregroundStyle(ColorScale.feelsColor(score: shade, opacity: 1))
+            }
+            if let sun = p.myFeelsLikeSunScore {
+                RectangleMark(
+                    xStart: .value("Day", mid),
+                    xEnd:   .value("Day end", mid.addingTimeInterval(half)),
+                    yStart: .value("Hour", hour),
+                    yEnd:   .value("Hour end", hour + 1)
+                )
+                .foregroundStyle(ColorScale.feelsColor(score: sun, opacity: 1))
+            }
+        }
+        .chartYScale(domain: 0...24)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: [0, 6, 12, 18, 24]) { v in
+                let hv = v.as(Int.self) ?? 0
+                AxisValueLabel {
+                    Text(hv == 24 && !use12Hour ? "24" : clockHourLabel(hv, use12: use12Hour))
+                        .font(.caption2).foregroundStyle(axisInk)
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day, count: dayTickStride)) { value in
+                AxisValueLabel {
+                    Text(value.as(Date.self).map { dayLabel(for: $0) } ?? "")
+                        .font(.caption).foregroundStyle(axisInk)
+                }
+            }
+        }
+        .ifLet(dateDomain) { view, domain in view.chartXScale(domain: domain) }
+        .chartPlotStyle { $0.clipped() }
+    }
+
     private func separateHeatmaps(height: CGFloat) -> some View {
-        let bounds = daylightHourBounds
-        let sunSpan = max(1, bounds.hi - bounds.lo)
-        let total = 24 + sunSpan
-        // Reserve room for the two small labels + spacing, then divide the rest
-        // between the grids in proportion to their hour spans.
-        let grids = max(40, height - 34)
-        let shadeH = grids * 24 / CGFloat(total)
-        let sunH   = grids * CGFloat(sunSpan) / CGFloat(total)
-        VStack(alignment: .leading, spacing: 4) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("MyFeelsLike — in shade")
-                    .font(.caption2).foregroundStyle(axisInk).padding(.leading, 36)
-                heatGrid(yLo: 0, yHi: 24, yValues: [0, 6, 12, 18, 24]) { p in
-                    (p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore).map {
-                        AnyShapeStyle(ColorScale.feelsColor(score: $0, opacity: 1))
-                    }
-                }
-                .frame(height: shadeH)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text("MyFeelsLike — in sun (daytime)")
-                    .font(.caption2).foregroundStyle(axisInk).padding(.leading, 36)
-                heatGrid(yLo: bounds.lo, yHi: bounds.hi,
-                         yValues: [bounds.lo, (bounds.lo + bounds.hi) / 2, bounds.hi]) { p in
-                    guard p.isDaylight, let s = p.myFeelsLikeSunScore else { return nil }
-                    return AnyShapeStyle(ColorScale.feelsColor(score: s, opacity: 1))
-                }
-                .frame(height: sunH)
-            }
+        VStack(alignment: .leading, spacing: 2) {
+            Text("MyFeelsLike — in shade (left) · in sun (right)")
+                .font(.caption2).foregroundStyle(axisInk).padding(.leading, 36)
+            splitHeatGrid()
+                .frame(height: max(40, height - 16))
         }
     }
 
