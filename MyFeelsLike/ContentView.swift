@@ -214,14 +214,23 @@ struct ContentView: View {
     /// the full width of the window — so this is measured from the device.
     private static let statusCornerAllowance: CGFloat = 130
 
-    /// Width the graphs may take back from the strip the system reserves on the
-    /// trailing side: 84 pt on the open panel, and the same corner on the
-    /// folded one. Only the graphs take it. The buttons stay inside the safe
-    /// area, because on the folded screen that strip is where the camera is,
-    /// and a button that slides under the camera is worse than a narrow graph.
-    private var graphTrailingBonus: CGFloat {
-        liftsIntoStatusStrip ? 0 : max(0, metrics.safeInsets.right)
-    }
+    /// Whether the graphs may spread into the strips the system reserves at the
+    /// sides. Only the graphs do. The buttons stay inside the safe area,
+    /// because on the folded screen those strips are where the camera is, and a
+    /// button sliding under the camera is worse than a narrow graph.
+    ///
+    /// Done by waiving the safe area rather than with negative padding.
+    /// Negative padding pushed the content past the window edge instead of into
+    /// the reserved strip, so the chart came out clipped on the right — and it
+    /// only ever widened the trailing side, while the reserved corner changes
+    /// sides with the device's orientation.
+    private var graphsUseReservedStrips: Bool { !liftsIntoStatusStrip }
+
+    /// On the open panel the scenario chips move up beside the place name.
+    /// They govern both halves of the screen, and sitting above one graph made
+    /// them look like that graph's own control; the title gives up the middle
+    /// of the row to make space.
+    private var chipsInTitleRow: Bool { layoutMode == .splitPane }
 
     /// Propped open on a surface with the fold horizontal, so the half facing
     /// you is the top one. Only this pose: open flat, or held with the fold
@@ -545,13 +554,17 @@ struct ContentView: View {
                 // graph screens. Its own left/right swipe drives the 24h↔10-day
                 // morph, so it takes over paging (the table isn't reachable here
                 // yet — the scrubber readout covers reading exact values).
-                foldTimelineTab.padding(.trailing, -graphTrailingBonus)
+                foldTimelineTab
+                    .ignoresSafeArea(.container,
+                                     edges: graphsUseReservedStrips ? .horizontal : [])
             } else if layoutMode == .splitPane {
                 splitPaneLayout
             } else if useDashboardLayout {
                 dashboardLayout
             } else {
-                graphPager.padding(.trailing, -graphTrailingBonus)
+                graphPager
+                    .ignoresSafeArea(.container,
+                                     edges: graphsUseReservedStrips ? .horizontal : [])
             }
         }
         // Measure what we actually got, rather than inferring it from the
@@ -562,18 +575,25 @@ struct ContentView: View {
     /// Fixed place name – taps open the places sheet.
     /// Centered place name (taps open Places) with an ⓘ at the trailing edge
     /// that opens the Info screen — the bottom bar is already busy enough.
+    /// The place name on its own, for whichever arrangement the row is using.
+    private func placeName(centred: Bool) -> some View {
+        Button { showPlaces = true } label: {
+            Text(displayTitle)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundStyle(skyInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: centred ? .infinity : nil)
+                .padding(.vertical, isTabletopPose ? 3 : 10)
+                .padding(.horizontal, centred ? 16 : 8)
+        }
+        .buttonStyle(.plain)
+    }
+
     private var titleButton: some View {
         ZStack {
-            Button { showPlaces = true } label: {
-                Text(displayTitle)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(skyInk)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, isTabletopPose ? 3 : 10)
-                    .padding(.horizontal)
-            }
-            .buttonStyle(.plain)
+            if !chipsInTitleRow { placeName(centred: true) }
 
             HStack {
                 // Refresh lives here because the vertical swipe that used to
@@ -598,6 +618,15 @@ struct ContentView: View {
                 .accessibilityLabel("Refresh forecast")
                 .accessibilityIdentifier("refreshButton")
 
+                if chipsInTitleRow {
+                    // Hug the chips: the strip is a horizontal ScrollView, and
+                    // left to itself it claims the whole row, which pushed the
+                    // place name hard against the info button.
+                    ScenarioStrip(activeFeatures: activeFeatures)
+                        .fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 8)
+                    placeName(centred: false)
+                }
                 Spacer()
                 Button { showInfo = true } label: {
                     Image(systemName: "info.circle")
@@ -623,7 +652,6 @@ struct ContentView: View {
     /// is a matter of reordering this HStack.
     @ViewBuilder
     private var splitPaneLayout: some View {
-        ScenarioStrip(activeFeatures: activeFeatures)
         // Even halves, because the halves are physical: the right one has to
         // land on the panel that carries the outer screen, so that opening the
         // device reads as the folding half turning transparent rather than as
@@ -656,10 +684,11 @@ struct ContentView: View {
             Divider()
             phoneContentPane
                 .frame(maxWidth: .infinity)
-                // Out to the panel edge, under the clock. The left edge is
-                // pinned to the crease, so this is width the graph gains
-                // rather than a shift sideways.
-                .padding(.trailing, -graphTrailingBonus)
+                // Out to the panel edge, under the clock. Only the window's
+                // own edge is waived, so the pane's left edge stays pinned to
+                // the crease: width gained, not a shift sideways.
+                .ignoresSafeArea(.container,
+                                 edges: graphsUseReservedStrips ? .horizontal : [])
         }
         // The crease is the middle of the panel. Reconstructing the panel width
         // from safe-area insets was guesswork and landed the divider left of
@@ -669,6 +698,9 @@ struct ContentView: View {
             proxy.frame(in: .global).minX
         } action: { splitOriginX = $0 }
     }
+
+    /// Chips for the paged screens — none when the title row is carrying them.
+    private var pagerChipFeatures: Set<Feature> { chipsInTitleRow ? [] : activeFeatures }
 
     /// Whatever the outer screen shows: the paged graphs, or the zoom graph
     /// when that is switched on.
@@ -730,9 +762,9 @@ struct ContentView: View {
     @ViewBuilder
     private func screenView(_ s: ForecastScreen) -> some View {
         switch s {
-        case .today:  hereTodayTab(chipFeatures: activeFeatures)
-        case .tenDay: tenDayTab(chipFeatures: activeFeatures)
-        case .table:  forecastTableTab(chipFeatures: activeFeatures)
+        case .today:  hereTodayTab(chipFeatures: pagerChipFeatures)
+        case .tenDay: tenDayTab(chipFeatures: pagerChipFeatures)
+        case .table:  forecastTableTab(chipFeatures: pagerChipFeatures)
         }
     }
 
@@ -1201,7 +1233,7 @@ struct ContentView: View {
         }
     }
 
-    private var foldTimelineTab: some View { foldTimelineTab(chipFeatures: activeFeatures) }
+    private var foldTimelineTab: some View { foldTimelineTab(chipFeatures: pagerChipFeatures) }
 
     /// Why no personalized model yet (empty once one exists). Shown on the
     /// 10-day heatmap panel while it's gray.
