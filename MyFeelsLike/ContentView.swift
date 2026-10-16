@@ -499,6 +499,17 @@ struct ContentView: View {
                 zoomShowsTable = false
             }
         }
+        // Opening the device puts the table in the left half for good. If the
+        // pager was on the table screen when that happened — switched on, folded,
+        // tapped "table", then unfolded — it carried on showing the table in the
+        // right half too, so the same table was drawn twice with the sky
+        // suppressed behind both. Hand the pager back to the graph it came from.
+        .onChange(of: tableAlongside) { _, alongside in
+            if alongside {
+                if screen == .table { screen = lastGraph }
+                zoomShowsTable = false
+            }
+        }
         .onChange(of: shareData) { _, _ in syncDeveloperData() }   // opt in → upload, opt out → delete
         .onChange(of: useFahrenheit) { _, _ in pushToWatch() }
         .onChange(of: scenarioActivity) { _, _ in pushToWatch() }
