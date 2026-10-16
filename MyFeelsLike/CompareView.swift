@@ -98,7 +98,7 @@ struct FeelsBand: View {
         Chart {
             ForEach(series) { p in
                 if let s = style(p) {
-                    let half = myFeelsLikeReliability(p) / 2
+                    let half = myFeelsLikeDrawn(p) / 2
                     RectangleMark(xStart: .value("t0", p.date.addingTimeInterval(-3600)),
                                   xEnd:   .value("t1", p.date),
                                   yStart: .value("y0", 0.5 - half), yEnd: .value("y1", 0.5 + half))

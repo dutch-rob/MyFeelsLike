@@ -345,6 +345,19 @@ func myFeelsLikeHeatColor(_ p: ForecastPoint) -> Color {
 /// floor keeps even the least reliable cell visible as a sliver.
 func myFeelsLikeReliability(_ p: ForecastPoint) -> Double { p.myFeelsLikeWidth }
 
+/// The smallest fraction of a cell that still gets drawn.
+///
+/// Reliability scales how much of a cell is filled, and multiplying straight by
+/// it sends the least certain hours to exactly zero: they vanish, leaving a gap
+/// that reads as "no forecast here" when what is true is "barely any confidence
+/// here". Those are different claims, and the second one deserves a sliver.
+let myFeelsLikeMinDrawn: Double = 0.10
+
+/// Reliability as the fraction of a cell to fill, floored so nothing vanishes.
+func myFeelsLikeDrawn(_ p: ForecastPoint) -> Double {
+    max(myFeelsLikeMinDrawn, myFeelsLikeReliability(p))
+}
+
 /// How the in-shade vs in-sun difference is drawn in the color band / heatmap.
 /// `separate` (the default) shows two distinct bars/heatmaps — clearest at a
 /// glance; `gradient` blends shade→sun within each cell — more compact and

@@ -665,7 +665,7 @@ struct TenDayView: View {
             // so an uncertain hour reads as a narrow sliver either side.
             let full = dayEnd.timeIntervalSince(dayStart)
             let mid = dayStart.addingTimeInterval(full / 2)
-            let half = full / 2 * myFeelsLikeReliability(p)
+            let half = full / 2 * myFeelsLikeDrawn(p)
             if let shade = p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore {
                 RectangleMark(
                     xStart: .value("Day", mid.addingTimeInterval(-half)),
@@ -785,7 +785,7 @@ struct TenDayView: View {
                 // its day column, so uncertain hours read as a narrow sliver.
                 let full = dayEnd.timeIntervalSince(dayStart)
                 let mid = dayStart.addingTimeInterval(full / 2)
-                let half = full / 2 * myFeelsLikeReliability(p)
+                let half = full / 2 * myFeelsLikeDrawn(p)
                 RectangleMark(
                     xStart: .value("Day", mid.addingTimeInterval(-half)),
                     xEnd:   .value("Day end", mid.addingTimeInterval(half)),

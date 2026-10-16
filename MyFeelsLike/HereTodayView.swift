@@ -636,7 +636,7 @@ struct HereTodayView: View {
         Chart(series) { p in
             // Reliability shrinks the band vertically toward the center line, so
             // uncertain hours read as a thinner stripe.
-            let half = myFeelsLikeReliability(p) / 2
+            let half = myFeelsLikeDrawn(p) / 2
             // Cell spans the hour *ending* at p.date (shifted ~1h left of the
             // hour-starting convention) so the band lines up with how the
             // temperature curve reads against the x-axis ticks.
@@ -730,7 +730,7 @@ struct HereTodayView: View {
                 .padding(.leading, 36)
             Chart {
                 ForEach(series) { p in
-                    let half = myFeelsLikeReliability(p) / 2
+                    let half = myFeelsLikeDrawn(p) / 2
                     if let s = p.myFeelsLikeShadeScore ?? p.myFeelsLikeScore {
                         RectangleMark(xStart: .value("t0", p.date.addingTimeInterval(-3600)),
                                       xEnd:   .value("t1", p.date),
@@ -778,7 +778,7 @@ struct HereTodayView: View {
         Chart {
             ForEach(series) { p in
                 if let c = color(p) {
-                    let half = myFeelsLikeReliability(p) / 2
+                    let half = myFeelsLikeDrawn(p) / 2
                     RectangleMark(xStart: .value("t0", p.date.addingTimeInterval(-3600)),
                                   xEnd:   .value("t1", p.date),
                                   yStart: .value("y0", 0.5 - half), yEnd: .value("y1", 0.5 + half))

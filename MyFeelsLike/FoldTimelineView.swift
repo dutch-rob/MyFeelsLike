@@ -128,7 +128,7 @@ struct FoldTimelineView: View {
             // daylight test here: after dark the prediction already collapses
             // sun onto shade, so the two halves simply read the same.
             let shade = p.myFeelsLikeShadeScore ?? s
-            byDay[d, default: [:]][h] = (shade, myFeelsLikeReliability(p), p.myFeelsLikeSunScore)
+            byDay[d, default: [:]][h] = (shade, myFeelsLikeDrawn(p), p.myFeelsLikeSunScore)
         }
         return byDay.keys.sorted().map { d in
             let row = byDay[d]
