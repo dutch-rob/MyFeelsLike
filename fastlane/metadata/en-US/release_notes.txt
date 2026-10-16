@@ -1,0 +1,18 @@
+Folding phones
+
+MyFeelsLike now lays itself out around the fold. Opened out, the table sits beside the graphs with the divider landing on the crease, so opening the phone looks like the far half turning transparent rather than the screen rearranging itself. Stand it half-open on a table and everything moves into the half tilted towards you.
+
+Your comfort in one band
+
+The 24-hour screen now shows a single comfort bar cut across the middle — in shade above the line, in sun below it — instead of two separate bars competing for the same height. The 10-day screen does the same inside each day: shade on the left, sun on the right, so the two are comparable hour for hour.
+
+Easier to read
+
+Turn any phone on its side and the temperature and wind charts sit beside each other rather than stacked. Over a night sky the buttons and chips no longer vanish into the dark, the daytime sky is lighter behind the curves, and the graphs now use the full width of the screen.
+
+An hour the model is unsure about is drawn as a narrow sliver rather than disappearing from the band altogether.
+
+Also in this version
+
+• The Info screen explains the iPad and folding-phone layouts, and links to the published write-up of the method behind the app.
+• The app now follows the phone when you turn it upside down.
