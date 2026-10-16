@@ -67,7 +67,11 @@ else echo "No watch app build found — skipping Apple Watch (build the watch sc
 DEVICES=(
   "A8EB7439-4A70-498D-A79A-F644C75A26A7|iPhone 18 Pro Max|ios|250000|today scrubber tenday table places rate info"
   "7EDD7148-10C0-4579-A1A4-CA29E61F68ED|iPad Pro 13-inch (M5)|ios|250000|today scrubber table rate info"
-  "ACF09CBB-7CB8-40D3-97EE-5876FF48940E|iPhone Duo|ios|250000|today tenday table places rate info"
+  # No sheets here: Places, Rate and Info never finished presenting on this
+  # device inside the capture window, so all three came out byte-identical to
+  # each other — the screen behind them, three times. The iPhone set shows
+  # those screens already and nothing about them is foldable-specific.
+  "ACF09CBB-7CB8-40D3-97EE-5876FF48940E|iPhone Duo|ios|250000|today tenday table"
   "360294D4-8EB4-4D83-AA6E-424D38B6B77C|Apple Watch Series 11 (46mm)|watch|3000|today tenday table"
 )
 
