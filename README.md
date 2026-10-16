@@ -219,10 +219,16 @@ resting place, mid-turn. Buttons at the top switch to the table.
 Your ratings and your personal model stay on your device.
 
 ### Exactly what goes where
-They are **not** synced across your devices — each iPhone or iPad keeps its own
-ratings and its own model.
+By default each iPhone or iPad keeps its own ratings and its own model, and they
+are not synced. Turn on **Sync across my devices** (Settings ▸ iCloud) and they
+travel with your iCloud account instead, so a second device — or a new phone —
+starts out knowing what you have already taught the app. It takes effect the
+next time you open the app, and it is separate from Compare.
 
-Nothing leaves your device unless you turn on **Share data with developers**
+Saved places are the exception: those always sync through your own iCloud
+account, so they show up wherever you are signed in.
+
+Nothing goes to **us** unless you turn on **Share data with developers**
 (off by default), which uploads only anonymized ratings and model coefficients —
 no name, no location, no place.
 

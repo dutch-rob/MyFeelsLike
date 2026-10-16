@@ -181,8 +181,9 @@ struct InfoView: View {
                     Text("Your ratings and your personal model stay on your device.")
                     DisclosureGroup("Show more — Exactly what goes where") {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("They are **not** synced across your devices — each iPhone or iPad keeps its own ratings and its own model.")
-                            Text("Nothing leaves your device unless you turn on **Share data with developers** (off by default), which uploads only anonymized ratings and model coefficients — no name, no location, no place.")
+                            Text("By default each iPhone or iPad keeps its own ratings and its own model, and they are not synced. Turn on **Sync across my devices** (Settings ▸ iCloud) and they travel with your iCloud account instead, so a second device — or a new phone — starts out knowing what you have already taught the app. It takes effect the next time you open the app, and it is separate from Compare.")
+                            Text("Saved places are the exception: those always sync through your own iCloud account, so they show up wherever you are signed in.")
+                            Text("Nothing goes to **us** unless you turn on **Share data with developers** (off by default), which uploads only anonymized ratings and model coefficients — no name, no location, no place.")
                             Spacer(minLength: 0)
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }
