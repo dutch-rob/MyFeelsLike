@@ -58,9 +58,15 @@ else echo "No watch app build found — skipping Apple Watch (build the watch sc
 # "tenday" there is the same picture as "today" and is left out.
 # Rate / Places are sheets that don't auto-present via a launch arg — capture
 # those by tapping the bottom-bar buttons while running in demo mode.
+#
+# The foldable's pose — folded, open, propped half-open, and which way up — is
+# not settable from simctl. Whatever pose the Simulator window is left in is the
+# pose that gets captured, so set it by hand before running, and expect to run
+# the device twice (ONLY="Duo") if you want both folded and opened-out sets.
 DEVICES=(
-  "352D53EB-F8D7-42D7-90E3-145E9F17E45C|iPhone 17 Pro Max|ios|250000|today scrubber tenday table places rate info"
-  "B62C181F-E6F0-4053-859E-42A583057F1E|iPad Pro 13-inch (M5)|ios|250000|today scrubber table rate info"
+  "A8EB7439-4A70-498D-A79A-F644C75A26A7|iPhone 18 Pro Max|ios|250000|today scrubber tenday table places rate info"
+  "7EDD7148-10C0-4579-A1A4-CA29E61F68ED|iPad Pro 13-inch (M5)|ios|250000|today scrubber table rate info"
+  "ACF09CBB-7CB8-40D3-97EE-5876FF48940E|iPhone Duo|ios|250000|today tenday table places rate info"
   "360294D4-8EB4-4D83-AA6E-424D38B6B77C|Apple Watch Series 11 (46mm)|watch|3000|today tenday table"
 )
 
@@ -72,6 +78,29 @@ DEVICES=(
 #           just below the status bar, which is pure black on the splash (the
 #           icon sits lower) and carries the title on every real screen. Pure
 #           black re-encodes to ~1.8 KB, real content to 7 KB and up.
+# Capture one frame. Most devices have a single display and the plain call is
+# right; a foldable has two, only one of them lit, and `screenshot` with no
+# --display can hand back the dark one or fail outright. Asking each display and
+# keeping the biggest file lands on the panel actually being shown, whatever
+# pose the device is in.
+snap() {   # udid  path
+  local udid="$1" path="$2" tmp="$2.try" best=0 sz ids count=0
+  ids=$(xcrun simctl io "$udid" enumerate 2>/dev/null |
+        awk '/UUID:/{u=$2} /Display class: 0/{print u}')
+  for _ in $ids; do count=$((count + 1)); done
+  if [ "$count" -le 1 ]; then
+    xcrun simctl io "$udid" screenshot "$path" >/dev/null 2>&1
+    return
+  fi
+  rm -f "$path"
+  for id in $ids; do
+    xcrun simctl io "$udid" screenshot --display "$id" "$tmp" >/dev/null 2>&1 || continue
+    sz=$(stat -f%z "$tmp" 2>/dev/null || echo 0)
+    if [ "$sz" -gt "$best" ]; then best="$sz"; mv "$tmp" "$path"; fi
+  done
+  rm -f "$tmp"
+}
+
 rendered() {   # path  platform  threshold
   local path="$1" platform="$2" threshold="$3" bytes
   if [ "$platform" = "watch" ]; then
@@ -90,6 +119,14 @@ shoot() {   # udid  devname  index  screen  bundle  threshold  platform
   # Night sky: the daytime background (white clouds on blue) is busier than the
   # graph lines drawn over it. SKY=day for the daylight version.
   local args=(-UITestDemo -UITestSky "${SKY:-night}")
+  # Shoot every device with the same graph settings, whatever the simulator
+  # happens to have stored: filled and vivid, without the wet-bulb and dew-point
+  # curves, which crowd the temperature panel at screenshot size. Launch
+  # arguments land in NSUserDefaults' argument domain, which outranks anything
+  # saved — the same trick as -showTable below. Note the filled style is
+  # "area", and it is not the built-in default, so it has to be asked for.
+  args+=(-chartSeriesStyle area -graphPalette vivid
+         -graphWetBulb NO -graphDewPoint NO)
   case "$screen" in
     today)    ;;                                   # the default tab
     # Same screen as "today", with the long-press readout parked mid-chart.
@@ -112,7 +149,7 @@ shoot() {   # udid  devname  index  screen  bundle  threshold  platform
   local t=0 size=0 prev="" cur="" settled=""
   while [ "$t" -lt 75 ]; do
     xcrun simctl spawn "$udid" sleep 3 >/dev/null 2>&1; t=$((t + 3))
-    xcrun simctl io "$udid" screenshot "$path" >/dev/null 2>&1
+    snap "$udid" "$path"
     if rendered "$path" "$platform" "$threshold" && [ "$t" -ge "$minwait" ]; then
       settled=yes; break
     fi
@@ -134,7 +171,7 @@ shoot() {   # udid  devname  index  screen  bundle  threshold  platform
   xcrun simctl spawn "$udid" sleep 5 >/dev/null 2>&1
   local a="" b="" tries=0
   while [ "$tries" -lt 6 ]; do
-    xcrun simctl io "$udid" screenshot "$path" >/dev/null 2>&1
+    snap "$udid" "$path"
     b=$(shasum -a1 "$path" 2>/dev/null | cut -d" " -f1)
     [ -n "$b" ] && [ "$a" = "$b" ] && break
     a="$b"; tries=$((tries + 1))
@@ -180,7 +217,9 @@ for entry in "${DEVICES[@]}"; do
   xcrun simctl erase "$udid" >/dev/null 2>&1
   xcrun simctl boot "$udid" >/dev/null 2>&1
   xcrun simctl bootstatus "$udid" >/dev/null 2>&1
-  xcrun simctl install "$udid" "$app" || { echo "install failed on $dev"; continue; }
+  xcrun simctl install "$udid" "$app" || {
+    echo "install failed on $dev"; FAILED=$(( ${FAILED:-0} + 1 )); continue
+  }
   # No location grant: both apps skip the authorization request entirely in
   # demo mode, so nothing prompts — and granting it lit the location-services
   # arrow in the status bar of every shot.
@@ -204,3 +243,7 @@ for entry in "${DEVICES[@]}"; do
   done
 done
 echo "Screenshots written to $OUT"
+if [ "${FAILED:-0}" -gt 0 ]; then
+  echo "!! $FAILED device(s) failed — this set is incomplete."
+  exit 1
+fi

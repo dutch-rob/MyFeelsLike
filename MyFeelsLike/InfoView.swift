@@ -191,6 +191,9 @@ struct InfoView: View {
 
                 Group {
                     Text("More").font(.headline).id("more")
+                    Text("The method behind the app — learning a personal apparent-temperature scale from your own comfort ratings, and putting that scale into a forecast — is written up in a preprint:")
+                    Text("Robert Boer. *Learning an Individual Apparent-Temperature Scale from Self-Reported Comfort Ratings and Including that Scale in Weather Forecasts.* ESS Open Archive, 18 September 2026.")
+                    Text("Link: [Read the paper (doi.org/10.22541/essoar.15008759/v2)](https://doi.org/10.22541/essoar.15008759/v2)")
                     Text("Link: [Developer documentation on GitHub](https://github.com/dutch-rob/MyFeelsLike/blob/main/ARCHITECTURE.md)")
                 }
                 }

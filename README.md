@@ -227,6 +227,16 @@ Nothing leaves your device unless you turn on **Share data with developers**
 no name, no location, no place.
 
 ## More
+The method behind the app — learning a personal apparent-temperature scale from
+your own comfort ratings, and putting that scale into a forecast — is written up
+in a preprint:
+
+Robert Boer. *Learning an Individual Apparent-Temperature Scale from
+Self-Reported Comfort Ratings and Including that Scale in Weather Forecasts.*
+ESS Open Archive, 18 September 2026.
+
+Link: [Read the paper (doi.org/10.22541/essoar.15008759/v2)](https://doi.org/10.22541/essoar.15008759/v2)
+
 Link: [Developer documentation on GitHub](https://github.com/dutch-rob/MyFeelsLike/blob/main/ARCHITECTURE.md)
 <!-- INFO_SCREEN_END -->
 
