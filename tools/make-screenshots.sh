@@ -12,7 +12,8 @@
 # Usage:  tools/make-screenshots.sh
 #         DERIVED_DATA=/path/to/dd tools/make-screenshots.sh     # non-default build dir
 #         SKY=day tools/make-screenshots.sh                      # daylight background
-#         ONLY="iPhone 17" tools/make-screenshots.sh              # just matching devices
+#         ONLY="Duo" tools/make-screenshots.sh                    # just matching devices
+#         KEEP_BOOTED=1 ONLY="Duo" tools/make-screenshots.sh       # keep the pose it is in
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -206,6 +207,15 @@ for entry in "${DEVICES[@]}"; do
   # came out with four series and a full-width band instead of the demo's two
   # and a narrowed one. A stuck permission alert survives an uninstall too.
   # Erasing costs a slower first boot and buys reproducible captures.
+  # KEEP_BOOTED=1 leaves an already-booted device exactly as it is. A foldable's
+  # pose cannot be set from simctl, so it has to be set by hand in the
+  # Simulator — and erasing and rebooting the device throws that pose away and
+  # comes back folded. For those runs, skip the reset and accept the device as
+  # found: the settings that the erase used to guarantee are now forced through
+  # launch arguments anyway, and demo mode brings its own data.
+  if [ "${KEEP_BOOTED:-0}" = "1" ] && xcrun simctl list devices | grep -q "$udid.*Booted"; then
+    echo "   (keeping this device booted and posed as found)"
+  else
   xcrun simctl shutdown "$udid" >/dev/null 2>&1
   # `shutdown` returns while the device is still "Shutting Down", and erasing or
   # booting in that window fails with SimError 405 — which is how the watch got
@@ -217,6 +227,7 @@ for entry in "${DEVICES[@]}"; do
   xcrun simctl erase "$udid" >/dev/null 2>&1
   xcrun simctl boot "$udid" >/dev/null 2>&1
   xcrun simctl bootstatus "$udid" >/dev/null 2>&1
+  fi
   xcrun simctl install "$udid" "$app" || {
     echo "install failed on $dev"; FAILED=$(( ${FAILED:-0} + 1 )); continue
   }
