@@ -67,11 +67,17 @@ else echo "No watch app build found — skipping Apple Watch (build the watch sc
 DEVICES=(
   "A8EB7439-4A70-498D-A79A-F644C75A26A7|iPhone 18 Pro Max|ios|250000|today scrubber tenday table places rate info"
   "7EDD7148-10C0-4579-A1A4-CA29E61F68ED|iPad Pro 13-inch (M5)|ios|250000|today scrubber table rate info"
-  # No sheets here: Places, Rate and Info never finished presenting on this
-  # device inside the capture window, so all three came out byte-identical to
-  # each other — the screen behind them, three times. The iPhone set shows
-  # those screens already and nothing about them is foldable-specific.
-  "ACF09CBB-7CB8-40D3-97EE-5876FF48940E|iPhone Duo|ios|250000|today tenday table"
+  # No "table" screen here. The table is already in the left half of every shot
+  # on this device, and asking the pager for it as well draws it in both halves
+  # at once — a state no one can reach by tapping, since the button that would
+  # go there is hidden when the table is already beside you.
+  #
+  # Places is left out: it never finished presenting on this device inside the
+  # capture window and came out as the screen behind it. Rate and Info are
+  # worth the wait even so — someone shopping for a foldable looks at the
+  # foldable's screenshots and no others, so leaving gaps in this set is not
+  # the same as leaving them in a device's set that nobody singles out.
+  "ACF09CBB-7CB8-40D3-97EE-5876FF48940E|iPhone Duo|ios|250000|today tenday rate info"
   "360294D4-8EB4-4D83-AA6E-424D38B6B77C|Apple Watch Series 11 (46mm)|watch|3000|today tenday table"
 )
 
@@ -131,7 +137,13 @@ shoot() {   # udid  devname  index  screen  bundle  threshold  platform
   # saved — the same trick as -showTable below. Note the filled style is
   # "area", and it is not the built-in default, so it has to be asked for.
   args+=(-chartSeriesStyle area -graphPalette vivid
-         -graphWetBulb NO -graphDewPoint NO)
+         -graphWetBulb NO -graphDewPoint NO
+         # And the paged screens rather than the zoom graph, which is what a
+         # new install opens on. This matters most with KEEP_BOOTED, where the
+         # device is not erased and whatever was last switched on stays on: a
+         # stored "Zoom graph" turned the 24-hour and 10-day captures into two
+         # pictures of the same morphing timeline.
+         -UITestZoom off)
   case "$screen" in
     today)    ;;                                   # the default tab
     # Same screen as "today", with the long-press readout parked mid-chart.
